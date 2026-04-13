@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { API_URL } from "@/config/api";
 
 interface User {
   id: string;
@@ -45,61 +46,23 @@ export const useClientAuth = () => {
     phone?: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Récupérer les utilisateurs existants avec gestion d'erreur
-      let existingUsers: any[] = [];
-      try {
-        const stored = localStorage.getItem("users");
-        if (stored) {
-          existingUsers = JSON.parse(stored);
-          if (!Array.isArray(existingUsers)) {
-            console.warn("Données utilisateurs corrompues, réinitialisation");
-            existingUsers = [];
-          }
-        }
-      } catch (e) {
-        console.error("Erreur lors de la lecture des utilisateurs:", e);
-        existingUsers = [];
+      const response = await fetch(`${API_URL}/users/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, firstName, lastName, phone }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || "Erreur lors de l'inscription" };
       }
 
-      // Vérifier si l'utilisateur existe déjà
-      if (existingUsers.some((u: any) => u.email === email)) {
-        return { success: false, error: "Un compte avec cet email existe déjà" };
-      }
-
-      // Créer le nouvel utilisateur
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        email,
-        firstName,
-        lastName,
-        phone,
-        role: "user",
-        emailVerified: false,
-      };
-
-      // Stocker l'utilisateur avec le mot de passe
-      const userToStore = { ...newUser, passwordHash: password };
-      existingUsers.push(userToStore);
-      
-      // Sauvegarder dans localStorage
-      localStorage.setItem("users", JSON.stringify(existingUsers));
-      
-      // Vérifier que la sauvegarde a fonctionné
-      const verifyStored = localStorage.getItem("users");
-      if (!verifyStored) {
-        console.error("Échec de la sauvegarde des utilisateurs");
-        return { success: false, error: "Erreur de sauvegarde. Veuillez réessayer." };
-      }
-
-      console.log("Utilisateur créé avec succès:", newUser.id);
-      console.log("Nombre total d'utilisateurs:", existingUsers.length);
-
-      // Connecter l'utilisateur
-      setUser(newUser);
-      setIsAuthenticated(true);
-      localStorage.setItem("currentUser", JSON.stringify(newUser));
-
-      return { success: true };
+      // Après inscription, connecter l'utilisateur
+      const loginResult = await login(email, password, false);
+      return loginResult;
     } catch (error) {
       console.error("Erreur lors de l'inscription:", error);
       return { success: false, error: "Erreur lors de l'inscription" };
@@ -112,44 +75,23 @@ export const useClientAuth = () => {
     rememberMe: boolean = false
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Récupérer les utilisateurs avec gestion d'erreur
-      let existingUsers: any[] = [];
-      try {
-        const stored = localStorage.getItem("users");
-        console.log("Tentative de connexion - Données brutes:", stored ? "Présentes" : "Absent");
-        if (stored) {
-          existingUsers = JSON.parse(stored);
-          console.log("Nombre d'utilisateurs trouvés:", existingUsers.length);
-        }
-      } catch (e) {
-        console.error("Erreur lors de la lecture des utilisateurs:", e);
-        return { success: false, error: "Erreur système. Veuillez réessayer." };
+      const response = await fetch(`${API_URL}/users/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || "Email ou mot de passe incorrect" };
       }
-      
-      const user = existingUsers.find(
-        (u: any) => u.email === email && u.passwordHash === password
-      );
 
-      if (!user) {
-        console.log("Utilisateur non trouvé ou mot de passe incorrect");
-        return { success: false, error: "Email ou mot de passe incorrect" };
-      }
-      
-      console.log("Utilisateur trouvé:", user.email, "ID:", user.id);
-
-      const userData: User = {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        role: user.role,
-        emailVerified: user.emailVerified,
-      };
-
-      setUser(userData);
+      setUser(data.user);
       setIsAuthenticated(true);
-      localStorage.setItem("currentUser", JSON.stringify(userData));
+      localStorage.setItem("currentUser", JSON.stringify(data.user));
 
       // Si "Se souvenir de moi" est coché, stocker l'email pour la prochaine connexion
       if (rememberMe) {
@@ -160,6 +102,7 @@ export const useClientAuth = () => {
 
       return { success: true };
     } catch (error) {
+      console.error("Erreur lors de la connexion:", error);
       return { success: false, error: "Erreur lors de la connexion" };
     }
   };
@@ -170,18 +113,24 @@ export const useClientAuth = () => {
     localStorage.removeItem("currentUser");
   };
 
-  const updateUser = (updates: Partial<User>) => {
+  const updateUser = async (updates: Partial<User>) => {
     if (user) {
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+      try {
+        const response = await fetch(`${API_URL}/users/${user.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updates),
+        });
 
-      // Mettre à jour dans la liste des utilisateurs
-      const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
-      const userIndex = existingUsers.findIndex((u: any) => u.id === user.id);
-      if (userIndex >= 0) {
-        existingUsers[userIndex] = { ...existingUsers[userIndex], ...updates };
-        localStorage.setItem("users", JSON.stringify(existingUsers));
+        if (response.ok) {
+          const updatedUser = { ...user, ...updates };
+          setUser(updatedUser);
+          localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+        }
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour de l'utilisateur:", error);
       }
     }
   };

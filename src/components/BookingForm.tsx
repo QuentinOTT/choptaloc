@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Clock, MapPin, CreditCard, User, Phone, Mail, Car, X } from "lucide-react";
 import { useClientAuth } from "@/hooks/use-client-auth";
+import { API_URL } from "@/config/api";
 
 interface Car {
   id: string;
@@ -157,16 +158,36 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       newBooking.userId = user.id;
     }
 
-    // Sauvegarder dans localStorage
-    const existingBookings = JSON.parse(localStorage.getItem("bookings") || "[]");
-    existingBookings.push(newBooking);
-    localStorage.setItem("bookings", JSON.stringify(existingBookings));
-
-    // Fermer le formulaire
-    onClose();
-    
-    // Afficher un message de succès
-    alert("Votre demande de réservation a été envoyée avec succès ! Vous serez contacté sous peu.");
+    // Envoyer à l'API
+    fetch(`${API_URL}/bookings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newBooking),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          alert('Erreur lors de la création de la réservation: ' + data.error);
+        } else {
+          // Fermer le formulaire
+          onClose();
+          // Afficher un message de succès
+          alert("Votre demande de réservation a été envoyée avec succès ! Vous serez contacté sous peu.");
+        }
+      })
+      .catch(err => {
+        console.error('Erreur API, fallback localStorage:', err);
+        // Fallback vers localStorage
+        const existingBookings = JSON.parse(localStorage.getItem("bookings") || "[]");
+        existingBookings.push(newBooking);
+        localStorage.setItem("bookings", JSON.stringify(existingBookings));
+        // Fermer le formulaire
+        onClose();
+        // Afficher un message de succès
+        alert("Votre demande de réservation a été envoyée avec succès ! Vous serez contacté sous peu.");
+      });
   };
 
   if (!car) return null;

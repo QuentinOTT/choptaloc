@@ -4,11 +4,12 @@ import mercedesImg from "@/assets/Mercedesbachée.png";
 import golfImg from "@/assets/goldbachée.png";
 import audiImg from "@/assets/Rs3bachée.png";
 import clioImg from "@/assets/ClioVbleu.png";
+import { API_URL } from "@/config/api";
 import CarModal from "@/components/CarModal";
 import BookingForm from "@/components/BookingForm";
 import { useAvailabilities } from "@/hooks/use-availabilities";
 
-const cars = [
+const defaultCars = [
   {
     id: "1",
     brand: "Mercedes",
@@ -60,8 +61,9 @@ const cars = [
 ];
 
 const FleetSection = () => {
+  const [cars, setCars] = useState(defaultCars);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [selectedCar, setSelectedCar] = useState<typeof cars[0] | null>(null);
+  const [selectedCar, setSelectedCar] = useState<typeof defaultCars[0] | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
@@ -69,14 +71,29 @@ const FleetSection = () => {
   const { getMonthAvailabilities } = useAvailabilities();
 
   // Initialiser selectedCar pour le calendrier avec la première voiture disponible
-  const [calendarCar, setCalendarCar] = useState<typeof cars[0] | null>(null);
+  const [calendarCar, setCalendarCar] = useState<typeof defaultCars[0] | null>(null);
   
+  // Charger les véhicules depuis l'API
+  useEffect(() => {
+    fetch(`${API_URL}/cars`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.length > 0) {
+          setCars(data);
+        }
+      })
+      .catch(err => {
+        console.error('Erreur chargement véhicules:', err);
+        // Utiliser les véhicules par défaut si l'API échoue
+      });
+  }, []);
+
   useEffect(() => {
     const availableCars = cars.filter(car => car.available);
     if (availableCars.length > 0 && !calendarCar) {
       setCalendarCar(availableCars[0]);
     }
-  }, []);
+  }, [cars]);
 
   const availableCars = cars.filter(car => car.available);
   const upcomingCars = cars.filter(car => !car.available);

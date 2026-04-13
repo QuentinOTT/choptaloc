@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClientAuth } from "@/hooks/use-client-auth";
+import { API_URL } from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,7 +74,7 @@ const ClientDashboard = () => {
     try {
       // Convertir le fichier en base64 pour le stockage
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const base64 = event.target?.result as string;
         
         const newDocument: Document = {
@@ -86,14 +87,34 @@ const ClientDashboard = () => {
           status: "pending",
         };
 
-        setDocuments([...documents, newDocument]);
+        // Envoyer à l'API
+        try {
+          const response = await fetch(`${API_URL}/documents`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...newDocument,
+              userId: user?.id,
+            }),
+          });
 
-        // Stocker dans localStorage (en production, cela serait dans la base de données)
-        const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
-        existingDocs.push({ ...newDocument, userId: user?.id });
-        localStorage.setItem("userDocuments", JSON.stringify(existingDocs));
-
-        alert("Document uploadé avec succès !");
+          if (response.ok) {
+            setDocuments([...documents, newDocument]);
+            alert("Document uploadé avec succès !");
+          } else {
+            throw new Error('Erreur API');
+          }
+        } catch (apiError) {
+          console.error('Erreur API, fallback localStorage:', apiError);
+          // Fallback vers localStorage
+          setDocuments([...documents, newDocument]);
+          const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
+          existingDocs.push({ ...newDocument, userId: user?.id });
+          localStorage.setItem("userDocuments", JSON.stringify(existingDocs));
+          alert("Document uploadé avec succès (localStorage) !");
+        }
       };
       reader.readAsDataURL(file);
     } catch (error) {
@@ -103,21 +124,37 @@ const ClientDashboard = () => {
     }
   };
 
-  const handleDeleteDocument = (docId: string) => {
+  const handleDeleteDocument = async (docId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
-      setDocuments(documents.filter((doc) => doc.id !== docId));
-      
-      // Supprimer du localStorage
-      const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
-      const updatedDocs = existingDocs.filter((doc: any) => doc.id !== docId);
-      localStorage.setItem("userDocuments", JSON.stringify(updatedDocs));
+      try {
+        await fetch(`${API_URL}/documents/${docId}`, {
+          method: 'DELETE',
+        });
+        setDocuments(documents.filter((doc) => doc.id !== docId));
+      } catch (error) {
+        console.error('Erreur suppression document:', error);
+        // Fallback vers localStorage
+        setDocuments(documents.filter((doc) => doc.id !== docId));
+        const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
+        const updatedDocs = existingDocs.filter((doc: any) => doc.id !== docId);
+        localStorage.setItem("userDocuments", JSON.stringify(updatedDocs));
+      }
     }
   };
 
-  const loadDocuments = () => {
-    const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
-    const userDocs = existingDocs.filter((doc: any) => doc.userId === user?.id);
-    setDocuments(userDocs);
+  const loadDocuments = async () => {
+    if (!user) return;
+    try {
+      const response = await fetch(`${API_URL}/documents/user/${user.id}`);
+      const data = await response.json();
+      setDocuments(data);
+    } catch (error) {
+      console.error('Erreur chargement documents:', error);
+      // Fallback vers localStorage si l'API échoue
+      const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
+      const userDocs = existingDocs.filter((doc: any) => doc.userId === user?.id);
+      setDocuments(userDocs);
+    }
   };
 
   useEffect(() => {
@@ -146,13 +183,20 @@ const ClientDashboard = () => {
       const storedTwoFactor = localStorage.getItem(`twoFactor-${user.id}`);
       setTwoFactorEnabled(storedTwoFactor === "true");
 
-      // Charger les réservations du client
-      const storedBookings = localStorage.getItem("bookings");
-      if (storedBookings) {
-        const allBookings = JSON.parse(storedBookings);
-        const userBookings = allBookings.filter((b: any) => b.userId === user.id);
-        setBookings(userBookings);
-      }
+      // Charger les réservations du client depuis l'API
+      fetch(`${API_URL}/bookings/user/${user.id}`)
+        .then(res => res.json())
+        .then(data => setBookings(data))
+        .catch(err => {
+          console.error('Erreur chargement réservations:', err);
+          // Fallback vers localStorage
+          const storedBookings = localStorage.getItem("bookings");
+          if (storedBookings) {
+            const allBookings = JSON.parse(storedBookings);
+            const userBookings = allBookings.filter((b: any) => b.userId === user.id);
+            setBookings(userBookings);
+          }
+        });
     }
   }, [user]);
 
