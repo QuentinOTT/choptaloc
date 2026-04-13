@@ -23,7 +23,7 @@ router.post('/register', async (req, res) => {
 
     // Créer l'utilisateur
     const [result] = await pool.query(
-      'INSERT INTO users (email, password, firstName, lastName, phone, role, emailVerified) VALUES (?, ?, ?, ?, ?, "user", false)',
+      'INSERT INTO users (email, password_hash, first_name, last_name, phone, role, email_verified) VALUES (?, ?, ?, ?, ?, "user", false)',
       [email, hashedPassword, firstName, lastName, phone]
     );
 
@@ -42,9 +42,9 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Chercher l'utilisateur
+    // Chercher l'utilisateur avec le mot de passe
     const [users] = await pool.query(
-      'SELECT * FROM users WHERE email = ?',
+      'SELECT id, email, password_hash, first_name, last_name, phone, role, email_verified, created_at FROM users WHERE email = ?',
       [email]
     );
 
@@ -55,7 +55,7 @@ router.post('/login', async (req, res) => {
     const user = users[0];
 
     // Vérifier le mot de passe
-    const validPassword = await bcrypt.compare(password, user.password);
+    const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
@@ -73,7 +73,7 @@ router.post('/login', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const [users] = await pool.query(
-      'SELECT id, email, firstName, lastName, phone, role, emailVerified, createdAt FROM users ORDER BY createdAt DESC'
+      'SELECT id, email, first_name, last_name, phone, role, email_verified, created_at FROM users ORDER BY created_at DESC'
     );
     res.json(users);
   } catch (error) {
@@ -86,7 +86,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [users] = await pool.query(
-      'SELECT id, email, firstName, lastName, phone, role, emailVerified, createdAt FROM users WHERE id = ?',
+      'SELECT id, email, first_name, last_name, phone, role, email_verified, created_at FROM users WHERE id = ?',
       [req.params.id]
     );
 
@@ -107,7 +107,7 @@ router.put('/:id', async (req, res) => {
     const { firstName, lastName, phone, emailVerified } = req.body;
 
     await pool.query(
-      'UPDATE users SET firstName = ?, lastName = ?, phone = ?, emailVerified = ? WHERE id = ?',
+      'UPDATE users SET first_name = ?, last_name = ?, phone = ?, email_verified = ? WHERE id = ?',
       [firstName, lastName, phone, emailVerified, req.params.id]
     );
 

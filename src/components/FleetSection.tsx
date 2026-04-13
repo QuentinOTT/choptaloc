@@ -60,6 +60,22 @@ const defaultCars = [
   },
 ];
 
+// Fonction pour obtenir l'image par défaut selon la marque
+const getDefaultImage = (brand: string) => {
+  switch (brand.toLowerCase()) {
+    case 'mercedes':
+      return mercedesImg;
+    case 'volkswagen':
+      return golfImg;
+    case 'audi':
+      return audiImg;
+    case 'renault':
+      return clioImg;
+    default:
+      return mercedesImg;
+  }
+};
+
 const FleetSection = () => {
   const [cars, setCars] = useState(defaultCars);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -78,13 +94,29 @@ const FleetSection = () => {
     fetch(`${API_URL}/cars`)
       .then(res => res.json())
       .then(data => {
-        if (data.length > 0) {
-          setCars(data);
+        if (data && data.length > 0) {
+          // Mapper les données de l'API au format attendu par le frontend
+          const mappedCars = data.map((car: any) => {
+            const hasValidImage = car.image_url && car.image_url.startsWith('http');
+            return {
+              ...car,
+              available: car.is_available,
+              price: parseFloat(car.price_per_day) || 0,
+              weeklyPrice: car.weekly_price ? parseFloat(car.weekly_price) : undefined,
+              monthlyPrice: car.monthly_price ? parseFloat(car.monthly_price) : undefined,
+              image: hasValidImage ? car.image_url : getDefaultImage(car.brand),
+            };
+          });
+          setCars(mappedCars);
+        } else {
+          // Utiliser les véhicules par défaut si l'API ne retourne pas de données
+          setCars(defaultCars);
         }
       })
       .catch(err => {
         console.error('Erreur chargement véhicules:', err);
         // Utiliser les véhicules par défaut si l'API échoue
+        setCars(defaultCars);
       });
   }, []);
 

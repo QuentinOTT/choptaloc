@@ -5,7 +5,7 @@ const pool = require('../config/database');
 // Récupérer tous les véhicules
 router.get('/', async (req, res) => {
   try {
-    const [cars] = await pool.query('SELECT * FROM cars ORDER BY createdAt DESC');
+    const [cars] = await pool.query('SELECT * FROM cars ORDER BY created_at DESC');
     res.json(cars);
   } catch (error) {
     console.error('Erreur récupération véhicules:', error);
@@ -32,11 +32,11 @@ router.get('/:id', async (req, res) => {
 // Ajouter un véhicule
 router.post('/', async (req, res) => {
   try {
-    const { brand, model, tag, price, weeklyPrice, monthlyPrice, image, specs, available } = req.body;
+    const { brand, model, tag, price_per_day, image_url, specs, is_available } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO cars (brand, model, tag, price, weeklyPrice, monthlyPrice, image, specs, available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [brand, model, tag, price, weeklyPrice, monthlyPrice, image, JSON.stringify(specs), available]
+      'INSERT INTO cars (brand, model, tag, price_per_day, image_url, specs, is_available) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [brand, model, tag, price_per_day, image_url, JSON.stringify(specs), is_available !== false]
     );
 
     res.status(201).json({ success: true, carId: result.insertId });
@@ -49,11 +49,11 @@ router.post('/', async (req, res) => {
 // Mettre à jour un véhicule
 router.put('/:id', async (req, res) => {
   try {
-    const { brand, model, tag, price, weeklyPrice, monthlyPrice, image, specs, available } = req.body;
+    const { brand, model, tag, price_per_day, image_url, specs, is_available } = req.body;
 
     await pool.query(
-      'UPDATE cars SET brand = ?, model = ?, tag = ?, price = ?, weeklyPrice = ?, monthlyPrice = ?, image = ?, specs = ?, available = ? WHERE id = ?',
-      [brand, model, tag, price, weeklyPrice, monthlyPrice, image, JSON.stringify(specs), available, req.params.id]
+      'UPDATE cars SET brand = ?, model = ?, tag = ?, price_per_day = ?, image_url = ?, specs = ?, is_available = ? WHERE id = ?',
+      [brand, model, tag, price_per_day, image_url, JSON.stringify(specs), is_available, req.params.id]
     );
 
     res.json({ success: true });
@@ -66,11 +66,11 @@ router.put('/:id', async (req, res) => {
 // Mettre à jour la disponibilité d'un véhicule
 router.put('/:id/availability', async (req, res) => {
   try {
-    const { available } = req.body;
+    const { is_available } = req.body;
 
     await pool.query(
-      'UPDATE cars SET available = ? WHERE id = ?',
-      [available, req.params.id]
+      'UPDATE cars SET is_available = ? WHERE id = ?',
+      [is_available, req.params.id]
     );
 
     res.json({ success: true });

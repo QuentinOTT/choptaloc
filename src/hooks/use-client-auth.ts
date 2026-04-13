@@ -62,54 +62,8 @@ export const useClientAuth = () => {
       const loginResult = await login(email, password, false);
       return loginResult;
     } catch (error) {
-      console.error("Erreur lors de l'inscription (API), fallback localStorage:", error);
-      // Fallback vers localStorage
-      try {
-        // Récupérer les utilisateurs existants
-        let existingUsers: any[] = [];
-        try {
-          const stored = localStorage.getItem("users");
-          if (stored) {
-            existingUsers = JSON.parse(stored);
-            if (!Array.isArray(existingUsers)) {
-              existingUsers = [];
-            }
-          }
-        } catch (e) {
-          existingUsers = [];
-        }
-
-        // Vérifier si l'utilisateur existe déjà
-        if (existingUsers.some((u: any) => u.email === email)) {
-          return { success: false, error: "Un compte avec cet email existe déjà" };
-        }
-
-        // Créer le nouvel utilisateur
-        const newUser: User = {
-          id: `user-${Date.now()}`,
-          email,
-          firstName,
-          lastName,
-          phone,
-          role: "user",
-          emailVerified: false,
-        };
-
-        // Stocker l'utilisateur avec le mot de passe
-        const userToStore = { ...newUser, passwordHash: password };
-        existingUsers.push(userToStore);
-        localStorage.setItem("users", JSON.stringify(existingUsers));
-
-        // Connecter l'utilisateur
-        setUser(newUser);
-        setIsAuthenticated(true);
-        localStorage.setItem("currentUser", JSON.stringify(newUser));
-
-        return { success: true };
-      } catch (fallbackError) {
-        console.error("Erreur lors de l'inscription (fallback):", fallbackError);
-        return { success: false, error: "Erreur lors de l'inscription" };
-      }
+      console.error("Erreur lors de l'inscription:", error);
+      return { success: false, error: "Erreur lors de l'inscription" };
     }
   };
 
@@ -146,53 +100,8 @@ export const useClientAuth = () => {
 
       return { success: true };
     } catch (error) {
-      console.error("Erreur lors de la connexion (API), fallback localStorage:", error);
-      // Fallback vers localStorage
-      try {
-        let existingUsers: any[] = [];
-        try {
-          const stored = localStorage.getItem("users");
-          if (stored) {
-            existingUsers = JSON.parse(stored);
-          }
-        } catch (e) {
-          existingUsers = [];
-        }
-
-        const user = existingUsers.find(
-          (u: any) => u.email === email && u.passwordHash === password
-        );
-
-        if (!user) {
-          return { success: false, error: "Email ou mot de passe incorrect" };
-        }
-
-        const userData: User = {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          role: user.role,
-          emailVerified: user.emailVerified,
-        };
-
-        setUser(userData);
-        setIsAuthenticated(true);
-        localStorage.setItem("currentUser", JSON.stringify(userData));
-
-        // Si "Se souvenir de moi" est coché, stocker l'email pour la prochaine connexion
-        if (rememberMe) {
-          localStorage.setItem("rememberedEmail", email);
-        } else {
-          localStorage.removeItem("rememberedEmail");
-        }
-
-        return { success: true };
-      } catch (fallbackError) {
-        console.error("Erreur lors de la connexion (fallback):", fallbackError);
-        return { success: false, error: "Erreur lors de la connexion" };
-      }
+      console.error("Erreur lors de la connexion:", error);
+      return { success: false, error: "Erreur lors de la connexion" };
     }
   };
 

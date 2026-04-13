@@ -16,7 +16,7 @@ export const useAdminAuth = () => {
 
   useEffect(() => {
     // Vérifier si l'admin est déjà connecté au chargement
-    const storedAuth = localStorage.getItem("adminAuth");
+    const storedAuth = sessionStorage.getItem("adminAuth");
     if (storedAuth === "true") {
       setIsAuthenticated(true);
     }
@@ -26,7 +26,7 @@ export const useAdminAuth = () => {
   const login = (email: string, password: string): boolean => {
     if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
       setIsAuthenticated(true);
-      localStorage.setItem("adminAuth", "true");
+      sessionStorage.setItem("adminAuth", "true");
       return true;
     }
     return false;
@@ -34,7 +34,7 @@ export const useAdminAuth = () => {
 
   const logout = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem("adminAuth");
+    sessionStorage.removeItem("adminAuth");
   };
 
   return {

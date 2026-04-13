@@ -2,11 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { useAvailabilities } from "@/hooks/use-availabilities";
+import { API_URL } from "@/config/api";
+import AvailabilityCalendar from "@/components/AvailabilityCalendar";
+import GlobalCalendar from "@/components/GlobalCalendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, ChevronUp, ChevronDown, User, FileText } from "lucide-react";
 
 const documentLabels: Record<string, string> = {
@@ -82,45 +86,63 @@ const Admin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [bookingTab, setBookingTab] = useState<"new" | "modifications">("new");
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedCarForCalendar, setSelectedCarForCalendar] = useState<Car | null>(null);
 
-  // Charger les données depuis localStorage
+  // Charger les données depuis l'API
   useEffect(() => {
     if (isAuthenticated) {
-      const storedBookings = localStorage.getItem("bookings");
-      const storedCars = localStorage.getItem("adminCars");
-      const storedUsers = localStorage.getItem("users");
-      const storedDocuments = localStorage.getItem("userDocuments");
-      const storedModifications = localStorage.getItem("modificationRequests");
-      
-      if (storedBookings) {
-        setBookings(JSON.parse(storedBookings));
-      }
-      
-      if (storedCars) {
-        setCars(JSON.parse(storedCars));
-      } else {
-        // Initialiser avec les voitures par défaut
-        const defaultCars: Car[] = [
-          { id: "1", brand: "Mercedes", model: "Classe A", price: 89, isAvailable: true, imageUrl: "/assets/Mercedesbachée.png" },
-          { id: "2", brand: "Volkswagen", model: "Golf 8 R", price: 129, isAvailable: false, imageUrl: "/assets/goldbachée.png" },
-          { id: "3", brand: "Audi", model: "RS3", price: 189, isAvailable: false, imageUrl: "/assets/Rs3bachée.png" },
-          { id: "4", brand: "Renault", model: "Clio V", price: 49, isAvailable: true, imageUrl: "/assets/ClioVbleu.png" }
-        ];
-        setCars(defaultCars);
-        localStorage.setItem("adminCars", JSON.stringify(defaultCars));
-      }
+      // Charger les réservations
+      fetch(`${API_URL}/bookings`)
+        .then(res => res.json())
+        .then(data => {
+          const mappedBookings = data.map((b: any) => ({
+            id: b.id.toString(),
+            carId: b.car_id.toString(),
+            carBrand: b.brand || '',
+            carModel: b.model || '',
+            userName: b.first_name || '',
+            userEmail: b.email || '',
+            userPhone: b.phone || '',
+            userId: b.user_id?.toString(),
+            startDate: b.start_date,
+            endDate: b.end_date,
+            totalPrice: b.total_price,
+            status: b.status,
+            createdAt: b.created_at,
+            notes: b.notes
+          }));
+          setBookings(mappedBookings);
+        })
+        .catch(err => console.error('Erreur chargement réservations:', err));
 
-      if (storedUsers) {
-        setUsers(JSON.parse(storedUsers));
-      }
+      // Charger les voitures
+      fetch(`${API_URL}/cars`)
+        .then(res => res.json())
+        .then(data => {
+          const mappedCars = data.map((c: any) => ({
+            id: c.id.toString(),
+            brand: c.brand,
+            model: c.model,
+            price: c.price_per_day,
+            isAvailable: c.is_available,
+            imageUrl: c.image_url || ''
+          }));
+          setCars(mappedCars);
+        })
+        .catch(err => console.error('Erreur chargement voitures:', err));
 
-      if (storedDocuments) {
-        setUserDocuments(JSON.parse(storedDocuments));
-      }
+      // Charger les utilisateurs
+      fetch(`${API_URL}/users`)
+        .then(res => res.json())
+        .then(data => setUsers(data))
+        .catch(err => console.error('Erreur chargement utilisateurs:', err));
 
-      if (storedModifications) {
-        setModificationRequests(JSON.parse(storedModifications));
-      }
+      // Charger les documents
+      fetch(`${API_URL}/documents`)
+        .then(res => res.json())
+        .then(data => setUserDocuments(data))
+        .catch(err => console.error('Erreur chargement documents:', err));
     }
   }, [isAuthenticated]);
 
@@ -131,35 +153,78 @@ const Admin = () => {
     }
   };
 
-  const updateBookingStatus = (bookingId: string, newStatus: Booking["status"]) => {
+  const updateBookingStatus = async (bookingId: string, newStatus: Booking["status"]) => {
     const booking = bookings.find(b => b.id === bookingId);
-    const updatedBookings = bookings.map(b => 
-      b.id === bookingId ? { ...b, status: newStatus } : b
-    );
     
-    setBookings(updatedBookings);
-    localStorage.setItem("bookings", JSON.stringify(updatedBookings));
-    
-    // Si la réservation est confirmée, bloquer les dates dans le calendrier
-    if (newStatus === "confirmed" && booking) {
-      blockDatesForBooking(booking.carId, booking.startDate, booking.endDate, booking.dropoffTime);
+    try {
+      const response = await fetch(`${API_URL}/bookings/${bookingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        const updatedBookings = bookings.map(b => 
+          b.id === bookingId ? { ...b, status: newStatus } : b
+        );
+        setBookings(updatedBookings);
+        
+        // Si la réservation est confirmée, bloquer les dates dans le calendrier
+        if (newStatus === "confirmed" && booking) {
+          blockDatesForBooking(booking.carId, booking.startDate, booking.endDate, booking.dropoffTime);
+        }
+      } else {
+        console.error('Erreur mise à jour statut réservation');
+      }
+    } catch (error) {
+      console.error('Erreur API:', error);
     }
   };
 
-  const deleteBooking = (bookingId: string) => {
+  const deleteBooking = async (bookingId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette réservation ?")) {
-      const updatedBookings = bookings.filter(b => b.id !== bookingId);
-      setBookings(updatedBookings);
-      localStorage.setItem("bookings", JSON.stringify(updatedBookings));
+      try {
+        const response = await fetch(`${API_URL}/bookings/${bookingId}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          const updatedBookings = bookings.filter(b => b.id !== bookingId);
+          setBookings(updatedBookings);
+        } else {
+          console.error('Erreur suppression réservation');
+        }
+      } catch (error) {
+        console.error('Erreur API:', error);
+      }
     }
   };
 
-  const toggleCarAvailability = (carId: string) => {
-    const updatedCars = cars.map(c => 
-      c.id === carId ? { ...c, isAvailable: !c.isAvailable } : c
-    );
-    setCars(updatedCars);
-    localStorage.setItem("adminCars", JSON.stringify(updatedCars));
+  const toggleCarAvailability = async (carId: string) => {
+    const car = cars.find(c => c.id === carId);
+    if (!car) return;
+    
+    const newAvailability = !car.isAvailable;
+    
+    try {
+      // Appeler l'API pour mettre à jour la disponibilité
+      const response = await fetch(`${API_URL}/cars/${carId}/availability`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_available: newAvailability })
+      });
+      
+      if (response.ok) {
+        const updatedCars = cars.map(c => 
+          c.id === carId ? { ...c, isAvailable: newAvailability } : c
+        );
+        setCars(updatedCars);
+      } else {
+        console.error('Erreur mise à jour disponibilité');
+      }
+    } catch (error) {
+      console.error('Erreur API:', error);
+    }
   };
 
   const getStatusColor = (status: Booking["status"]) => {
@@ -259,7 +324,7 @@ const Admin = () => {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[700px]">
             <TabsTrigger value="bookings" className="gap-2 relative">
               <Calendar className="w-4 h-4" />
               Réservations
@@ -273,13 +338,13 @@ const Admin = () => {
               <Car className="w-4 h-4" />
               Véhicules
             </TabsTrigger>
-            <TabsTrigger value="clients" className="gap-2">
+            <TabsTrigger value="users" className="gap-2">
               <Users className="w-4 h-4" />
-              Clients
+              Utilisateurs
             </TabsTrigger>
-            <TabsTrigger value="prices" className="gap-2">
-              <DollarSign className="w-4 h-4" />
-              Prix
+            <TabsTrigger value="global-calendar" className="gap-2">
+              <Calendar className="w-4 h-4" />
+              Calendrier Global
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-2">
               <Settings className="w-4 h-4" />
@@ -370,7 +435,7 @@ const Admin = () => {
                   </div>
                   <Button 
                     className="mt-4"
-                    onClick={() => {
+                    onClick={async () => {
                       const name = (document.getElementById('new-booking-name') as HTMLInputElement).value;
                       const email = (document.getElementById('new-booking-email') as HTMLInputElement).value;
                       const phone = (document.getElementById('new-booking-phone') as HTMLInputElement).value;
@@ -390,48 +455,82 @@ const Admin = () => {
                         const days = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
                         const totalPrice = days * car.price;
 
-                        const newBooking: Booking = {
-                          id: `booking-${Date.now()}`,
-                          carId,
-                          carBrand: car.brand,
-                          carModel: car.model,
-                          userName: name,
-                          userEmail: email,
-                          userPhone: phone,
-                          startDate,
-                          endDate,
-                          pickupTime,
-                          dropoffTime,
-                          totalPrice,
-                          status: 'confirmed',
-                          driverLicenseNumber: licenseNumber,
-                          driverLicenseDate: licenseDate,
-                          pickupLocation: 'Réservation manuelle',
-                          dropoffLocation: 'Réservation manuelle',
-                          notes,
-                          createdAt: new Date().toISOString()
-                        };
+                        try {
+                          const response = await fetch(`${API_URL}/bookings`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              car_id: carId,
+                              user_id: null,
+                              start_date: startDate,
+                              end_date: endDate,
+                              pickup_time: pickupTime,
+                              dropoff_time: dropoffTime,
+                              total_price: totalPrice,
+                              status: 'confirmed',
+                              notes: notes,
+                              driver_license_number: licenseNumber,
+                              driver_license_date: licenseDate,
+                              pickup_location: 'Réservation manuelle',
+                              dropoff_location: 'Réservation manuelle',
+                              first_name: name,
+                              email: email,
+                              phone: phone
+                            })
+                          });
 
-                        const updatedBookings = [...bookings, newBooking];
-                        setBookings(updatedBookings);
-                        localStorage.setItem('bookings', JSON.stringify(updatedBookings));
-                        
-                        // Bloquer les dates dans le calendrier
-                        blockDatesForBooking(carId, startDate, endDate, dropoffTime);
+                          if (response.ok) {
+                            const result = await response.json();
+                            const newBooking: Booking = {
+                              id: result.insertId.toString(),
+                              carId,
+                              carBrand: car.brand,
+                              carModel: car.model,
+                              userName: name,
+                              userEmail: email,
+                              userPhone: phone,
+                              startDate,
+                              endDate,
+                              pickupTime,
+                              dropoffTime,
+                              totalPrice,
+                              status: 'confirmed',
+                              driverLicenseNumber: licenseNumber,
+                              driverLicenseDate: licenseDate,
+                              pickupLocation: 'Réservation manuelle',
+                              dropoffLocation: 'Réservation manuelle',
+                              notes,
+                              createdAt: new Date().toISOString()
+                            };
 
-                        alert('Réservation ajoutée avec succès !');
+                            const updatedBookings = [...bookings, newBooking];
+                            setBookings(updatedBookings);
+                            
+                            // Bloquer les dates dans le calendrier
+                            blockDatesForBooking(carId, startDate, endDate, dropoffTime);
 
-                        // Reset form
-                        (document.getElementById('new-booking-name') as HTMLInputElement).value = '';
-                        (document.getElementById('new-booking-email') as HTMLInputElement).value = '';
-                        (document.getElementById('new-booking-phone') as HTMLInputElement).value = '';
-                        (document.getElementById('new-booking-start') as HTMLInputElement).value = '';
-                        (document.getElementById('new-booking-end') as HTMLInputElement).value = '';
-                        (document.getElementById('new-booking-license') as HTMLInputElement).value = '';
-                        (document.getElementById('new-booking-license-date') as HTMLInputElement).value = '';
-                        (document.getElementById('new-booking-notes') as HTMLInputElement).value = '';
-                        
-                        setShowAddBooking(false);
+                            alert('Réservation ajoutée avec succès !');
+
+                            // Reset form
+                            (document.getElementById('new-booking-name') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-email') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-phone') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-start') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-end') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-pickup-time') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-dropoff-time') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-license') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-license-date') as HTMLInputElement).value = '';
+                            (document.getElementById('new-booking-notes') as HTMLInputElement).value = '';
+                            
+                            setShowAddBooking(false);
+                          } else {
+                            alert('Erreur lors de l\'ajout de la réservation');
+                          }
+                        } catch (error) {
+                          console.error('Erreur API:', error);
+                          alert('Erreur lors de l\'ajout de la réservation');
+                        }
                       } else {
                         alert('Veuillez remplir tous les champs obligatoires');
                       }
@@ -470,6 +569,20 @@ const Admin = () => {
                               <p className="font-medium">{booking.userName}</p>
                               <p className="text-muted-foreground">{booking.userEmail}</p>
                               <p className="text-muted-foreground">{booking.userPhone}</p>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="mt-2 gap-2"
+                                onClick={() => {
+                                  const user = users.find((u: any) => u.email === booking.userEmail);
+                                  if (user) {
+                                    alert(`Profil du client:\n\nNom: ${user.first_name} ${user.last_name}\nEmail: ${user.email}\nTéléphone: ${user.phone}\nVérifié: ${user.email_verified ? 'Oui' : 'Non'}`);
+                                  }
+                                }}
+                              >
+                                <User className="w-4 h-4" />
+                                Voir le profil
+                              </Button>
                             </div>
                             <div>
                               <p className="text-muted-foreground">Dates</p>
@@ -602,23 +715,35 @@ const Admin = () => {
                                 <div className="flex gap-2">
                                   <Button
                                     size="sm"
-                                    onClick={() => {
-                                      // Approuver la modification
-                                      const updatedRequests = modificationRequests.map(r =>
-                                        r.id === request.id ? { ...r, status: "approved" as const } : r
-                                      );
-                                      setModificationRequests(updatedRequests);
-                                      localStorage.setItem("modificationRequests", JSON.stringify(updatedRequests));
-                                      
+                                    onClick={async () => {
                                       // Appliquer les modifications à la réservation
                                       if (booking) {
-                                        const updatedBookings = bookings.map(b =>
-                                          b.id === request.bookingId ? { ...b, ...request.changes } : b
-                                        );
-                                        setBookings(updatedBookings);
-                                        localStorage.setItem("bookings", JSON.stringify(updatedBookings));
+                                        try {
+                                          const response = await fetch(`${API_URL}/bookings/${booking.id}`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(request.changes)
+                                          });
+                                          
+                                          if (response.ok) {
+                                            const updatedBookings = bookings.map(b =>
+                                              b.id === request.bookingId ? { ...b, ...request.changes } : b
+                                            );
+                                            setBookings(updatedBookings);
+                                            
+                                            const updatedRequests = modificationRequests.map(r =>
+                                              r.id === request.id ? { ...r, status: "approved" as const } : r
+                                            );
+                                            setModificationRequests(updatedRequests);
+                                            alert("Modification approuvée !");
+                                          } else {
+                                            alert("Erreur lors de l'approbation");
+                                          }
+                                        } catch (error) {
+                                          console.error('Erreur API:', error);
+                                          alert("Erreur lors de l'approbation");
+                                        }
                                       }
-                                      alert("Modification approuvée !");
                                     }}
                                   >
                                     Approuver
@@ -633,7 +758,6 @@ const Admin = () => {
                                           r.id === request.id ? { ...r, status: "rejected" as const, rejectionReason: reason } : r
                                         );
                                         setModificationRequests(updatedRequests);
-                                        localStorage.setItem("modificationRequests", JSON.stringify(updatedRequests));
                                         alert("Modification refusée");
                                       }
                                     }}
@@ -701,7 +825,7 @@ const Admin = () => {
                   </div>
                   <Button 
                     className="mt-4"
-                    onClick={() => {
+                    onClick={async () => {
                       const brand = (document.getElementById('new-car-brand') as HTMLInputElement).value;
                       const model = (document.getElementById('new-car-model') as HTMLInputElement).value;
                       const price = parseInt((document.getElementById('new-car-price') as HTMLInputElement).value);
@@ -710,30 +834,53 @@ const Admin = () => {
                       const imageUrl = (document.getElementById('new-car-image') as HTMLInputElement).value;
 
                       if (brand && model && price) {
-                        const newCar: Car = {
-                          id: `car-${Date.now()}`,
-                          brand,
-                          model,
-                          price,
-                          weeklyPrice: weeklyPrice || price * 7,
-                          monthlyPrice: monthlyPrice || price * 30,
-                          isAvailable: true,
-                          imageUrl: imageUrl || '/assets/placeholder.png'
-                        };
-                        const updatedCars = [...cars, newCar];
-                        setCars(updatedCars);
-                        localStorage.setItem('cars', JSON.stringify(updatedCars));
-                        alert('Véhicule ajouté avec succès !');
-                        
-                        // Reset form
-                        (document.getElementById('new-car-brand') as HTMLInputElement).value = '';
-                        (document.getElementById('new-car-model') as HTMLInputElement).value = '';
-                        (document.getElementById('new-car-price') as HTMLInputElement).value = '';
-                        (document.getElementById('new-car-weekly-price') as HTMLInputElement).value = '';
-                        (document.getElementById('new-car-monthly-price') as HTMLInputElement).value = '';
-                        (document.getElementById('new-car-image') as HTMLInputElement).value = '';
-                        
-                        setShowAddCar(false);
+                        try {
+                          const response = await fetch(`${API_URL}/cars`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              brand,
+                              model,
+                              tag: 'Disponible maintenant',
+                              price_per_day: price,
+                              image_url: imageUrl || '/assets/placeholder.png',
+                              specs: ['Automatique', '5 places', 'Essence', 'Climatisation'],
+                              is_available: true
+                            })
+                          });
+
+                          if (response.ok) {
+                            const result = await response.json();
+                            const newCar: Car = {
+                              id: result.insertId.toString(),
+                              brand,
+                              model,
+                              price,
+                              weeklyPrice: weeklyPrice || price * 7,
+                              monthlyPrice: monthlyPrice || price * 30,
+                              isAvailable: true,
+                              imageUrl: imageUrl || '/assets/placeholder.png'
+                            };
+                            const updatedCars = [...cars, newCar];
+                            setCars(updatedCars);
+                            alert('Véhicule ajouté avec succès !');
+                            
+                            // Reset form
+                            (document.getElementById('new-car-brand') as HTMLInputElement).value = '';
+                            (document.getElementById('new-car-model') as HTMLInputElement).value = '';
+                            (document.getElementById('new-car-price') as HTMLInputElement).value = '';
+                            (document.getElementById('new-car-weekly-price') as HTMLInputElement).value = '';
+                            (document.getElementById('new-car-monthly-price') as HTMLInputElement).value = '';
+                            (document.getElementById('new-car-image') as HTMLInputElement).value = '';
+                            
+                            setShowAddCar(false);
+                          } else {
+                            alert('Erreur lors de l\'ajout du véhicule');
+                          }
+                        } catch (error) {
+                          console.error('Erreur API:', error);
+                          alert('Erreur lors de l\'ajout du véhicule');
+                        }
                       } else {
                         alert('Veuillez remplir au moins la marque, le modèle et le prix');
                       }
@@ -769,12 +916,35 @@ const Admin = () => {
                       </Button>
                       <Button
                         size="sm"
-                        variant="destructive"
+                        variant="outline"
                         onClick={() => {
+                          setSelectedCarForCalendar(car);
+                          setShowCalendar(true);
+                        }}
+                      >
+                        <Calendar className="w-4 h-4" />
+                        Calendrier
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={async () => {
                           if (confirm('Êtes-vous sûr de vouloir supprimer ce véhicule ?')) {
-                            const updatedCars = cars.filter(c => c.id !== car.id);
-                            setCars(updatedCars);
-                            localStorage.setItem('cars', JSON.stringify(updatedCars));
+                            try {
+                              const response = await fetch(`${API_URL}/cars/${car.id}`, {
+                                method: 'DELETE'
+                              });
+
+                              if (response.ok) {
+                                const updatedCars = cars.filter(c => c.id !== car.id);
+                                setCars(updatedCars);
+                              } else {
+                                alert('Erreur lors de la suppression');
+                              }
+                            } catch (error) {
+                              console.error('Erreur API:', error);
+                              alert('Erreur lors de la suppression');
+                            }
                           }
                         }}
                       >
@@ -943,13 +1113,27 @@ const Admin = () => {
                                         {doc.status !== "verified" && (
                                           <Button
                                             size="sm"
-                                            onClick={() => {
-                                              const updatedDocs = userDocuments.map((d: any) =>
-                                                d.id === doc.id ? { ...d, status: "verified", isVerified: true, rejectionReason: undefined } : d
-                                              );
-                                              setUserDocuments(updatedDocs);
-                                              localStorage.setItem("userDocuments", JSON.stringify(updatedDocs));
-                                              alert("Document vérifié avec succès !");
+                                            onClick={async () => {
+                                              try {
+                                                const response = await fetch(`${API_URL}/documents/${doc.id}/status`, {
+                                                  method: 'PUT',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ status: 'verified' })
+                                                });
+                                                
+                                                if (response.ok) {
+                                                  const updatedDocs = userDocuments.map((d: any) =>
+                                                    d.id === doc.id ? { ...d, status: "verified", isVerified: true, rejectionReason: undefined } : d
+                                                  );
+                                                  setUserDocuments(updatedDocs);
+                                                  alert("Document vérifié avec succès !");
+                                                } else {
+                                                  alert("Erreur lors de la vérification");
+                                                }
+                                              } catch (error) {
+                                                console.error('Erreur API:', error);
+                                                alert("Erreur lors de la vérification");
+                                              }
                                             }}
                                           >
                                             Vérifier
@@ -964,7 +1148,6 @@ const Admin = () => {
                                                 d.id === doc.id ? { ...d, status: "pending", isVerified: false } : d
                                               );
                                               setUserDocuments(updatedDocs);
-                                              localStorage.setItem("userDocuments", JSON.stringify(updatedDocs));
                                               alert("Vérification annulée");
                                             }}
                                           >
@@ -974,15 +1157,29 @@ const Admin = () => {
                                         <Button
                                           size="sm"
                                           variant="destructive"
-                                          onClick={() => {
-                                            const reason = prompt("Raison du refus (ex: photo mauvaise qualité, fausse carte, etc.) :");
+                                          onClick={async () => {
+                                            const reason = prompt("Raison du refus :");
                                             if (reason) {
-                                              const updatedDocs = userDocuments.map((d: any) =>
-                                                d.id === doc.id ? { ...d, status: "rejected", isVerified: false, rejectionReason: reason } : d
-                                              );
-                                              setUserDocuments(updatedDocs);
-                                              localStorage.setItem("userDocuments", JSON.stringify(updatedDocs));
-                                              alert("Document refusé");
+                                              try {
+                                                const response = await fetch(`${API_URL}/documents/${doc.id}/status`, {
+                                                  method: 'PUT',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ status: 'rejected', rejectionReason: reason })
+                                                });
+                                                
+                                                if (response.ok) {
+                                                  const updatedDocs = userDocuments.map((d: any) =>
+                                                    d.id === doc.id ? { ...d, status: "rejected", isVerified: false, rejectionReason: reason } : d
+                                                  );
+                                                  setUserDocuments(updatedDocs);
+                                                  alert("Document refusé");
+                                                } else {
+                                                  alert("Erreur lors du refus");
+                                                }
+                                              } catch (error) {
+                                                console.error('Erreur API:', error);
+                                                alert("Erreur lors du refus");
+                                              }
                                             }
                                           }}
                                         >
@@ -1000,13 +1197,27 @@ const Admin = () => {
                               {!user.emailVerified && (
                                 <Button
                                   size="sm"
-                                  onClick={() => {
-                                    const updatedUsers = users.map((u: any) =>
-                                      u.id === user.id ? { ...u, emailVerified: true } : u
-                                    );
-                                    setUsers(updatedUsers);
-                                    localStorage.setItem("users", JSON.stringify(updatedUsers));
-                                    alert("Compte vérifié avec succès !");
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(`${API_URL}/users/${user.id}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ emailVerified: true })
+                                      });
+                                      
+                                      if (response.ok) {
+                                        const updatedUsers = users.map((u: any) =>
+                                          u.id === user.id ? { ...u, emailVerified: true } : u
+                                        );
+                                        setUsers(updatedUsers);
+                                        alert("Compte vérifié avec succès !");
+                                      } else {
+                                        alert("Erreur lors de la vérification");
+                                      }
+                                    } catch (error) {
+                                      console.error('Erreur API:', error);
+                                      alert("Erreur lors de la vérification");
+                                    }
                                   }}
                                 >
                                   Vérifier le compte
@@ -1015,15 +1226,26 @@ const Admin = () => {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => {
+                                onClick={async () => {
                                   if (confirm(`Êtes-vous sûr de vouloir supprimer le compte de ${user.firstName} ${user.lastName} ?`)) {
-                                    const updatedUsers = users.filter(u => u.id !== user.id);
-                                    setUsers(updatedUsers);
-                                    localStorage.setItem("users", JSON.stringify(updatedUsers));
-                                    
-                                    const updatedDocs = userDocuments.filter((doc: any) => doc.userId !== user.id);
-                                    setUserDocuments(updatedDocs);
-                                    localStorage.setItem("userDocuments", JSON.stringify(updatedDocs));
+                                    try {
+                                      const response = await fetch(`${API_URL}/users/${user.id}`, {
+                                        method: 'DELETE'
+                                      });
+                                      
+                                      if (response.ok) {
+                                        const updatedUsers = users.filter(u => u.id !== user.id);
+                                        setUsers(updatedUsers);
+                                        
+                                        const updatedDocs = userDocuments.filter((doc: any) => doc.userId !== user.id);
+                                        setUserDocuments(updatedDocs);
+                                      } else {
+                                        alert("Erreur lors de la suppression");
+                                      }
+                                    } catch (error) {
+                                      console.error('Erreur API:', error);
+                                      alert("Erreur lors de la suppression");
+                                    }
                                   }
                                 }}
                               >
@@ -1100,7 +1322,7 @@ const Admin = () => {
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           const dailyInput = document.getElementById(`price-${car.id}`) as HTMLInputElement;
                           const weeklyInput = document.getElementById(`weekly-price-${car.id}`) as HTMLInputElement;
                           const monthlyInput = document.getElementById(`monthly-price-${car.id}`) as HTMLInputElement;
@@ -1110,19 +1332,35 @@ const Admin = () => {
                           const newMonthlyPrice = parseInt(monthlyInput.value);
                           
                           if (newDailyPrice && newDailyPrice > 0) {
-                            const updatedCars = cars.map(c =>
-                              c.id === car.id 
-                                ? { 
-                                    ...c, 
-                                    price: newDailyPrice,
-                                    weeklyPrice: newWeeklyPrice || newDailyPrice * 7,
-                                    monthlyPrice: newMonthlyPrice || newDailyPrice * 30
-                                  } 
-                                : c
-                            );
-                            setCars(updatedCars);
-                            localStorage.setItem("cars", JSON.stringify(updatedCars));
-                            alert(`Prix de ${car.brand} ${car.model} mis à jour`);
+                            try {
+                              const response = await fetch(`${API_URL}/cars/${car.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  price_per_day: newDailyPrice
+                                })
+                              });
+                              
+                              if (response.ok) {
+                                const updatedCars = cars.map(c =>
+                                  c.id === car.id 
+                                    ? { 
+                                        ...c, 
+                                        price: newDailyPrice,
+                                        weeklyPrice: newWeeklyPrice || newDailyPrice * 7,
+                                        monthlyPrice: newMonthlyPrice || newDailyPrice * 30
+                                      } 
+                                    : c
+                                );
+                                setCars(updatedCars);
+                                alert(`Prix de ${car.brand} ${car.model} mis à jour`);
+                              } else {
+                                alert("Erreur lors de la mise à jour");
+                              }
+                            } catch (error) {
+                              console.error('Erreur API:', error);
+                              alert("Erreur lors de la mise à jour");
+                            }
                           }
                         }}
                         className="w-full"
@@ -1134,6 +1372,12 @@ const Admin = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          {/* Tab Calendrier Global */}
+          <TabsContent value="global-calendar" className="space-y-4">
+            <h2 className="text-xl font-semibold">Calendrier Global - Tous les véhicules</h2>
+            <GlobalCalendar cars={cars} bookings={bookings} />
           </TabsContent>
 
           {/* Tab Statistiques */}
@@ -1175,7 +1419,7 @@ const Admin = () => {
 
       {/* Modal pour afficher l'image en grand */}
       {selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedImage(null)}
         >
@@ -1194,6 +1438,32 @@ const Admin = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal pour afficher le calendrier de disponibilité */}
+      {showCalendar && selectedCarForCalendar && (
+        <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">
+                Calendrier de disponibilité - {selectedCarForCalendar.brand} {selectedCarForCalendar.model}
+              </DialogTitle>
+              <DialogDescription>
+                Visualisez les disponibilités de ce véhicule pour le mois en cours
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-6">
+              <AvailabilityCalendar car={selectedCarForCalendar} bookings={bookings} />
+            </div>
+
+            <div className="flex justify-end mt-6 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowCalendar(false)}>
+                Fermer
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

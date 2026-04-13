@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 interface Availability {
   carId: string;
   date: string; // Format: YYYY-MM-DD
@@ -5,33 +7,32 @@ interface Availability {
 }
 
 export const useAvailabilities = () => {
+  const [availabilities, setAvailabilitiesState] = useState<Availability[]>([]);
+
   const getAvailabilities = (): Availability[] => {
-    const stored = localStorage.getItem("availabilities");
-    return stored ? JSON.parse(stored) : [];
+    return availabilities;
   };
 
-  const setAvailabilities = (availabilities: Availability[]) => {
-    localStorage.setItem("availabilities", JSON.stringify(availabilities));
+  const setAvailabilities = (newAvailabilities: Availability[]) => {
+    setAvailabilitiesState(newAvailabilities);
   };
 
   const isCarAvailable = (carId: string, date: string): boolean => {
-    const availabilities = getAvailabilities();
     const availability = availabilities.find(a => a.carId === carId && a.date === date);
     // Si aucune donnée n'existe pour cette date, considérer comme disponible
     return availability ? availability.isAvailable : true;
   };
 
   const setCarAvailability = (carId: string, date: string, isAvailable: boolean) => {
-    const availabilities = getAvailabilities();
     const existingIndex = availabilities.findIndex(a => a.carId === carId && a.date === date);
     
     if (existingIndex >= 0) {
-      availabilities[existingIndex] = { carId, date, isAvailable };
+      const newAvailabilities = [...availabilities];
+      newAvailabilities[existingIndex] = { carId, date, isAvailable };
+      setAvailabilitiesState(newAvailabilities);
     } else {
-      availabilities.push({ carId, date, isAvailable });
+      setAvailabilitiesState([...availabilities, { carId, date, isAvailable }]);
     }
-    
-    setAvailabilities(availabilities);
   };
 
   const blockDatesForBooking = (carId: string, startDate: string, endDate: string, dropoffTime?: string) => {
@@ -55,7 +56,6 @@ export const useAvailabilities = () => {
   };
 
   const getMonthAvailabilities = (carId: string, year: number, month: number): Map<string, boolean> => {
-    const availabilities = getAvailabilities();
     const monthAvailabilities = new Map<string, boolean>();
     
     const firstDay = new Date(year, month, 1);

@@ -5,11 +5,11 @@ const pool = require('../config/database');
 // Créer une réservation
 router.post('/', async (req, res) => {
   try {
-    const { carId, userId, startDate, endDate, pickupLocation, returnLocation, delivery, pickupAddress, returnAddress, totalPrice, notes } = req.body;
+    const { carId, userId, startDate, endDate, pickupLocation, returnLocation, totalPrice, notes, driverLicenseNumber, driverLicenseDate } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO bookings (carId, userId, startDate, endDate, pickupLocation, returnLocation, delivery, pickupAddress, returnAddress, totalPrice, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "pending")',
-      [carId, userId, startDate, endDate, pickupLocation, returnLocation, delivery, pickupAddress, returnAddress, totalPrice, notes]
+      'INSERT INTO bookings (car_id, user_id, start_date, end_date, pickup_location, dropoff_location, total_price, notes, status, driver_license_number, driver_license_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "pending", ?, ?)',
+      [carId, userId, startDate, endDate, pickupLocation, returnLocation, totalPrice, notes, driverLicenseNumber || null, driverLicenseDate || null]
     );
 
     res.status(201).json({ success: true, bookingId: result.insertId });
@@ -23,11 +23,11 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const [bookings] = await pool.query(`
-      SELECT b.*, u.firstName, u.lastName, u.email, c.brand, c.model 
+      SELECT b.*, u.first_name, u.last_name, u.email, c.brand, c.model 
       FROM bookings b 
-      LEFT JOIN users u ON b.userId = u.id 
-      LEFT JOIN cars c ON b.carId = c.id 
-      ORDER BY b.createdAt DESC
+      LEFT JOIN users u ON b.user_id = u.id 
+      LEFT JOIN cars c ON b.car_id = c.id 
+      ORDER BY b.created_at DESC
     `);
     res.json(bookings);
   } catch (error) {
@@ -42,9 +42,9 @@ router.get('/user/:userId', async (req, res) => {
     const [bookings] = await pool.query(`
       SELECT b.*, c.brand, c.model 
       FROM bookings b 
-      LEFT JOIN cars c ON b.carId = c.id 
-      WHERE b.userId = ? 
-      ORDER BY b.createdAt DESC
+      LEFT JOIN cars c ON b.car_id = c.id 
+      WHERE b.user_id = ? 
+      ORDER BY b.created_at DESC
     `, [req.params.userId]);
     res.json(bookings);
   } catch (error) {

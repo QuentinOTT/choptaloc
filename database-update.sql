@@ -17,3 +17,6 @@ ADD COLUMN confirmation_number VARCHAR(20) UNIQUE AFTER driver_license_expiry;
 
 -- Pour les données existantes, vous pouvez exécuter :
 -- UPDATE bookings SET driver_license_date = '2000-01-01' WHERE driver_license_date IS NULL;
+
+-- Mise à jour des disponibilités des voitures (seulement si aucune voiture n'est disponible)
+UPDATE cars SET is_available = 1 WHERE is_available = 0 AND (SELECT COUNT(*) FROM cars WHERE is_available = 1) = 0;

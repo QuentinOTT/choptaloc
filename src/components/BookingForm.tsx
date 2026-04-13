@@ -49,13 +49,15 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
 
   useEffect(() => {
     if (isOpen) {
-      // Charger le profil du client depuis localStorage
+      // Charger le profil du client depuis user
       let profileData: any = {};
       if (user) {
-        const storedProfile = localStorage.getItem(`userProfile-${user.id}`);
-        if (storedProfile) {
-          profileData = JSON.parse(storedProfile);
-        }
+        profileData = {
+          firstName: user.firstName || "",
+          lastName: user.lastName || "",
+          email: user.email || "",
+          phone: user.phone || "",
+        };
       }
 
       setFormData({
@@ -132,25 +134,15 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
 
     // Créer la réservation avec userId si un client est connecté
     const newBooking: any = {
-      id: `booking-${Date.now()}`,
       carId: car.id,
-      carBrand: car.brand,
-      carModel: car.model,
-      userName: `${formData.firstName} ${formData.lastName}`,
-      userEmail: formData.email,
-      userPhone: formData.phone,
       startDate: formData.startDate,
       endDate: formData.endDate,
-      pickupTime: formData.pickupTime,
-      dropoffTime: formData.dropoffTime,
+      pickupLocation: formData.deliveryOption ? formData.pickupLocation : "Récupération sur place",
+      returnLocation: formData.deliveryOption ? formData.dropoffLocation : "Récupération sur place",
       totalPrice: newTotalPrice,
-      status: "pending" as const,
+      notes: formData.notes,
       driverLicenseNumber: formData.driverLicenseNumber,
       driverLicenseDate: formData.driverLicenseDate,
-      pickupLocation: formData.deliveryOption ? formData.pickupLocation : "Récupération sur place",
-      dropoffLocation: formData.deliveryOption ? formData.dropoffLocation : "Récupération sur place",
-      notes: formData.notes,
-      createdAt: new Date().toISOString(),
     };
 
     // Ajouter userId si un client est connecté
@@ -178,15 +170,8 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
         }
       })
       .catch(err => {
-        console.error('Erreur API, fallback localStorage:', err);
-        // Fallback vers localStorage
-        const existingBookings = JSON.parse(localStorage.getItem("bookings") || "[]");
-        existingBookings.push(newBooking);
-        localStorage.setItem("bookings", JSON.stringify(existingBookings));
-        // Fermer le formulaire
-        onClose();
-        // Afficher un message de succès
-        alert("Votre demande de réservation a été envoyée avec succès ! Vous serez contacté sous peu.");
+        console.error('Erreur API:', err);
+        alert("Erreur lors de l'envoi de la réservation. Veuillez réessayer.");
       });
   };
 

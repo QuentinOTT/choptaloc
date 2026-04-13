@@ -95,8 +95,10 @@ const ClientDashboard = () => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              ...newDocument,
               userId: user?.id,
+              type: docType,
+              fileData: base64,
+              fileName: file.name,
             }),
           });
 
@@ -107,13 +109,8 @@ const ClientDashboard = () => {
             throw new Error('Erreur API');
           }
         } catch (apiError) {
-          console.error('Erreur API, fallback localStorage:', apiError);
-          // Fallback vers localStorage
-          setDocuments([...documents, newDocument]);
-          const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
-          existingDocs.push({ ...newDocument, userId: user?.id });
-          localStorage.setItem("userDocuments", JSON.stringify(existingDocs));
-          alert("Document uploadé avec succès (localStorage) !");
+          console.error('Erreur API:', apiError);
+          alert("Erreur lors de l'upload du document");
         }
       };
       reader.readAsDataURL(file);
@@ -127,17 +124,17 @@ const ClientDashboard = () => {
   const handleDeleteDocument = async (docId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
       try {
-        await fetch(`${API_URL}/documents/${docId}`, {
-          method: 'DELETE',
+        const response = await fetch(`${API_URL}/documents/${docId}`, {
+          method: 'DELETE'
         });
-        setDocuments(documents.filter((doc) => doc.id !== docId));
+        if (response.ok) {
+          setDocuments(documents.filter((doc) => doc.id !== docId));
+        } else {
+          alert("Erreur lors de la suppression");
+        }
       } catch (error) {
         console.error('Erreur suppression document:', error);
-        // Fallback vers localStorage
-        setDocuments(documents.filter((doc) => doc.id !== docId));
-        const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
-        const updatedDocs = existingDocs.filter((doc: any) => doc.id !== docId);
-        localStorage.setItem("userDocuments", JSON.stringify(updatedDocs));
+        alert("Erreur lors de la suppression");
       }
     }
   };
@@ -150,10 +147,7 @@ const ClientDashboard = () => {
       setDocuments(data);
     } catch (error) {
       console.error('Erreur chargement documents:', error);
-      // Fallback vers localStorage si l'API échoue
-      const existingDocs = JSON.parse(localStorage.getItem("userDocuments") || "[]");
-      const userDocs = existingDocs.filter((doc: any) => doc.userId === user?.id);
-      setDocuments(userDocs);
+      setDocuments([]);
     }
   };
 
@@ -162,26 +156,17 @@ const ClientDashboard = () => {
     
     // Charger les données du profil
     if (user) {
-      const storedProfile = localStorage.getItem(`userProfile-${user.id}`);
-      if (storedProfile) {
-        setProfileData(JSON.parse(storedProfile));
-      } else {
-        // Initialiser avec les données de l'utilisateur
-        setProfileData({
-          firstName: user.firstName || "",
-          lastName: user.lastName || "",
-          email: user.email || "",
-          phone: user.phone || "",
-          address: "",
-          city: "",
-          postalCode: "",
-          country: "France",
-        });
-      }
-
-      // Charger l'état 2FA
-      const storedTwoFactor = localStorage.getItem(`twoFactor-${user.id}`);
-      setTwoFactorEnabled(storedTwoFactor === "true");
+      // Initialiser avec les données de l'utilisateur
+      setProfileData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        address: "",
+        city: "",
+        postalCode: "",
+        country: "France",
+      });
 
       // Charger les réservations du client depuis l'API
       fetch(`${API_URL}/bookings/user/${user.id}`)
@@ -189,13 +174,7 @@ const ClientDashboard = () => {
         .then(data => setBookings(data))
         .catch(err => {
           console.error('Erreur chargement réservations:', err);
-          // Fallback vers localStorage
-          const storedBookings = localStorage.getItem("bookings");
-          if (storedBookings) {
-            const allBookings = JSON.parse(storedBookings);
-            const userBookings = allBookings.filter((b: any) => b.userId === user.id);
-            setBookings(userBookings);
-          }
+          setBookings([]);
         });
     }
   }, [user]);
@@ -203,7 +182,6 @@ const ClientDashboard = () => {
   const handleEnableTwoFactor = () => {
     if (user) {
       // Simuler l'activation du 2FA (en production, cela nécessiterait un backend)
-      localStorage.setItem(`twoFactor-${user.id}`, "true");
       setTwoFactorEnabled(true);
       setShowTwoFactorSetup(false);
       alert("Double authentification activée !\n\nNote : En production, vous devriez scanner un QR Code avec Google Authenticator. Pour cette démo, le 2FA est simulé.");
@@ -213,14 +191,13 @@ const ClientDashboard = () => {
   const handleDisableTwoFactor = () => {
     if (user) {
       if (confirm("Êtes-vous sûr de vouloir désactiver la double authentification ?")) {
-        localStorage.setItem(`twoFactor-${user.id}`, "false");
         setTwoFactorEnabled(false);
         alert("Double authentification désactivée.");
       }
     }
   };
 
-  const handleEditBooking = () => {
+  const handleEditBooking = async () => {
     if (!editingBooking || !user) return;
 
     // Créer les modifications demandées
@@ -241,49 +218,39 @@ const ClientDashboard = () => {
       changes.notes = modificationForm.notes;
     }
 
-    if (Object.keys(changes).length === 0) {
-      alert("Aucune modification détectée");
-      return;
-    }
+    try {
+      const response = await fetch(`${API_URL}/bookings/${editingBooking.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(changes)
+      });
 
-    // Créer une demande de modification
-    const modificationRequest = {
-      id: `mod-${Date.now()}`,
-      bookingId: editingBooking.id,
-      requestedBy: user.id,
-      requestedAt: new Date().toISOString(),
-      changes,
-      status: "pending" as const,
-    };
+      if (response.ok) {
+        const updatedBookings = bookings.map((b: any) => {
+          if (b.id === editingBooking.id) {
+            return { ...b, ...changes };
+          }
+          return b;
+        });
+        setBookings(updatedBookings);
 
-    // Charger les demandes de modification existantes
-    const existingModifications = JSON.parse(localStorage.getItem("modificationRequests") || "[]");
-    existingModifications.push(modificationRequest);
-    localStorage.setItem("modificationRequests", JSON.stringify(existingModifications));
-
-    // Ajouter la demande à la réservation
-    const allBookings = JSON.parse(localStorage.getItem("bookings") || "[]");
-    const updatedBookings = allBookings.map((b: any) => {
-      if (b.id === editingBooking.id) {
-        return {
-          ...b,
-          modificationRequests: [...(b.modificationRequests || []), modificationRequest],
-        };
+        setShowEditBooking(false);
+        setEditingBooking(null);
+        setModificationForm({
+          startDate: "",
+          endDate: "",
+          pickupLocation: "",
+          dropoffLocation: "",
+          notes: "",
+        });
+        alert("Réservation modifiée avec succès !");
+      } else {
+        alert("Erreur lors de la modification");
       }
-      return b;
-    });
-    localStorage.setItem("bookings", JSON.stringify(updatedBookings));
-
-    setShowEditBooking(false);
-    setEditingBooking(null);
-    setModificationForm({
-      startDate: "",
-      endDate: "",
-      pickupLocation: "",
-      dropoffLocation: "",
-      notes: "",
-    });
-    alert("Demande de modification envoyée ! L'administrateur devra l'approuver.");
+    } catch (error) {
+      console.error('Erreur API:', error);
+      alert("Erreur lors de la modification");
+    }
   };
 
   const openEditModal = (booking: any) => {
@@ -300,7 +267,6 @@ const ClientDashboard = () => {
 
   const handleSaveProfile = () => {
     if (user) {
-      localStorage.setItem(`userProfile-${user.id}`, JSON.stringify(profileData));
       updateUser({
         firstName: profileData.firstName,
         lastName: profileData.lastName,

@@ -209,13 +209,13 @@ CREATE TABLE user_profiles (
 -- DONNÉES INITIALES
 -- ============================================
 
--- Insérer un administrateur par défaut
-INSERT INTO users (email, password_hash, first_name, last_name, role) 
+-- Insérer un administrateur par défaut (seulement s'il n'existe pas déjà)
+INSERT IGNORE INTO users (email, password_hash, first_name, last_name, role) 
 VALUES ('admin@choptaloc.com', '$2b$10$YourHashedPasswordHere', 'Admin', 'Choptaloc', 'admin');
 
--- Insérer les véhicules existants
-INSERT INTO cars (brand, model, tag, price_per_day, image_url, specs, description, is_available) VALUES
-('Mercedes', 'Classe A', 'Élégante & Compacte', 89.00, '/assets/Mercedesbachée.png', 
+-- Insérer les véhicules existants (seulement s'ils n'existent pas déjà)
+INSERT IGNORE INTO cars (brand, model, tag, price_per_day, image_url, specs, description, is_available) VALUES
+('Mercedes', 'Classe A', 'Élégante & Compacte', 89.00, '/assets/Mercedesbachée.png',
  '["136 ch", "Automatique", "5 places", "Diesel"]',
  'La Mercedes Classe A allie élégance et technologie dans un format compact. Idéale pour la ville et les longs trajets, elle offre un confort exceptionnel et des équipements haut de gamme.',
  TRUE),

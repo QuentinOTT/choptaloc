@@ -8,8 +8,8 @@ router.post('/', async (req, res) => {
     const { userId, type, fileData, fileName, status, rejectionReason } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO documents (userId, type, fileData, fileName, status, rejectionReason) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, type, fileData, fileName, status || 'pending', rejectionReason || null]
+      'INSERT INTO user_documents (user_id, document_type, file_path, file_name, is_verified) VALUES (?, ?, ?, ?, ?)',
+      [userId, type, fileData, fileName, false]
     );
 
     res.status(201).json({ success: true, documentId: result.insertId });
@@ -23,10 +23,10 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const [documents] = await pool.query(`
-      SELECT d.*, u.firstName, u.lastName, u.email 
-      FROM documents d 
-      LEFT JOIN users u ON d.userId = u.id 
-      ORDER BY d.createdAt DESC
+      SELECT d.*, u.first_name, u.last_name, u.email 
+      FROM user_documents d 
+      LEFT JOIN users u ON d.user_id = u.id 
+      ORDER BY d.created_at DESC
     `);
     res.json(documents);
   } catch (error) {
@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
 router.get('/user/:userId', async (req, res) => {
   try {
     const [documents] = await pool.query(
-      'SELECT * FROM documents WHERE userId = ? ORDER BY createdAt DESC',
+      'SELECT * FROM user_documents WHERE user_id = ? ORDER BY created_at DESC',
       [req.params.userId]
     );
     res.json(documents);
@@ -53,10 +53,11 @@ router.get('/user/:userId', async (req, res) => {
 router.put('/:id/status', async (req, res) => {
   try {
     const { status, rejectionReason } = req.body;
+    const isVerified = status === 'verified';
 
     await pool.query(
-      'UPDATE documents SET status = ?, rejectionReason = ? WHERE id = ?',
-      [status, rejectionReason || null, req.params.id]
+      'UPDATE user_documents SET is_verified = ? WHERE id = ?',
+      [isVerified, req.params.id]
     );
 
     res.json({ success: true });
