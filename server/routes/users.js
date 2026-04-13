@@ -1,0 +1,121 @@
+const express = require('express');
+const router = express.Router();
+const pool = require('../config/database');
+const bcrypt = require('bcryptjs');
+
+// Inscription d'un utilisateur
+router.post('/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, phone } = req.body;
+
+    // Vérifier si l'utilisateur existe déjà
+    const [existing] = await pool.query(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'Un compte avec cet email existe déjà' });
+    }
+
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Créer l'utilisateur
+    const [result] = await pool.query(
+      'INSERT INTO users (email, password, firstName, lastName, phone, role, emailVerified) VALUES (?, ?, ?, ?, ?, "user", false)',
+      [email, hashedPassword, firstName, lastName, phone]
+    );
+
+    res.status(201).json({ 
+      success: true, 
+      userId: result.insertId 
+    });
+  } catch (error) {
+    console.error('Erreur inscription:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'inscription' });
+  }
+});
+
+// Connexion d'un utilisateur
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Chercher l'utilisateur
+    const [users] = await pool.query(
+      'SELECT * FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    }
+
+    const user = users[0];
+
+    // Vérifier le mot de passe
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    }
+
+    // Retourner l'utilisateur sans le mot de passe
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ success: true, user: userWithoutPassword });
+  } catch (error) {
+    console.error('Erreur connexion:', error);
+    res.status(500).json({ error: 'Erreur lors de la connexion' });
+  }
+});
+
+// Récupérer tous les utilisateurs (admin)
+router.get('/', async (req, res) => {
+  try {
+    const [users] = await pool.query(
+      'SELECT id, email, firstName, lastName, phone, role, emailVerified, createdAt FROM users ORDER BY createdAt DESC'
+    );
+    res.json(users);
+  } catch (error) {
+    console.error('Erreur récupération utilisateurs:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs' });
+  }
+});
+
+// Récupérer un utilisateur par ID
+router.get('/:id', async (req, res) => {
+  try {
+    const [users] = await pool.query(
+      'SELECT id, email, firstName, lastName, phone, role, emailVerified, createdAt FROM users WHERE id = ?',
+      [req.params.id]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    res.json(users[0]);
+  } catch (error) {
+    console.error('Erreur récupération utilisateur:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de l\'utilisateur' });
+  }
+});
+
+// Mettre à jour un utilisateur
+router.put('/:id', async (req, res) => {
+  try {
+    const { firstName, lastName, phone, emailVerified } = req.body;
+
+    await pool.query(
+      'UPDATE users SET firstName = ?, lastName = ?, phone = ?, emailVerified = ? WHERE id = ?',
+      [firstName, lastName, phone, emailVerified, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur mise à jour utilisateur:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de l\'utilisateur' });
+  }
+});
+
+module.exports = router;
