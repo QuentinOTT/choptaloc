@@ -332,10 +332,17 @@ const ClientDashboard = () => {
       <div className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button onClick={() => navigate("/")} variant="ghost" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Retour au site
-            </Button>
+            {user?.role === "admin" ? (
+              <Button onClick={() => navigate("/admin")} variant="ghost" className="gap-2">
+                <Shield className="w-4 h-4" />
+                Panel Admin
+              </Button>
+            ) : (
+              <Button onClick={() => navigate("/")} variant="ghost" className="gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Retour au site
+              </Button>
+            )}
             <h1 className="text-2xl font-bold">Espace Client</h1>
           </div>
           <div className="flex items-center gap-4">
