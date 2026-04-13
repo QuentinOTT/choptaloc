@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+npm-debug.log
+yarn-error.log
+.DS_Store
+.vscode
+.idea
+*.log
+database-schema.sql
+database-update.sql
+server/.env
+server/node_modules

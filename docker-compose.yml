@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: choptaloc-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: u643472395_datachoptaloc
+      MYSQL_USER: u643472395_datachoptaloc
+      MYSQL_PASSWORD: Choptaloc2026$!
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database-schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./database-update.sql:/docker-entrypoint-initdb.d/update.sql
+    networks:
+      - choptaloc-network
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: choptaloc-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: mysql
+      DB_USER: u643472395_datachoptaloc
+      DB_PASSWORD: Choptaloc2026$!
+      DB_NAME: u643472395_datachoptaloc
+      DB_PORT: 3306
+      PORT: 3000
+      JWT_SECRET: choptaloc_secret_key_2026
+    depends_on:
+      - mysql
+    networks:
+      - choptaloc-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: choptaloc-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - choptaloc-network
+
+volumes:
+  mysql_data:
+
+networks:
+  choptaloc-network:
+    driver: bridge
