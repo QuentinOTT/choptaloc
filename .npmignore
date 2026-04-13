@@ -1,0 +1,10 @@
+# Ignorer les dépendances frontend pour le déploiement backend
+node_modules
+dist
+public
+src
+*.config.js
+*.config.ts
+vite.config.ts
+tailwind.config.js
+postcss.config.js
