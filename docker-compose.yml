@@ -48,14 +48,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-      args:
-        VITE_API_URL: /api
     container_name: choptaloc-frontend
     restart: unless-stopped
     expose:
       - 80
-    environment:
-      - VITE_API_URL=/api
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
       interval: 30s
