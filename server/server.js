@@ -10,10 +10,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Servir les fichiers statiques du frontend depuis le dossier frontend/dist
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-// Routes API
+// Routes API (doivent être définies avant les fichiers statiques)
 app.use('/api/users', require('./routes/users'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/documents', require('./routes/documents'));
@@ -23,6 +20,9 @@ app.use('/api/cars', require('./routes/cars'));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'API ChopTaLoc fonctionne' });
 });
+
+// Servir les fichiers statiques du frontend depuis le dossier frontend/dist
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Route SPA : servir index.html pour toutes les routes non-API
 app.get('*', (req, res) => {
