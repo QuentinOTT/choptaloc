@@ -402,11 +402,12 @@ const GlobalCalendar = ({ cars, bookings }: GlobalCalendarProps) => {
         )}
 
         {/* ── Lignes véhicules ── */}
-        {cars.length===0 && <div className="py-16 text-center text-gray-600 text-sm">Aucun véhicule à afficher</div>}
-        {cars.map((car,idx) => {
+        {(!Array.isArray(cars) || cars.length===0) && <div className="py-16 text-center text-gray-600 text-sm">Aucun véhicule à afficher</div>}
+        {Array.isArray(cars) && cars.map((car,idx) => {
           const status   = getCarStatus(car);
           const subtitle = getCarSubtitle(car);
-          const carBkgs  = bookings.filter(b=>b.carId===car.id&&b.status!=="cancelled");
+          const bookingsList = Array.isArray(bookings) ? bookings : [];
+          const carBkgs  = bookingsList.filter(b=>b.carId===car.id&&b.status!=="cancelled");
           const isLast   = idx===cars.length-1;
           return (
             <div key={car.id} className={`flex ${isLast?"":"border-b border-[#1e1e1e]"}`} style={{minHeight:68}}>

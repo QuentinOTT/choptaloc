@@ -117,28 +117,42 @@ const Admin = () => {
             color: c.color || undefined,
             licensePlate: c.license_plate || undefined,
           }));
-          setCars(mappedCars);
+          setCars(Array.isArray(data) ? mappedCars : []);
         })
-        .catch(err => console.error('Erreur chargement voitures:', err));
+        .catch(err => {
+          console.error('Erreur chargement voitures:', err);
+          setCars([]);
+        });
 
       // Charger les utilisateurs
       fetch(`${API_URL}/users`)
         .then(res => res.json())
-        .then(data => setUsers(data))
-        .catch(err => console.error('Erreur chargement utilisateurs:', err));
+        .then(data => setUsers(Array.isArray(data) ? data : []))
+        .catch(err => {
+          console.error('Erreur chargement utilisateurs:', err);
+          setUsers([]);
+        });
 
       // Charger les documents
       fetch(`${API_URL}/documents`)
         .then(res => res.json())
-        .then(data => setUserDocuments(data))
-        .catch(err => console.error('Erreur chargement documents:', err));
+        .then(data => setUserDocuments(Array.isArray(data) ? data : []))
+        .catch(err => {
+          console.error('Erreur chargement documents:', err);
+          setUserDocuments([]);
+        });
     }
   }, [isAuthenticated]);
 
   const fetchBookings = (page: number) => {
     fetch(`${API_URL}/bookings?page=${page}&limit=${BOOKING_LIMIT}`)
       .then(res => res.json())
-      .then(({ data, pagination }) => {
+      .then(resData => {
+        const { data, pagination } = resData || {};
+        if (!Array.isArray(data)) {
+          setBookings([]);
+          return;
+        }
         const mappedBookings = data.map((b: any) => ({
           id: b.id.toString(),
           carId: b.car_id.toString(),
@@ -164,11 +178,14 @@ const Admin = () => {
           notes: b.notes,
         }));
         setBookings(mappedBookings);
-        setBookingPage(pagination.page);
-        setBookingTotal(pagination.total);
-        setBookingPages(pagination.pages);
+        setBookingPage(pagination?.page || 1);
+        setBookingTotal(pagination?.total || 0);
+        setBookingPages(pagination?.pages || 1);
       })
-      .catch(err => console.error('Erreur chargement réservations:', err));
+      .catch(err => {
+        console.error('Erreur chargement réservations:', err);
+        setBookings([]);
+      });
   };
 
   const handleLogin = (e: React.FormEvent) => {

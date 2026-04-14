@@ -205,6 +205,20 @@ CREATE TABLE user_profiles (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 15. TABLE DES DEMANDES DE MODIFICATION
+CREATE TABLE modification_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT NOT NULL,
+    requested_by INT NOT NULL,
+    changes JSON NOT NULL,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    rejection_reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- ============================================
 -- DONNÉES INITIALES
 -- ============================================

@@ -89,11 +89,11 @@ router.put('/:id/status', async (req, res) => {
 // Créer une demande de modification
 router.post('/:id/modifications', async (req, res) => {
   try {
-    const { field, oldValue, newValue, reason } = req.body;
+    const { changes, requestedBy } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO modification_requests (bookingId, field, oldValue, newValue, reason, status) VALUES (?, ?, ?, ?, ?, "pending")',
-      [req.params.id, field, oldValue, newValue, reason]
+      'INSERT INTO modification_requests (booking_id, requested_by, changes, status) VALUES (?, ?, ?, "pending")',
+      [req.params.id, requestedBy, JSON.stringify(changes)]
     );
 
     res.status(201).json({ success: true, modificationId: result.insertId });
@@ -107,13 +107,20 @@ router.post('/:id/modifications', async (req, res) => {
 router.get('/modifications/all', async (req, res) => {
   try {
     const [modifications] = await pool.query(`
-      SELECT mr.*, b.id as bookingId, u.firstName, u.lastName 
+      SELECT mr.*, b.id as booking_id, u.first_name, u.last_name 
       FROM modification_requests mr 
-      LEFT JOIN bookings b ON mr.bookingId = b.id 
-      LEFT JOIN users u ON b.userId = u.id 
-      ORDER BY mr.createdAt DESC
+      LEFT JOIN bookings b ON mr.booking_id = b.id 
+      LEFT JOIN users u ON mr.requested_by = u.id 
+      ORDER BY mr.created_at DESC
     `);
-    res.json(modifications);
+    
+    // Parser les changements JSON si nécessaire
+    const parsedModifications = modifications.map(m => ({
+      ...m,
+      changes: typeof m.changes === 'string' ? JSON.parse(m.changes) : m.changes
+    }));
+
+    res.json(parsedModifications);
   } catch (error) {
     console.error('Erreur récupération modifications:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des modifications' });
@@ -123,11 +130,11 @@ router.get('/modifications/all', async (req, res) => {
 // Mettre à jour le statut d'une demande de modification
 router.put('/modifications/:id/status', async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, rejectionReason } = req.body;
 
     await pool.query(
-      'UPDATE modification_requests SET status = ? WHERE id = ?',
-      [status, req.params.id]
+      'UPDATE modification_requests SET status = ?, rejection_reason = ? WHERE id = ?',
+      [status, rejectionReason || null, req.params.id]
     );
 
     res.json({ success: true });
