@@ -97,6 +97,15 @@ const FleetSection = () => {
         if (data && data.length > 0) {
           const mappedCars = data.map((car: any) => {
             const hasValidImage = car.image_url && car.image_url.startsWith('http');
+            // Parser les specs JSON si c'est une chaîne
+            let parsedSpecs = car.specs;
+            if (typeof car.specs === 'string') {
+              try {
+                parsedSpecs = JSON.parse(car.specs);
+              } catch (e) {
+                parsedSpecs = [];
+              }
+            }
             return {
               ...car,
               available: car.is_available,
@@ -104,6 +113,7 @@ const FleetSection = () => {
               weeklyPrice: car.weekly_price ? parseFloat(car.weekly_price) : undefined,
               monthlyPrice: car.monthly_price ? parseFloat(car.monthly_price) : undefined,
               image: hasValidImage ? car.image_url : getDefaultImage(car.brand),
+              specs: Array.isArray(parsedSpecs) ? parsedSpecs : [],
             };
           });
           setCars(mappedCars);
@@ -122,6 +132,7 @@ const FleetSection = () => {
     fetch(`${API_URL}/bookings`)
       .then(res => res.json())
       .then((data: any[]) => {
+        if (!Array.isArray(data)) return;
         data
           .filter(b => b.status === 'confirmed' || b.status === 'pending')
           .forEach(b => {

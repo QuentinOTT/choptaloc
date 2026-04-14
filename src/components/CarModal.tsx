@@ -29,6 +29,17 @@ interface CarModalProps {
 const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
   if (!car) return null;
 
+  // Parser les specs JSON si c'est une chaîne
+  let parsedSpecs = car.specs;
+  if (typeof car.specs === 'string') {
+    try {
+      parsedSpecs = JSON.parse(car.specs);
+    } catch (e) {
+      parsedSpecs = [];
+    }
+  }
+  const safeSpecs = Array.isArray(parsedSpecs) ? parsedSpecs : [];
+
   // Données détaillées supplémentaires pour chaque voiture
   const getCarDetails = (brand: string, model: string) => {
     const carFullName = `${brand} ${model}`;
@@ -132,7 +143,7 @@ const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
                 <span className="text-muted-foreground">/jour</span>
               </div>
               <div className="flex gap-2">
-                {car.specs.map((spec) => (
+                {safeSpecs.map((spec: string) => (
                   <span key={spec} className="px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium">
                     {spec}
                   </span>
