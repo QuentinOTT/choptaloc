@@ -10,8 +10,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Servir les fichiers statiques du frontend
-app.use(express.static(path.join(__dirname, 'public')));
+// Servir les fichiers statiques du frontend depuis le dossier frontend/dist
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Routes API
 app.use('/api/users', require('./routes/users'));
@@ -32,7 +32,7 @@ app.get('*', (req, res) => {
     return;
   }
   // Sinon, servir index.html pour le SPA
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
 });
 
 // Gestion des erreurs
@@ -44,6 +44,6 @@ app.use((err, req, res, next) => {
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`🚀 Serveur ChopTaLoc démarré sur le port ${PORT}`);
-  console.log(`📁 Frontend servi depuis /public`);
+  console.log(`📁 Frontend servi depuis ../frontend/dist`);
   console.log(`🔌 API disponible sur /api/*`);
 });

@@ -1,9 +1,11 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "choptaloc-fullstack",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
   "scripts": {
+    "install-all": "npm install && npm install --prefix server",
+    "build-frontend": "npm run build",
+    "start": "node server/server.js",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
