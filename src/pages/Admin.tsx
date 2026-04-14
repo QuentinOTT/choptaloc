@@ -64,6 +64,9 @@ interface Car {
   monthlyPrice?: number;
   isAvailable: boolean;
   imageUrl: string;
+  tag?: string;
+  color?: string;
+  licensePlate?: string;
 }
 
 const Admin = () => {
@@ -76,6 +79,10 @@ const Admin = () => {
 
   // État pour les réservations
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookingPage, setBookingPage] = useState(1);
+  const [bookingTotal, setBookingTotal] = useState(0);
+  const [bookingPages, setBookingPages] = useState(1);
+  const BOOKING_LIMIT = 20;
   const [modificationRequests, setModificationRequests] = useState<ModificationRequest[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
   const [showAddBooking, setShowAddBooking] = useState(false);
@@ -92,29 +99,8 @@ const Admin = () => {
   // Charger les données depuis l'API
   useEffect(() => {
     if (isAuthenticated) {
-      // Charger les réservations
-      fetch(`${API_URL}/bookings`)
-        .then(res => res.json())
-        .then(data => {
-          const mappedBookings = data.map((b: any) => ({
-            id: b.id.toString(),
-            carId: b.car_id.toString(),
-            carBrand: b.brand || '',
-            carModel: b.model || '',
-            userName: b.first_name || '',
-            userEmail: b.email || '',
-            userPhone: b.phone || '',
-            userId: b.user_id?.toString(),
-            startDate: b.start_date,
-            endDate: b.end_date,
-            totalPrice: b.total_price,
-            status: b.status,
-            createdAt: b.created_at,
-            notes: b.notes
-          }));
-          setBookings(mappedBookings);
-        })
-        .catch(err => console.error('Erreur chargement réservations:', err));
+      // Charger les réservations (paginées)
+      fetchBookings(1);
 
       // Charger les voitures
       fetch(`${API_URL}/cars`)
@@ -126,7 +112,10 @@ const Admin = () => {
             model: c.model,
             price: c.price_per_day,
             isAvailable: c.is_available,
-            imageUrl: c.image_url || ''
+            imageUrl: c.image_url || '',
+            tag: c.tag || undefined,
+            color: c.color || undefined,
+            licensePlate: c.license_plate || undefined,
           }));
           setCars(mappedCars);
         })
@@ -146,6 +135,42 @@ const Admin = () => {
     }
   }, [isAuthenticated]);
 
+  const fetchBookings = (page: number) => {
+    fetch(`${API_URL}/bookings?page=${page}&limit=${BOOKING_LIMIT}`)
+      .then(res => res.json())
+      .then(({ data, pagination }) => {
+        const mappedBookings = data.map((b: any) => ({
+          id: b.id.toString(),
+          carId: b.car_id.toString(),
+          carBrand: b.brand || '',
+          carModel: b.model || '',
+          userName: [b.first_name, b.last_name].filter(Boolean).join(' ') || '',
+          userEmail: b.email || '',
+          userPhone: b.phone || '',
+          userId: b.user_id?.toString(),
+          startDate: typeof b.start_date === 'string'
+            ? b.start_date.slice(0, 10)
+            : new Date(b.start_date).toISOString().slice(0, 10),
+          endDate: typeof b.end_date === 'string'
+            ? b.end_date.slice(0, 10)
+            : new Date(b.end_date).toISOString().slice(0, 10),
+          pickupTime: b.pickup_time || undefined,
+          dropoffTime: b.dropoff_time || undefined,
+          pickupLocation: b.pickup_location || undefined,
+          dropoffLocation: b.dropoff_location || undefined,
+          totalPrice: b.total_price,
+          status: b.status,
+          createdAt: b.created_at,
+          notes: b.notes,
+        }));
+        setBookings(mappedBookings);
+        setBookingPage(pagination.page);
+        setBookingTotal(pagination.total);
+        setBookingPages(pagination.pages);
+      })
+      .catch(err => console.error('Erreur chargement réservations:', err));
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!login(email, password)) {
@@ -157,7 +182,7 @@ const Admin = () => {
     const booking = bookings.find(b => b.id === bookingId);
     
     try {
-      const response = await fetch(`${API_URL}/bookings/${bookingId}`, {
+      const response = await fetch(`${API_URL}/bookings/${bookingId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -645,6 +670,33 @@ const Admin = () => {
                     </CardContent>
                   </Card>
                 ))}
+                
+                {/* Pagination Controls */}
+                {bookingPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      Page {bookingPage} sur {bookingPages} (Total: {bookingTotal})
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={bookingPage === 1}
+                        onClick={() => fetchBookings(bookingPage - 1)}
+                      >
+                        Précédent
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={bookingPage === bookingPages}
+                        onClick={() => fetchBookings(bookingPage + 1)}
+                      >
+                        Suivant
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
               </TabsContent>
@@ -1377,41 +1429,147 @@ const Admin = () => {
           {/* Tab Calendrier Global */}
           <TabsContent value="global-calendar" className="space-y-4">
             <h2 className="text-xl font-semibold">Calendrier Global - Tous les véhicules</h2>
-            <GlobalCalendar cars={cars} bookings={bookings} />
+            {/* Scroll horizontal sur mobile pour le Gantt */}
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: 720 }}>
+                <GlobalCalendar cars={cars} bookings={bookings} />
+              </div>
+            </div>
           </TabsContent>
 
           {/* Tab Statistiques */}
-          <TabsContent value="stats" className="space-y-4">
-            <h2 className="text-xl font-semibold">Statistiques</h2>
+          <TabsContent value="stats" className="space-y-6">
+            <h2 className="text-xl font-semibold">Statistiques & Revenus</h2>
+
+            {/* KPIs principaux */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total réservations */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardDescription>Total réservations</CardDescription>
-                  <CardTitle className="text-3xl">{bookings.length}</CardTitle>
+                  <CardTitle className="text-3xl">{bookingTotal || bookings.length}</CardTitle>
                 </CardHeader>
               </Card>
+
+              {/* CA total confirmé + terminé */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardDescription>En attente</CardDescription>
-                  <CardTitle className="text-3xl">{bookings.filter(b => b.status === "pending").length}</CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardDescription>Confirmées</CardDescription>
-                  <CardTitle className="text-3xl">{bookings.filter(b => b.status === "confirmed").length}</CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardDescription>Revenus estimés</CardDescription>
-                  <CardTitle className="text-3xl">
+                  <CardDescription>Chiffre d'affaires total</CardDescription>
+                  <CardTitle className="text-3xl text-green-600">
                     {bookings
                       .filter(b => b.status === "confirmed" || b.status === "completed")
-                      .reduce((sum, b) => sum + b.totalPrice, 0)}€
+                      .reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
+                      .toFixed(0)}€
                   </CardTitle>
                 </CardHeader>
               </Card>
+
+              {/* CA du mois courant */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>CA mois en cours</CardDescription>
+                  <CardTitle className="text-3xl text-blue-600">
+                    {(() => {
+                      const now = new Date();
+                      return bookings
+                        .filter(b =>
+                          (b.status === "confirmed" || b.status === "completed") &&
+                          b.startDate.slice(0, 7) === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`
+                        )
+                        .reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
+                        .toFixed(0);
+                    })()}€
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+
+              {/* Durée moyenne de location */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Durée moyenne</CardDescription>
+                  <CardTitle className="text-3xl">
+                    {(() => {
+                      const done = bookings.filter(b => b.status === "confirmed" || b.status === "completed");
+                      if (!done.length) return "—";
+                      const avg = done.reduce((s, b) => {
+                        const d = (new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / 86400000;
+                        return s + Math.max(1, d);
+                      }, 0) / done.length;
+                      return `${avg.toFixed(1)}j`;
+                    })()}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            </div>
+
+            {/* Taux d'occupation par véhicule */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Taux d'occupation par véhicule</CardTitle>
+                <CardDescription>
+                  Calculé sur les 30 derniers jours (réservations confirmées + terminées)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {cars.map(car => {
+                    const now = new Date();
+                    const past30start = new Date(now); past30start.setDate(past30start.getDate() - 30);
+                    const carBookings = bookings.filter(b =>
+                      b.carId === car.id &&
+                      (b.status === "confirmed" || b.status === "completed")
+                    );
+                    // Compter les jours occupés dans les 30 derniers jours
+                    const bookedDays = new Set<string>();
+                    carBookings.forEach(b => {
+                      const s = new Date(b.startDate), e = new Date(b.endDate);
+                      const cur = new Date(Math.max(s.getTime(), past30start.getTime()));
+                      const end = new Date(Math.min(e.getTime(), now.getTime()));
+                      while (cur <= end) {
+                        bookedDays.add(cur.toISOString().slice(0,10));
+                        cur.setDate(cur.getDate() + 1);
+                      }
+                    });
+                    const rate = Math.round((bookedDays.size / 30) * 100);
+                    const revenue = carBookings.reduce((s, b) => s + (Number(b.totalPrice) || 0), 0);
+                    return (
+                      <div key={car.id} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">{car.brand} {car.model}</span>
+                          <span className="text-muted-foreground">{rate}% · {revenue.toFixed(0)}€</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${rate}%`,
+                              background: rate > 70 ? '#22c55e' : rate > 40 ? '#f97316' : '#94a3b8'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {cars.length === 0 && <p className="text-muted-foreground text-sm">Aucun véhicule</p>}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Répartition par statut */}
+            <div className="grid md:grid-cols-3 gap-4">
+              {(["pending","confirmed","cancelled","completed"] as const).map(s => {
+                const count = bookings.filter(b => b.status === s).length;
+                const labels: Record<string,string> = {pending:"En attente",confirmed:"Confirmées",cancelled:"Annulées",completed:"Terminées"};
+                const colors: Record<string,string> = {pending:"text-amber-600",confirmed:"text-emerald-600",cancelled:"text-red-600",completed:"text-sky-600"};
+                return (
+                  <Card key={s}>
+                    <CardHeader className="pb-2">
+                      <CardDescription>{labels[s]}</CardDescription>
+                      <CardTitle className={`text-3xl ${colors[s]}`}>{count}</CardTitle>
+                    </CardHeader>
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
         </Tabs>

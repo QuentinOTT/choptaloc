@@ -19,17 +19,33 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Récupérer toutes les réservations
+// Récupérer toutes les réservations (avec pagination)
 router.get('/', async (req, res) => {
   try {
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 50);
+    const offset = (page - 1) * limit;
+
+    const [[{ total }]] = await pool.query('SELECT COUNT(*) as total FROM bookings');
+
     const [bookings] = await pool.query(`
       SELECT b.*, u.first_name, u.last_name, u.email, c.brand, c.model 
       FROM bookings b 
       LEFT JOIN users u ON b.user_id = u.id 
       LEFT JOIN cars c ON b.car_id = c.id 
       ORDER BY b.created_at DESC
-    `);
-    res.json(bookings);
+      LIMIT ? OFFSET ?
+    `, [limit, offset]);
+
+    res.json({
+      data: bookings,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      }
+    });
   } catch (error) {
     console.error('Erreur récupération réservations:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des réservations' });

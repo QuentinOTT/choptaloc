@@ -126,6 +126,7 @@ const AvailabilityCalendar = ({ car, bookings }: AvailabilityCalendarProps) => {
             return (
               <div
                 key={`current-${index}`}
+                title={booked ? "Réservé" : `Disponible : ${car.price}€ / jour`}
                 className={`aspect-square p-3 text-center text-sm font-bold rounded-2xl shadow-md transition-all duration-300 transform hover:scale-105 cursor-pointer ${
                   booked 
                     ? 'bg-gradient-to-br from-red-400 to-red-600 text-white shadow-red-300' 

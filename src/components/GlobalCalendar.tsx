@@ -1,435 +1,461 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-interface Car {
-  id: string;
-  brand: string;
-  model: string;
-  price: number;
-  isAvailable: boolean;
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface GanttCar {
+  id: string; brand: string; model: string; price: number;
+  isAvailable: boolean; imageUrl?: string;
+  licensePlate?: string; color?: string; tag?: string;
+  maintenanceStatus?: "maintenance";
+}
+export interface GanttBooking {
+  id: string; carId: string;
+  startDate: string; endDate: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  userName?: string; userEmail?: string; userPhone?: string;
+  pickupTime?: string; dropoffTime?: string;
+  pickupLocation?: string; dropoffLocation?: string; notes?: string;
+}
+interface GlobalCalendarProps { cars: GanttCar[]; bookings: GanttBooking[]; }
+
+type Scale = "3J" | "1S" | "2S" | "3S" | "1M" | "3M" | "1A";
+
+interface ColDef {
+  key: string;
+  line1: string;       // heure "0h" | jour "LUN" | mois "AVR"
+  line2: string;       // jour "14" | semaine "13-19" | année "2026"
+  monthHint: string;   // "AVR" sous le today
+  dayGroup: string;    // pour regrouper dans le header 3J: "LUN 14 AVR"
+  rangeStart: Date;
+  rangeEnd: Date;
+  isCurrentPeriod: boolean;
 }
 
-interface Booking {
-  id: string;
-  carId: string;
-  startDate: string;
-  endDate: string;
-  status: string;
-  userEmail?: string;
-  pickupLocation?: string;
-  dropoffLocation?: string;
-  pickupTime?: string;
-  dropoffTime?: string;
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const MONTH_NAMES = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const MONTH_ABBR  = ["JAN","FÉV","MAR","AVR","MAI","JUI","JUL","AOÛ","SEP","OCT","NOV","DÉC"];
+const DAY_ABBR    = ["LUN","MAR","MER","JEU","VEN","SAM","DIM"];
+const SCALES: { id: Scale; label: string }[] = [
+  { id: "3J",  label: "3J" },
+  { id: "1S",  label: "1S" },
+  { id: "2S",  label: "2S" },
+  { id: "3S",  label: "3S" },
+  { id: "1M",  label: "1M" },
+  { id: "3M",  label: "3M" },
+  { id: "1A",  label: "1A" },
+];
+
+// ─── Date helpers ────────────────────────────────────────────────────────────
+
+function parseLocalDate(str: string): Date {
+  const p = str.slice(0,10).split("-").map(Number);
+  return new Date(p[0], p[1]-1, p[2]);
+}
+function toDateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function endOfDay(d: Date) { return new Date(d.getFullYear(),d.getMonth(),d.getDate(),23,59,59,999); }
+function getMonday(d: Date) {
+  const r = new Date(d); const day = r.getDay();
+  r.setDate(r.getDate()-(day===0?6:day-1)); r.setHours(0,0,0,0); return r;
+}
+function parseTimeToMinutes(t: string): number {
+  const [h,m] = t.split(":").map(Number); return h*60+(m||0);
 }
 
-interface GlobalCalendarProps {
-  cars: Car[];
-  bookings: Booking[];
+// ─── Column builders ─────────────────────────────────────────────────────────
+
+/** 3J : 3 jours × slots de 2h = 36 colonnes */
+function buildHourCols(startDay: Date, days: number, todayKey: string): ColDef[] {
+  const cols: ColDef[] = [];
+  const STEP = 2; // toutes les 2 heures
+  for (let d = 0; d < days; d++) {
+    const day = addDays(startDay, d);
+    const dow = (day.getDay()+6)%7;
+    const dk  = toDateKey(day);
+    const dayLabel = `${DAY_ABBR[dow]} ${day.getDate()} ${MONTH_ABBR[day.getMonth()]}`;
+    for (let h = 0; h < 24; h += STEP) {
+      const rStart = new Date(day.getFullYear(),day.getMonth(),day.getDate(),h,0,0,0);
+      const rEnd   = new Date(day.getFullYear(),day.getMonth(),day.getDate(),h+STEP-1,59,59,999);
+      cols.push({
+        key: `${dk}-${h}`,
+        line1: `${h}h`,
+        line2: "",
+        monthHint: "",
+        dayGroup: dayLabel,
+        rangeStart: rStart,
+        rangeEnd: rEnd,
+        isCurrentPeriod: dk === todayKey,
+      });
+    }
+  }
+  return cols;
 }
 
-const GlobalCalendar = ({ cars, bookings }: GlobalCalendarProps) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
-  const [hoveredBooking, setHoveredBooking] = useState<Booking | null>(null);
-  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
-  
-  const today = new Date();
-  
-  // Obtenir le début de la semaine (lundi)
-  const getStartOfWeek = (date: Date) => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff));
-  };
-  
-  // Obtenir les 7 jours de la semaine
-  const getWeekDays = (date: Date) => {
-    const start = getStartOfWeek(date);
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(start);
-      day.setDate(start.getDate() + i);
-      days.push(day);
-    }
-    return days;
-  };
-  
-  // Obtenir tous les jours du mois
-  const getMonthDays = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const days = [];
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      days.push(new Date(year, month, day));
-    }
-    return days;
-  };
-  
-  const weekDays = getWeekDays(currentDate);
-  const monthDays = getMonthDays(currentDate);
-  
-  // Obtenir les réservations pour une voiture
-  const getBookingsForCar = (carId: string) => {
-    return bookings.filter(booking => 
-      booking.carId === carId &&
-      booking.status !== 'cancelled'
-    );
-  };
-  
-  // Obtenir le véhicule pour une réservation
-  const getCarForBooking = (booking: Booking) => {
-    return cars.find(car => car.id === booking.carId);
-  };
-  
-  // Obtenir le statut du véhicule
-  const getCarStatus = (carId: string) => {
-    const carBookings = getBookingsForCar(carId);
-    const todayStr = today.toISOString().split('T')[0];
-    
-    const hasActiveBooking = carBookings.some(booking => 
-      todayStr >= booking.startDate && todayStr <= booking.endDate
-    );
-    
-    if (hasActiveBooking) return 'LOUÉ';
-    return 'DISPO';
-  };
-  
-  // Obtenir la couleur selon le statut
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'DISPO':
-        return 'bg-green-500 text-white';
-      case 'LOUÉ':
-        return 'bg-orange-500 text-white';
-      case 'MAINT':
-        return 'bg-orange-800 text-white';
-      default:
-        return 'bg-gray-500 text-white';
-    }
-  };
-  
-  // Obtenir la couleur de la barre selon le statut
-  const getBookingBarColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-orange-500';
-      case 'pending':
-        return 'bg-orange-400';
-      case 'completed':
-        return 'bg-blue-500';
-      case 'cancelled':
-        return 'bg-gray-500';
-      default:
-        return 'bg-orange-500';
-    }
-  };
-  
-  // Calculer la position et la largeur d'une barre de réservation (vue hebdomadaire)
-  const getBookingBarStyle = (booking: Booking) => {
-    const startDate = new Date(booking.startDate);
-    const endDate = new Date(booking.endDate);
-    const weekStart = getStartOfWeek(currentDate);
-    
-    const startDiff = Math.max(0, (startDate.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
-    const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
+function buildDayCols(start: Date, count: number, todayKey: string): ColDef[] {
+  return Array.from({ length: count }, (_, i) => {
+    const day = addDays(start, i);
+    const dow = (day.getDay()+6)%7;
+    const dk  = toDateKey(day);
     return {
-      gridColumnStart: Math.min(8, Math.max(2, startDiff + 2)),
-      gridColumnEnd: Math.min(9, Math.max(2, startDiff + 2 + duration)),
+      key: dk, line1: DAY_ABBR[dow], line2: String(day.getDate()),
+      monthHint: MONTH_ABBR[day.getMonth()], dayGroup: "",
+      rangeStart: day, rangeEnd: endOfDay(day),
+      isCurrentPeriod: dk === todayKey,
     };
-  };
-  
-  // Calculer la position et la largeur d'une barre de réservation (vue mensuelle)
-  const getMonthlyBookingBarStyle = (booking: Booking) => {
-    const startDate = new Date(booking.startDate);
-    const endDate = new Date(booking.endDate);
-    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    
-    const startDiff = Math.max(0, (startDate.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24));
-    const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
+  });
+}
+
+function buildWeekCols(startMonday: Date, count: number, todayKey: string): ColDef[] {
+  const todayD = parseLocalDate(todayKey);
+  return Array.from({ length: count }, (_, i) => {
+    const mon = addDays(startMonday, i*7), sun = addDays(mon,6);
+    const ml = mon.getMonth()===sun.getMonth()
+      ? MONTH_ABBR[mon.getMonth()]
+      : `${MONTH_ABBR[mon.getMonth()]}/${MONTH_ABBR[sun.getMonth()]}`;
     return {
-      gridColumnStart: Math.min(32, Math.max(2, startDiff + 2)),
-      gridColumnEnd: Math.min(33, Math.max(2, startDiff + 2 + duration)),
+      key: toDateKey(mon), line1: ml, line2: `${mon.getDate()}-${sun.getDate()}`,
+      monthHint: "", dayGroup: "",
+      rangeStart: mon, rangeEnd: endOfDay(sun),
+      isCurrentPeriod: todayD>=mon && todayD<=sun,
     };
-  };
-  
-  const previousPeriod = () => {
-    const newDate = new Date(currentDate);
-    if (viewMode === 'week') {
-      newDate.setDate(newDate.getDate() - 7);
-    } else {
-      newDate.setMonth(newDate.getMonth() - 1);
+  });
+}
+
+function buildMonthCols(year: number, startMonth: number, count: number, todayKey: string): ColDef[] {
+  const todayD = parseLocalDate(todayKey);
+  return Array.from({ length: count }, (_, i) => {
+    const mo = (startMonth+i)%12, yr = year+Math.floor((startMonth+i)/12);
+    const start = new Date(yr,mo,1), end = new Date(yr,mo+1,0,23,59,59,999);
+    return {
+      key: `${yr}-${mo}`, line1: MONTH_ABBR[mo], line2: String(yr),
+      monthHint: "", dayGroup: "",
+      rangeStart: start, rangeEnd: end,
+      isCurrentPeriod: todayD>=start && todayD<=end,
+    };
+  });
+}
+
+function getColumns(anchor: Date, scale: Scale, todayKey: string): ColDef[] {
+  switch (scale) {
+    case "3J": return buildHourCols(anchor, 3, todayKey);
+    case "1S": return buildDayCols(getMonday(anchor), 7, todayKey);
+    case "2S": return buildDayCols(getMonday(anchor), 14, todayKey);
+    case "3S": return buildDayCols(getMonday(anchor), 21, todayKey);
+    case "1M": {
+      const s = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+      return buildDayCols(s, new Date(anchor.getFullYear(),anchor.getMonth()+1,0).getDate(), todayKey);
     }
-    setCurrentDate(newDate);
-  };
-  
-  const nextPeriod = () => {
-    const newDate = new Date(currentDate);
-    if (viewMode === 'week') {
-      newDate.setDate(newDate.getDate() + 7);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
+    case "3M": return buildWeekCols(getMonday(new Date(anchor.getFullYear(),anchor.getMonth(),1)), 13, todayKey);
+    case "1A": return buildMonthCols(anchor.getFullYear(), 0, 12, todayKey);
+  }
+}
+
+function navigateAnchor(anchor: Date, scale: Scale, dir: -1|1): Date {
+  const d = new Date(anchor);
+  switch (scale) {
+    case "3J": d.setDate(d.getDate()+dir*3); break;
+    case "1S": d.setDate(d.getDate()+dir*7); break;
+    case "2S": d.setDate(d.getDate()+dir*14); break;
+    case "3S": d.setDate(d.getDate()+dir*21); break;
+    case "1M": d.setMonth(d.getMonth()+dir); break;
+    case "3M": d.setMonth(d.getMonth()+dir*3); break;
+    case "1A": d.setFullYear(d.getFullYear()+dir); break;
+  }
+  return d;
+}
+
+function getPeriodLabel(anchor: Date, scale: Scale): string {
+  const fmt = (d: Date) => `${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`;
+  switch (scale) {
+    case "3J": return `${fmt(anchor)} – ${fmt(addDays(anchor,2))} ${anchor.getFullYear()}`;
+    case "1S": { const mon=getMonday(anchor),sun=addDays(mon,6); return mon.getMonth()===sun.getMonth()?`${MONTH_NAMES[mon.getMonth()]} ${mon.getFullYear()}`:`${MONTH_ABBR[mon.getMonth()]} – ${MONTH_ABBR[sun.getMonth()]} ${sun.getFullYear()}`; }
+    case "2S": { const mon=getMonday(anchor),sun=addDays(mon,13); return `${fmt(mon)} – ${fmt(sun)} ${sun.getFullYear()}`; }
+    case "3S": { const mon=getMonday(anchor),sun=addDays(mon,20); return `${fmt(mon)} – ${fmt(sun)} ${sun.getFullYear()}`; }
+    case "1M": return `${MONTH_NAMES[anchor.getMonth()]} ${anchor.getFullYear()}`;
+    case "3M": { const e=new Date(anchor.getFullYear(),anchor.getMonth()+2,1); return `${MONTH_ABBR[anchor.getMonth()]} – ${MONTH_ABBR[e.getMonth()]} ${anchor.getFullYear()}`; }
+    case "1A": return String(anchor.getFullYear());
+  }
+}
+
+// ─── Bar positioning ──────────────────────────────────────────────────────────
+
+function getBarIndices(booking: GanttBooking, cols: ColDef[], scale: Scale): { si:number; ei:number } | null {
+  const bStart = parseLocalDate(booking.startDate);
+  const bEnd   = parseLocalDate(booking.endDate);
+
+  // En mode 3J, on prend en compte les heures exactes de pickup/dropoff
+  if (scale === "3J") {
+    if (booking.pickupTime) {
+      const [h,m] = booking.pickupTime.split(":").map(Number);
+      bStart.setHours(h,m,0,0);
     }
-    setCurrentDate(newDate);
+    if (booking.dropoffTime) {
+      const [h,m] = booking.dropoffTime.split(":").map(Number);
+      bEnd.setHours(h,m,59,999);
+    } else {
+      bEnd.setHours(23,59,59,999);
+    }
+  } else {
+    bEnd.setHours(23,59,59,999);
+  }
+
+  if (bEnd < cols[0].rangeStart || bStart > cols[cols.length-1].rangeEnd) return null;
+  const si = cols.findIndex(c => c.rangeEnd >= bStart);
+  let ei = cols.length;
+  for (let i=cols.length-1;i>=0;i--) { if(cols[i].rangeStart<=bEnd){ei=i+1;break;} }
+  if (si===-1) return null;
+  return { si, ei };
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: "LOUÉ"|"DISPO"|"MAINT." }) {
+  const s: Record<string,string> = {
+    "LOUÉ":"border border-orange-600 text-orange-400",
+    "DISPO":"border border-emerald-600 text-emerald-400",
+    "MAINT.":"border border-amber-700 text-amber-500",
   };
-  
-  const goToToday = () => {
-    setCurrentDate(new Date());
-  };
-  
-  const handleMouseEnter = (booking: Booking, event: React.MouseEvent) => {
-    setHoveredBooking(booking);
-    setHoverPosition({ x: event.clientX, y: event.clientY });
-  };
-  
-  const handleMouseLeave = () => {
-    setHoveredBooking(null);
-  };
-  
-  const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-  const dayNames = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
-  const monthDayNames = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
-  
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-transparent whitespace-nowrap ${s[status]??s["DISPO"]}`}>{status}</span>;
+}
+
+function LegendPill({ color, label }: { color:string; label:string }) {
   return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="text-white text-xl font-bold">
-          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <button
-            onClick={goToToday}
-            className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
-          >
-            Aujourd'hui
-          </button>
-          <button
-            onClick={previousPeriod}
-            className="p-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
-          >
-            ←
-          </button>
-          <button
-            onClick={nextPeriod}
-            className="p-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
-          >
-            →
-          </button>
-          <button
-            onClick={() => setViewMode(viewMode === 'week' ? 'month' : 'week')}
-            className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
-          >
-            {viewMode === 'week' ? 'Mois' : 'Semaine'}
-          </button>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-            <span className="text-white text-sm">Réservé</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-orange-800 rounded-full"></div>
-            <span className="text-white text-sm">Maintenance</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span className="text-white text-sm">Disponible</span>
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#2a2a2a] bg-[#111]">
+      <span className={`w-1.5 h-1.5 rounded-full ${color}`}/><span className="text-[11px] font-medium text-gray-400">{label}</span>
+    </div>
+  );
+}
+
+interface TooltipData { booking: GanttBooking; x:number; y:number; }
+
+function BookingTooltip({ data }: { data:TooltipData }) {
+  const { booking, x, y } = data;
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left:x+14, top:y+14 });
+  useEffect(() => {
+    if (!ref.current) return;
+    const { width, height } = ref.current.getBoundingClientRect();
+    setPos({ left:x+14+width>window.innerWidth?x-width-14:x+14, top:y+14+height>window.innerHeight?y-height-14:y+14 });
+  },[x,y]);
+  const name = booking.userName||booking.userEmail?.split("@")[0]||"Client";
+  const fmt = (s:string) => parseLocalDate(s).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});
+  return (
+    <div ref={ref} className="fixed z-[9999] pointer-events-none" style={{left:pos.left,top:pos.top}}>
+      <div className="rounded-xl border border-[#2e2e2e] shadow-2xl bg-[#141414]/95 backdrop-blur-md p-4 min-w-[210px]">
+        <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 font-semibold">Détails Réservation</p>
+        <p className="text-white font-bold text-base mb-3">{name}</p>
+        <div className="space-y-1.5">
+          {booking.pickupTime  && <div className="flex justify-between gap-6"><span className="text-gray-400 text-xs">Prise en charge</span><span className="text-gray-100 text-xs font-medium">{booking.pickupTime}</span></div>}
+          <div className="flex justify-between gap-6"><span className="text-gray-400 text-xs">Du</span><span className="text-gray-100 text-xs font-medium capitalize">{fmt(booking.startDate)}</span></div>
+          <div className="flex justify-between gap-6"><span className="text-gray-400 text-xs">Retour</span><span className="text-gray-100 text-xs font-medium capitalize">{booking.dropoffTime?`${booking.dropoffTime} (${fmt(booking.endDate)})`:fmt(booking.endDate)}</span></div>
+          <div className="flex justify-between gap-6 pt-1 border-t border-[#252525] mt-1">
+            <span className="text-gray-400 text-xs">Statut</span>
+            <span className={`text-xs font-semibold ${booking.status==="confirmed"?"text-emerald-400":booking.status==="pending"?"text-amber-400":booking.status==="cancelled"?"text-red-400":"text-sky-400"}`}>
+              {booking.status==="confirmed"?"Confirmée":booking.status==="pending"?"En attente":booking.status==="cancelled"?"Annulée":"Terminée"}
+            </span>
           </div>
         </div>
       </div>
-      
-      {/* Calendrier Gantt - Vue Hebdomadaire */}
-      {viewMode === 'week' && (
-        <div className="bg-[#0f0f0f] border border-[#222] rounded-lg overflow-hidden">
-          {/* En-tête des jours */}
-          <div className="grid grid-cols-8 border-b border-[#222]">
-            <div className="p-3 text-gray-500 text-sm font-medium border-r border-[#222]"></div>
-            {weekDays.map((day, index) => {
-              const isToday = day.toDateString() === today.toDateString();
-              return (
-                <div key={index} className="p-3 text-center border-r border-[#222] last:border-r-0">
-                  <div className="text-gray-500 text-xs font-medium">{dayNames[index]}</div>
-                  <div className={`text-lg font-bold ${isToday ? 'text-orange-500' : 'text-white'}`}>
-                    {day.getDate()}
-                  </div>
-                </div>
-              );
-            })}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+const GlobalCalendar = ({ cars, bookings }: GlobalCalendarProps) => {
+  const [anchorDate, setAnchorDate] = useState(new Date());
+  const [scale,      setScale]      = useState<Scale>("1S");
+  const [tooltip,    setTooltip]    = useState<TooltipData | null>(null);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = toDateKey(today);
+  const columns  = getColumns(anchorDate, scale, todayKey);
+  const colCount = columns.length;
+  const isHourScale = scale === "3J";
+
+  const prevPeriod = () => setAnchorDate(navigateAnchor(anchorDate, scale, -1));
+  const nextPeriod = () => setAnchorDate(navigateAnchor(anchorDate, scale,  1));
+  const goToday    = () => setAnchorDate(new Date());
+
+  const getCarStatus = (car: GanttCar): "LOUÉ"|"DISPO"|"MAINT." => {
+    if (car.maintenanceStatus==="maintenance") return "MAINT.";
+    const active = bookings.some(b=>b.carId===car.id&&b.status!=="cancelled"&&parseLocalDate(b.startDate)<=today&&parseLocalDate(b.endDate)>=today);
+    return active?"LOUÉ":car.isAvailable?"DISPO":"MAINT.";
+  };
+  const getCarSubtitle = (car: GanttCar) => {
+    const p:string[]=[];
+    if(car.licensePlate)p.push(car.licensePlate);
+    if(car.color)p.push(car.color.toUpperCase());
+    else if(car.tag)p.push(car.tag);
+    return p.join(" • ");
+  };
+  const getBarConfig = (status: GanttBooking["status"]) => {
+    switch(status){
+      case"pending":   return{cls:"opacity-70",style:{background:"rgba(180,83,9,0.12)",border:"1.5px dashed rgba(251,146,60,0.6)",margin:"0 3px"}as React.CSSProperties,dot:"bg-amber-400",text:"text-amber-300",pending:true};
+      case"completed": return{cls:"",style:{background:"rgba(12,74,110,0.7)",border:"1px solid #0369a1",margin:"0 3px"}as React.CSSProperties,dot:"bg-sky-400",text:"text-sky-200",pending:false};
+      default:         return{cls:"",style:{background:"#7c3f00",border:"1px solid #92400e",margin:"0 3px"}as React.CSSProperties,dot:"bg-orange-400",text:"text-orange-200",pending:false};
+    }
+  };
+
+  // Groupement des colonnes par jour (pour le header 3J)
+  const dayGroups = isHourScale
+    ? columns.reduce<{label: string; count: number}[]>((acc, col) => {
+        if (!acc.length || acc[acc.length-1].label !== col.dayGroup)
+          acc.push({ label: col.dayGroup, count: 1 });
+        else acc[acc.length-1].count++;
+        return acc;
+      }, [])
+    : [];
+
+  // Taille de police adaptée au nombre de colonnes
+  const colFontSz = colCount > 30 ? "text-[9px]" : colCount > 14 ? "text-[10px]" : "text-xs";
+
+  return (
+    <div className="w-full select-none" style={{fontFamily:"'Inter','Segoe UI',sans-serif"}}>
+
+      {/* ── Top bar ── */}
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-white text-2xl font-bold tracking-tight">{getPeriodLabel(anchorDate,scale)}</h2>
+          <div className="flex items-center gap-1 ml-1">
+            <button onClick={prevPeriod} className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-white hover:bg-[#222] border border-[#2a2a2a] transition-colors"><ChevronLeft size={14}/></button>
+            <button onClick={goToday}   className="px-3 h-7 text-xs font-semibold rounded-md text-gray-300 hover:text-white hover:bg-[#222] border border-[#2a2a2a] transition-colors uppercase tracking-wider">Aujourd'hui</button>
+            <button onClick={nextPeriod} className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-white hover:bg-[#222] border border-[#2a2a2a] transition-colors"><ChevronRight size={14}/></button>
           </div>
-          
-          {/* Lignes des véhicules */}
-          {cars.map((car) => {
-            const carStatus = getCarStatus(car.id);
-            const carBookings = getBookingsForCar(car.id);
-            
-            return (
-              <div key={car.id} className="grid grid-cols-8 border-b border-[#222] last:border-b-0">
-                {/* Colonne véhicule enrichie */}
-                <div className="p-3 border-r border-[#222] min-w-[200px]">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-white font-bold">{car.brand} {car.model}</div>
-                    <div className={`px-2 py-0.5 text-xs font-medium rounded-md ${getStatusBadgeColor(carStatus)}`}>
-                      {carStatus}
-                    </div>
-                  </div>
-                  <div className="text-gray-500 text-xs">
-                    {car.id} • {car.brand === 'Mercedes' ? 'Noir' : car.brand === 'Volkswagen' ? 'Bleu' : car.brand === 'Audi' ? 'Rouge' : 'Gris'}
-                  </div>
-                </div>
-                
-                {/* Colonnes des jours */}
-                <div className="col-span-7 relative h-12">
-                  {weekDays.map((day, dayIndex) => (
-                    <div key={dayIndex} className="absolute top-0 bottom-0 border-r border-[#222] last:border-r-0" style={{ left: `${(dayIndex / 7) * 100}%`, width: `${100 / 7}%` }}>
-                      <div className="h-full"></div>
-                    </div>
-                  ))}
-                  
-                  {/* Barres de réservation */}
-                  {carBookings.map((booking) => {
-                    const barStyle = getBookingBarStyle(booking);
-                    
-                    return (
-                      <div
-                        key={booking.id}
-                        className={`absolute top-2 bottom-2 rounded-md ${getBookingBarColor(booking.status)} px-2 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity`}
-                        style={{
-                          left: `${((barStyle.gridColumnStart - 2) / 7) * 100}%`,
-                          width: `${((barStyle.gridColumnEnd - barStyle.gridColumnStart) / 7) * 100}%`,
-                        }}
-                        onMouseEnter={(e) => handleMouseEnter(booking, e)}
-                        onMouseLeave={handleMouseLeave}
-                      >
-                        <span className="text-white text-xs font-bold uppercase truncate">
-                          {booking.userEmail ? booking.userEmail.split('@')[0] : 'CLIENT'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
         </div>
-      )}
-      
-      {/* Calendrier Gantt - Vue Mensuelle */}
-      {viewMode === 'month' && (
-        <div className="bg-[#0f0f0f] border border-[#222] rounded-lg overflow-x-auto">
-          {/* En-tête des jours */}
-          <div className="grid grid-cols-[200px_repeat(31,minmax(40px,1fr))] border-b border-[#222] min-w-[1200px]">
-            <div className="p-2 text-gray-500 text-sm font-medium border-r border-[#222]"></div>
-            {monthDays.map((day, index) => {
-              const isToday = day.toDateString() === today.toDateString();
-              return (
-                <div key={index} className="p-2 text-center border-r border-[#222] last:border-r-0">
-                  <div className="text-gray-500 text-[10px] font-medium">{monthDayNames[index % 7]}</div>
-                  <div className={`text-sm font-bold ${isToday ? 'text-orange-500' : 'text-white'}`}>
-                    {day.getDate()}
-                  </div>
-                </div>
-              );
-            })}
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Sélecteur d'échelle compact */}
+          <div className="flex items-center gap-px p-0.5 rounded-lg bg-[#0d0d0d] border border-[#252525]">
+            {SCALES.map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => setScale(opt.id)}
+                title={opt.id==="3J"?"3 jours avec heures":opt.id==="1S"?"1 semaine":opt.id==="2S"?"2 semaines":opt.id==="3S"?"3 semaines":opt.id==="1M"?"1 mois":opt.id==="3M"?"3 mois":"1 an"}
+                className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all tracking-wider ${scale===opt.id?"bg-orange-600 text-white shadow":"text-gray-500 hover:text-gray-300"}`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-          
-          {/* Lignes des véhicules */}
-          {cars.map((car) => {
-            const carStatus = getCarStatus(car.id);
-            const carBookings = getBookingsForCar(car.id);
-            
-            return (
-              <div key={car.id} className="grid grid-cols-[200px_repeat(31,minmax(40px,1fr))] border-b border-[#222] last:border-b-0 min-w-[1200px]">
-                {/* Colonne véhicule enrichie */}
-                <div className="p-3 border-r border-[#222]">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-white font-bold">{car.brand} {car.model}</div>
-                    <div className={`px-2 py-0.5 text-xs font-medium rounded-md ${getStatusBadgeColor(carStatus)}`}>
-                      {carStatus}
-                    </div>
+          <LegendPill color="bg-orange-500" label="Réservé"/>
+          <LegendPill color="bg-amber-600"  label="Maintenance"/>
+          <LegendPill color="bg-emerald-500" label="Disponible"/>
+        </div>
+      </div>
+
+      {/* ── Calendrier ── */}
+      <div className="rounded-xl overflow-hidden border border-[#1e1e1e] w-full" style={{background:"#0d0d0d"}}>
+
+        {/* ── Header 3J : 2 lignes (jour + heures) ── */}
+        {isHourScale && (
+          <>
+            {/* Ligne 1 : groupes jours */}
+            <div className="flex border-b border-[#1e1e1e]" style={{borderBottomStyle:"solid",borderBottomColor:"#1e1e1e"}}>
+              <div className="flex-shrink-0 border-r border-[#1e1e1e]" style={{width:280}}/>
+              <div className="flex-1 flex">
+                {dayGroups.map((g) => (
+                  <div
+                    key={g.label}
+                    className="border-r border-[#333] last:border-r-0 py-1.5 text-center"
+                    style={{flex:g.count}}
+                  >
+                    <span className="text-[11px] font-bold text-gray-300 tracking-wide uppercase">{g.label}</span>
                   </div>
-                  <div className="text-gray-500 text-xs">
-                    {car.id} • {car.brand === 'Mercedes' ? 'Noir' : car.brand === 'Volkswagen' ? 'Bleu' : car.brand === 'Audi' ? 'Rouge' : 'Gris'}
+                ))}
+              </div>
+            </div>
+            {/* Ligne 2 : heures */}
+            <div className="flex border-b border-[#1e1e1e]">
+              <div className="flex-shrink-0 border-r border-[#1e1e1e] px-4 pb-2 pt-1 text-gray-600 text-[11px] font-bold tracking-widest uppercase flex items-end" style={{width:280}}>Véhicule</div>
+              <div className="flex-1 flex overflow-hidden">
+                {columns.map(col => (
+                  <div key={col.key} className={`flex-1 py-1 min-w-0 border-r border-[#1e1e1e] last:border-r-0 flex items-center justify-center ${col.isCurrentPeriod?"bg-orange-950/20":""}`}>
+                    <span className={`text-[9px] font-medium ${col.isCurrentPeriod?"text-orange-400":"text-gray-600"}`}>{col.line1}</span>
                   </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Header normal (non-3J) ── */}
+        {!isHourScale && (
+          <div className="flex border-b border-[#1e1e1e]">
+            <div className="flex-shrink-0 border-r border-[#1e1e1e] px-4 pt-3 pb-2 text-gray-600 text-[11px] font-bold tracking-widest uppercase flex items-end" style={{width:280}}>Véhicule</div>
+            <div className="flex-1 flex overflow-hidden">
+              {columns.map(col => (
+                <div key={col.key} className={`flex-1 pt-2 pb-1 min-w-0 border-r border-[#1e1e1e] last:border-r-0 flex flex-col items-center gap-0.5 ${col.isCurrentPeriod?"bg-orange-950/20":""}`}>
+                  <span className={`${colFontSz} font-bold tracking-widest uppercase truncate w-full text-center ${col.isCurrentPeriod?"text-orange-400":"text-gray-500"}`}>{col.line1}</span>
+                  <span className={`font-bold leading-none ${col.isCurrentPeriod?"text-orange-400":"text-gray-200"} ${colCount>20?"text-[10px]":colCount>10?"text-xs":"text-base"}`}>{col.line2}</span>
+                  {col.isCurrentPeriod && col.monthHint && (
+                    <span className="text-[9px] font-semibold text-orange-500/80 tracking-widest uppercase leading-none">{col.monthHint}</span>
+                  )}
                 </div>
-                
-                {/* Colonnes des jours */}
-                <div className="col-span-31 relative h-12">
-                  {monthDays.map((day, dayIndex) => (
-                    <div key={dayIndex} className="absolute top-0 bottom-0 border-r border-[#222] last:border-r-0" style={{ left: `${(dayIndex / 31) * 100}%`, width: `${100 / 31}%` }}>
-                      <div className="h-full"></div>
-                    </div>
-                  ))}
-                  
-                  {/* Barres de réservation */}
-                  {carBookings.map((booking) => {
-                    const barStyle = getMonthlyBookingBarStyle(booking);
-                    
-                    return (
-                      <div
-                        key={booking.id}
-                        className={`absolute top-2 bottom-2 rounded-md ${getBookingBarColor(booking.status)} px-2 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity`}
-                        style={{
-                          left: `${((barStyle.gridColumnStart - 2) / 31) * 100}%`,
-                          width: `${((barStyle.gridColumnEnd - barStyle.gridColumnStart) / 31) * 100}%`,
-                        }}
-                        onMouseEnter={(e) => handleMouseEnter(booking, e)}
-                        onMouseLeave={handleMouseLeave}
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Lignes véhicules ── */}
+        {cars.length===0 && <div className="py-16 text-center text-gray-600 text-sm">Aucun véhicule à afficher</div>}
+        {cars.map((car,idx) => {
+          const status   = getCarStatus(car);
+          const subtitle = getCarSubtitle(car);
+          const carBkgs  = bookings.filter(b=>b.carId===car.id&&b.status!=="cancelled");
+          const isLast   = idx===cars.length-1;
+          return (
+            <div key={car.id} className={`flex ${isLast?"":"border-b border-[#1e1e1e]"}`} style={{minHeight:68}}>
+              <div className="flex-shrink-0 border-r border-[#1e1e1e] px-4 py-3 flex items-center justify-between gap-2" style={{width:280}}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm leading-tight truncate">{car.brand} {car.model}</p>
+                  {subtitle&&<p className="text-gray-500 text-[11px] mt-0.5 leading-snug truncate">{subtitle}</p>}
+                </div>
+                <StatusBadge status={status}/>
+              </div>
+              <div className="flex-1 relative flex overflow-hidden">
+                {columns.map(col=>(
+                  <div key={col.key} className={`flex-1 min-w-0 border-r border-[#1e1e1e] last:border-r-0 ${col.isCurrentPeriod?"bg-orange-950/10":""}`}/>
+                ))}
+                {carBkgs.map(booking=>{
+                  const idx2=getBarIndices(booking,columns,scale);
+                  if(!idx2)return null;
+                  const{si,ei}=idx2;
+                  const cfg=getBarConfig(booking.status);
+                  const label=booking.userName||booking.userEmail?.split("@")[0]||"Client";
+                  return(
+                    <div
+                      key={booking.id}
+                      className={`absolute inset-y-0 flex items-center pointer-events-none ${cfg.cls}`}
+                      style={{left:`${(si/colCount)*100}%`,width:`${((ei-si)/colCount)*100}%`}}
+                    >
+                      <button
+                        className={`h-10 w-full rounded-md flex items-center justify-center gap-1.5 ${cfg.text} text-[11px] font-semibold tracking-wider cursor-pointer pointer-events-auto transition-opacity hover:opacity-90 overflow-hidden`}
+                        style={cfg.style}
+                        onMouseEnter={e=>setTooltip({booking,x:e.clientX,y:e.clientY})}
+                        onMouseMove={e=>setTooltip(t=>t?{...t,x:e.clientX,y:e.clientY}:null)}
+                        onMouseLeave={()=>setTooltip(null)}
                       >
-                        <span className="text-white text-[10px] font-bold uppercase truncate">
-                          {booking.userEmail ? booking.userEmail.split('@')[0] : 'CLIENT'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                        {cfg.pending?(
+                          <><span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0 animate-pulse"/><span className="truncate uppercase px-1">{label}</span><span className="flex-shrink-0 ml-1 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/40 rounded text-[9px] font-bold text-amber-300 tracking-widest hidden sm:inline-flex">ATT.</span></>
+                        ):(
+                          <><span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} flex-shrink-0`}/><span className="truncate uppercase px-1">{label}</span></>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      )}
-      
-      {/* Tooltip au survol */}
-      {hoveredBooking && (
-        <div
-          className="fixed z-50 bg-[#1a1a1a] border border-orange-500 rounded-lg shadow-2xl p-4 min-w-[200px] pointer-events-none"
-          style={{
-            left: `${hoverPosition.x + 15}px`,
-            top: `${hoverPosition.y + 15}px`,
-          }}
-        >
-          {(() => {
-            const car = getCarForBooking(hoveredBooking);
-            return (
-              <div className="space-y-2">
-                <div className="font-bold text-orange-500 text-sm">
-                  Détails réservation
-                </div>
-                <div className="text-xs text-white">
-                  <span className="font-semibold">Véhicule:</span> {car ? `${car.brand} ${car.model}` : 'Inconnu'}
-                </div>
-                <div className="text-xs text-white">
-                  <span className="font-semibold">Client:</span> {hoveredBooking.userEmail}
-                </div>
-                <div className="text-xs text-white">
-                  <span className="font-semibold">Du:</span> {new Date(hoveredBooking.startDate).toLocaleDateString('fr-FR')} {hoveredBooking.pickupTime || ''}
-                </div>
-                <div className="text-xs text-white">
-                  <span className="font-semibold">Au:</span> {new Date(hoveredBooking.endDate).toLocaleDateString('fr-FR')} {hoveredBooking.dropoffTime || ''}
-                </div>
-                <div className="text-xs text-white">
-                  <span className="font-semibold">Statut:</span> {hoveredBooking.status}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
+            </div>
+          );
+        })}
+      </div>
+
+      {tooltip&&<BookingTooltip data={tooltip}/>}
     </div>
   );
 };

@@ -84,7 +84,7 @@ const FleetSection = () => {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [showBookingForm, setShowBookingForm] = useState(false);
-  const { getMonthAvailabilities } = useAvailabilities();
+  const { getMonthAvailabilities, blockDatesForBooking } = useAvailabilities();
 
   // Initialiser selectedCar pour le calendrier avec la première voiture disponible
   const [calendarCar, setCalendarCar] = useState<typeof defaultCars[0] | null>(null);
@@ -95,7 +95,6 @@ const FleetSection = () => {
       .then(res => res.json())
       .then(data => {
         if (data && data.length > 0) {
-          // Mapper les données de l'API au format attendu par le frontend
           const mappedCars = data.map((car: any) => {
             const hasValidImage = car.image_url && car.image_url.startsWith('http');
             return {
@@ -109,15 +108,32 @@ const FleetSection = () => {
           });
           setCars(mappedCars);
         } else {
-          // Utiliser les véhicules par défaut si l'API ne retourne pas de données
           setCars(defaultCars);
         }
       })
       .catch(err => {
         console.error('Erreur chargement véhicules:', err);
-        // Utiliser les véhicules par défaut si l'API échoue
         setCars(defaultCars);
       });
+  }, []);
+
+  // Charger les réservations confirmées pour bloquer les dates dans le calendrier client
+  useEffect(() => {
+    fetch(`${API_URL}/bookings`)
+      .then(res => res.json())
+      .then((data: any[]) => {
+        data
+          .filter(b => b.status === 'confirmed' || b.status === 'pending')
+          .forEach(b => {
+            const carId  = b.car_id?.toString();
+            const start  = typeof b.start_date === 'string' ? b.start_date.slice(0,10) : new Date(b.start_date).toISOString().slice(0,10);
+            const end    = typeof b.end_date   === 'string' ? b.end_date.slice(0,10)   : new Date(b.end_date).toISOString().slice(0,10);
+            if (carId && start && end) {
+              blockDatesForBooking(carId, start, end, b.dropoff_time);
+            }
+          });
+      })
+      .catch(err => console.error('Erreur chargement réservations calendrier:', err));
   }, []);
 
   useEffect(() => {
