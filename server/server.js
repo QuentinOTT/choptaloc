@@ -16,6 +16,10 @@ app.use('/api/documents', require('./routes/documents'));
 app.use('/api/cars', require('./routes/cars'));
 
 // Route de santé
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Bienvenue sur l\'API ChopTaLoc' });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'API ChopTaLoc fonctionne' });
 });
