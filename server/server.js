@@ -21,9 +21,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'API ChopTaLoc fonctionne' });
 });
 
-// Servir les fichiers statiques du frontend depuis le dossier dist
-const distPath = path.join(__dirname, '../dist');
-app.use(express.static(distPath));
+// Servir les fichiers statiques du frontend depuis le dossier public
+const publicPath = path.join(__dirname, '../public');
+app.use(express.static(publicPath));
 
 // Route SPA pour le routing React
 app.get('*', (req, res) => {
@@ -33,7 +33,7 @@ app.get('*', (req, res) => {
     return;
   }
   // Sinon, servir index.html pour le SPA
-  res.sendFile(path.join(distPath, 'index.html'));
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 // Gestion des erreurs
@@ -45,6 +45,6 @@ app.use((err, req, res, next) => {
 // Démarrage du serveur
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur ChopTaLoc démarré sur le port ${PORT}`);
-  console.log(`📁 Frontend servi depuis ../dist`);
+  console.log(`📁 Frontend servi depuis ../public`);
   console.log(`🔌 API disponible sur /api/*`);
 });
