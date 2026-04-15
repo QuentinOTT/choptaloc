@@ -29,7 +29,7 @@ services:
     environment:
       DB_HOST: mysql
       DB_USER: u643472395_datachoptaloc
-      DB_PASSWORD: Choptaloc2026$!
+      DB_PASSWORD: Choptaloc2026$$!
       DB_NAME: u643472395_datachoptaloc
       DB_PORT: 3306
       PORT: 3000
