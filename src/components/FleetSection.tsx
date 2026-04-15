@@ -129,7 +129,7 @@ const FleetSection = () => {
   }, []);
 
   // Charger les réservations confirmées pour bloquer les dates dans le calendrier client
-  useEffect(() => {
+  const loadBookings = () => {
     fetch(`${API_URL}/bookings`)
       .then(res => res.json())
       .then((data: any[]) => {
@@ -146,6 +146,10 @@ const FleetSection = () => {
           });
       })
       .catch(err => console.error('Erreur chargement réservations calendrier:', err));
+  };
+
+  useEffect(() => {
+    loadBookings();
   }, []);
 
   useEffect(() => {
@@ -283,9 +287,18 @@ const FleetSection = () => {
 
               {/* Calendrier à droite */}
               <div className="flex-1 glass rounded-2xl p-4 md:p-6 max-w-sm">
-                <div className="flex items-center gap-2 mb-3 md:mb-4">
-                  <Calendar className="w-4 md:w-5 h-4 md:h-5 text-primary" />
-                  <h4 className="text-base md:text-lg font-semibold">Calendrier de disponibilité</h4>
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 md:w-5 h-4 md:h-5 text-primary" />
+                    <h4 className="text-base md:text-lg font-semibold">Calendrier de disponibilité</h4>
+                  </div>
+                  <button
+                    onClick={loadBookings}
+                    className="p-1.5 md:p-2 hover:bg-secondary rounded-lg transition-colors text-xs md:text-sm"
+                    title="Recharger les disponibilités"
+                  >
+                    🔄
+                  </button>
                 </div>
                 
                 {/* Sélecteur de mois */}
