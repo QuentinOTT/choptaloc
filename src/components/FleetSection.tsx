@@ -137,7 +137,10 @@ const FleetSection = () => {
     
     fetch(`${API_URL}/bookings`)
       .then(res => res.json())
-      .then((data: any[]) => {
+      .then((response: any) => {
+        console.log('Réponse API complète:', response);
+        // L'API renvoie { data: [], pagination: {} }
+        const data = response.data || response;
         console.log('Réservations récupérées:', data.length);
         if (!Array.isArray(data)) return;
         const filteredBookings = data.filter(b => b.status === 'confirmed' || b.status === 'pending');
