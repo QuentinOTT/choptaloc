@@ -301,56 +301,65 @@ const ClientDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {user?.role === "admin" ? (
-              <Button onClick={() => navigate("/admin")} variant="ghost" className="gap-2">
-                <Shield className="w-4 h-4" />
-                Panel Admin
-              </Button>
-            ) : (
-              <Button onClick={() => navigate("/")} variant="ghost" className="gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Retour au site
-              </Button>
-            )}
-            <h1 className="text-2xl font-bold">Espace Client</h1>
+      <div className="border-b bg-card sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
+              {user?.role === "admin" ? (
+                <Button onClick={() => navigate("/admin")} variant="ghost" className="gap-2 p-2 md:px-4">
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden md:inline">Panel Admin</span>
+                </Button>
+              ) : (
+                <Button onClick={() => navigate("/")} variant="ghost" className="gap-2 p-2 md:px-4">
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="hidden md:inline">Retour au site</span>
+                </Button>
+              )}
+              <h1 className="text-lg md:text-2xl font-bold">Espace Client</h1>
+            </div>
+            <Button onClick={logout} variant="outline" className="gap-2 p-2 md:px-4 sm:hidden">
+              <LogOut className="w-4 h-4" />
+              <span className="hidden">Déconnexion</span>
+            </Button>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-4">
             <div className="flex items-center gap-2">
               <User className="w-5 h-5" />
               <span className="font-medium">
                 {user.firstName} {user.lastName}
               </span>
             </div>
-            <Button onClick={logout} variant="outline" className="gap-2">
+            <Button onClick={logout} variant="outline" className="gap-2 p-2 md:px-4">
               <LogOut className="w-4 h-4" />
-              Déconnexion
+              <span className="hidden md:inline">Déconnexion</span>
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "profile" | "documents" | "bookings")} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
-            <TabsTrigger value="profile" className="gap-2">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[400px] h-auto p-1">
+            <TabsTrigger value="profile" className="gap-2 flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
               <User className="w-4 h-4" />
-              Profil
+              <span className="hidden md:inline">Profil</span>
+              <span className="md:hidden">Profil</span>
             </TabsTrigger>
-            <TabsTrigger value="documents" className="gap-2 relative">
+            <TabsTrigger value="documents" className="gap-2 relative flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
               <FileText className="w-4 h-4" />
-              Documents
+              <span className="hidden md:inline">Documents</span>
+              <span className="md:hidden">Docs</span>
               {documents.filter(d => d.status === "rejected").length > 0 && (
-                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1.5 py-0.5">
+                <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] md:text-xs px-1 md:px-1.5 py-0.5">
                   {documents.filter(d => d.status === "rejected").length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="bookings" className="gap-2">
+            <TabsTrigger value="bookings" className="gap-2 flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
               <Calendar className="w-4 h-4" />
-              Mes réservations
+              <span className="hidden md:inline">Réservations</span>
+              <span className="md:hidden">Réserv.</span>
             </TabsTrigger>
           </TabsList>
 
