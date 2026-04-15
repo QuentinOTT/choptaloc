@@ -73,10 +73,35 @@ const ClientDashboard = () => {
 
     try {
       // Convertir le fichier en base64 pour le stockage
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const base64 = event.target?.result as string;
-        
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result as string;
+          if (result) {
+            resolve(result);
+          } else {
+            reject(new Error('Erreur lecture fichier'));
+          }
+        };
+        reader.onerror = () => reject(new Error('Erreur lecture fichier'));
+        reader.readAsDataURL(file);
+      });
+
+      // Envoyer à l'API
+      const response = await fetch(`${API_URL}/documents`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user?.id,
+          type: docType,
+          fileData: base64,
+          fileName: file.name,
+        }),
+      });
+
+      if (response.ok) {
         const newDocument: Document = {
           id: `doc-${Date.now()}`,
           type: docType as any,
@@ -86,35 +111,16 @@ const ClientDashboard = () => {
           isVerified: false,
           status: "pending",
         };
-
-        // Envoyer à l'API
-        try {
-          const response = await fetch(`${API_URL}/documents`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: user?.id,
-              type: docType,
-              fileData: base64,
-              fileName: file.name,
-            }),
-          });
-
-          if (response.ok) {
-            setDocuments([...documents, newDocument]);
-            alert("Document uploadé avec succès !");
-          } else {
-            throw new Error('Erreur API');
-          }
-        } catch (apiError) {
-          console.error('Erreur API:', apiError);
-          alert("Erreur lors de l'upload du document");
-        }
-      };
-      reader.readAsDataURL(file);
+        
+        setDocuments([...documents, newDocument]);
+        alert("Document uploadé avec succès !");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Erreur API:', errorData);
+        alert(`Erreur lors de l'upload: ${errorData.error || 'Erreur serveur'}`);
+      }
     } catch (error) {
+      console.error('Erreur upload:', error);
       alert("Erreur lors de l'upload du document");
     } finally {
       setUploading(false);

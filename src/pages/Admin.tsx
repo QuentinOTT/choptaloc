@@ -1050,7 +1050,7 @@ const Admin = () => {
           <TabsContent value="clients" className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Gestion des clients</h2>
-              <Badge variant="secondary">{users.filter(u => u.role === 'user').length} client(s)</Badge>
+              <Badge variant="secondary">{users.length} client(s)</Badge>
             </div>
 
             {/* Barre de recherche */}
@@ -1064,7 +1064,7 @@ const Admin = () => {
               <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             </div>
 
-            {users.filter(u => u.role === 'user').length === 0 ? (
+            {users.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-muted-foreground">Aucun client pour le moment</p>
@@ -1073,7 +1073,6 @@ const Admin = () => {
             ) : (
               <div className="space-y-3">
                 {users
-                  .filter(u => u.role === 'user')
                   .filter(user => 
                     searchTerm === "" || 
                     user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
