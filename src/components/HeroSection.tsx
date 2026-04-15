@@ -1,9 +1,12 @@
 import logo from "@/assets/logoagence.png";
 import heroBg from "@/assets/hero-bg.jpg";
 import { useNavigate } from "react-router-dom";
+import { useClientAuth } from "@/hooks/use-client-auth";
+import { User } from "lucide-react";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const { user } = useClientAuth();
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden overflow-x-hidden">
@@ -36,12 +39,26 @@ const HeroSection = () => {
           </button>
         </div>
         <div className="flex items-center gap-2 md:gap-3">
-          <button
-            onClick={() => navigate("/client-auth")}
-            className="hidden md:inline-flex px-4 md:px-6 py-2 md:py-2.5 rounded-lg bg-secondary text-secondary-foreground font-semibold text-xs md:text-sm hover:brightness-110 transition-all"
-          >
-            Connexion
-          </button>
+          {user ? (
+            <button
+              onClick={() => navigate("/client-dashboard")}
+              className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-lg bg-secondary text-secondary-foreground font-semibold text-xs md:text-sm hover:brightness-110 transition-all"
+            >
+              <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                <User className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+              </div>
+              <span className="hidden md:inline">
+                {user.firstName} {user.lastName?.[0] || ''}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/client-auth")}
+              className="hidden md:inline-flex px-4 md:px-6 py-2 md:py-2.5 rounded-lg bg-secondary text-secondary-foreground font-semibold text-xs md:text-sm hover:brightness-110 transition-all"
+            >
+              Connexion
+            </button>
+          )}
           <a
             href="#contact"
             className="inline-flex md:hidden px-3 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:brightness-110 transition-all"

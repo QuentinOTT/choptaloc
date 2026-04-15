@@ -1047,7 +1047,7 @@ const Admin = () => {
           </TabsContent>
 
           {/* Tab Clients */}
-          <TabsContent value="clients" className="space-y-4">
+          <TabsContent value="users" className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Gestion des clients</h2>
               <Badge variant="secondary">{users.length} client(s)</Badge>
