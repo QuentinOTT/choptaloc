@@ -18,7 +18,7 @@ RUN npm run build
 # Étape 2 : Build du backend avec Node.js
 FROM node:18-alpine AS backend-builder
 
-WORKDIR /app/server
+WORKDIR /app
 
 # Copier les fichiers package du backend
 COPY server/package*.json ./
@@ -35,11 +35,11 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copier les dépendances du backend
-COPY --from=backend-builder /app/server/node_modules ./node_modules
-COPY --from=backend-builder /app/server/package*.json ./
+COPY --from=backend-builder /app/node_modules ./node_modules
+COPY --from=backend-builder /app/package*.json ./
 
 # Copier le code source du backend
-COPY --from=backend-builder /app/server ./
+COPY --from=backend-builder /app ./
 
 # Copier le build du frontend dans le dossier public
 COPY --from=frontend-builder /app/frontend/dist ./public
