@@ -150,7 +150,7 @@ CREATE TABLE user_documents (
     user_id INT NOT NULL,
     document_type ENUM('id_card_front', 'id_card_back', 'license_front', 'license_back', 'proof_of_address') NOT NULL,
     file_name VARCHAR(255) NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
+    file_path LONGTEXT NOT NULL,
     file_size BIGINT,
     mime_type VARCHAR(100),
     file_hash VARCHAR(255), -- Pour vérifier l'intégrité
