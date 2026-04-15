@@ -85,7 +85,7 @@ const FleetSection = () => {
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showUnavailableCars, setShowUnavailableCars] = useState(false);
-  const { getMonthAvailabilities, blockDatesForBooking } = useAvailabilities();
+  const { getMonthAvailabilities, blockDatesForBooking, setAvailabilities } = useAvailabilities();
 
   // Initialiser selectedCar pour le calendrier avec la première voiture disponible
   const [calendarCar, setCalendarCar] = useState<typeof defaultCars[0] | null>(null);
@@ -130,6 +130,9 @@ const FleetSection = () => {
 
   // Charger les réservations confirmées pour bloquer les dates dans le calendrier client
   const loadBookings = () => {
+    // Réinitialiser les disponibilités
+    setAvailabilities([]);
+    
     fetch(`${API_URL}/bookings`)
       .then(res => res.json())
       .then((data: any[]) => {
