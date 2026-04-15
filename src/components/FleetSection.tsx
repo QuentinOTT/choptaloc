@@ -84,6 +84,7 @@ const FleetSection = () => {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [showBookingForm, setShowBookingForm] = useState(false);
+  const [showUnavailableCars, setShowUnavailableCars] = useState(false);
   const { getMonthAvailabilities, blockDatesForBooking } = useAvailabilities();
 
   // Initialiser selectedCar pour le calendrier avec la première voiture disponible
@@ -156,6 +157,7 @@ const FleetSection = () => {
 
   const availableCars = cars.filter(car => car.available);
   const upcomingCars = cars.filter(car => !car.available);
+  const displayedCars = showUnavailableCars ? cars : availableCars;
 
   return (
     <section id="fleet" className="py-16 md:py-24 px-4 md:px-16">
@@ -167,19 +169,41 @@ const FleetSection = () => {
           </h2>
         </div>
 
-        {/* Section Véhicules Disponibles */}
-        {availableCars.length > 0 && (
+        {/* Contrôle d'affichage des véhicules */}
+        <div className="flex items-center justify-center mb-8 md:mb-12">
+          <div className="flex items-center gap-3 bg-secondary/30 rounded-lg p-3 md:p-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showUnavailableCars}
+                onChange={(e) => setShowUnavailableCars(e.target.checked)}
+                className="w-4 h-4 md:w-5 md:h-5 text-primary rounded focus:ring-primary"
+              />
+              <span className="text-sm md:text-base font-medium">
+                Afficher les véhicules indisponibles
+              </span>
+            </label>
+            <div className="text-xs md:text-sm text-muted-foreground">
+              ({showUnavailableCars ? cars.length : availableCars.length} véhicule{showUnavailableCars ? cars.length > 1 ? 's' : '' : availableCars.length > 1 ? 's' : ''})
+            </div>
+          </div>
+        </div>
+
+        {/* Section Véhicules */}
+        {displayedCars.length > 0 && (
           <div className="mb-16 md:mb-20">
             <div className="flex items-center gap-3 mb-6 md:mb-8">
               <div className="w-8 md:w-12 h-1 bg-primary rounded-full" />
-              <h3 className="text-lg md:text-2xl font-bold">Véhicules Disponibles Maintenant</h3>
+              <h3 className="text-lg md:text-2xl font-bold">
+                {showUnavailableCars ? "Tous nos Véhicules" : "Véhicules Disponibles Maintenant"}
+              </h3>
               <div className="flex-1 h-px bg-border" />
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
               {/* Carte véhicule */}
               <div className="flex-1 max-w-2xl">
-                {availableCars.map((car, index) => (
+                {displayedCars.map((car, index) => (
                   <div
                     key={`${car.brand}-${car.model}`}
                     className="group relative glass rounded-2xl overflow-hidden hover-glow-orange cursor-pointer"
@@ -229,19 +253,28 @@ const FleetSection = () => {
                         >
                           Détails
                         </button>
-                        <button
-                          onClick={() => {
-                            setCalendarCar(car);
-                            setShowBookingForm(true);
-                          }}
-                          className={`flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm ${
-                            hoveredIndex === index
-                              ? "bg-primary text-primary-foreground glow-orange"
-                              : "bg-secondary text-secondary-foreground"
-                          }`}
-                        >
-                          Réserver
-                        </button>
+                        {car.available ? (
+                          <button
+                            onClick={() => {
+                              setCalendarCar(car);
+                              setShowBookingForm(true);
+                            }}
+                            className={`flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm ${
+                              hoveredIndex === index
+                                ? "bg-primary text-primary-foreground glow-orange"
+                                : "bg-secondary text-secondary-foreground"
+                            }`}
+                          >
+                            Réserver
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm bg-muted text-muted-foreground cursor-not-allowed"
+                          >
+                            Indisponible
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -438,7 +471,7 @@ const FleetSection = () => {
         )}
 
         {/* Section Prochains Véhicules */}
-        {upcomingCars.length > 0 && (
+        {upcomingCars.length > 0 && !showUnavailableCars && (
           <div>
             <div className="flex items-center gap-3 mb-6 md:mb-8">
               <div className="w-8 md:w-12 h-1 bg-primary rounded-full" />

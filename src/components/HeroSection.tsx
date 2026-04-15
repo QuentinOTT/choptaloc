@@ -19,9 +19,15 @@ const HeroSection = () => {
       {/* Nav */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 md:px-16 py-4 md:py-6">
         <button 
-          onClick={() => navigate("/admin")}
+          onClick={() => {
+            if (user?.role === "admin") {
+              navigate("/admin");
+            } else {
+              navigate("/");
+            }
+          }}
           className="cursor-pointer hover:opacity-80 transition-opacity"
-          title="Administration"
+          title={user?.role === "admin" ? "Administration" : "ChopTaLoc"}
         >
           <img src={logo} alt="ChopTaLoc" className="h-10 md:h-14 lg:h-20 rounded-lg" />
         </button>
