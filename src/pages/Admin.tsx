@@ -1637,18 +1637,21 @@ const Admin = () => {
       {/* Modal pour afficher le calendrier de disponibilité */}
       {showCalendar && selectedCarForCalendar && (
         <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold">
                 Calendrier de disponibilité - {selectedCarForCalendar.brand} {selectedCarForCalendar.model}
               </DialogTitle>
               <DialogDescription>
-                Visualisez les disponibilités de ce véhicule pour le mois en cours
+                Visualisez les disponibilités de ce véhicule
               </DialogDescription>
             </DialogHeader>
 
             <div className="mt-6">
-              <AvailabilityCalendar car={selectedCarForCalendar} bookings={bookings} />
+              <GlobalCalendar 
+                cars={[selectedCarForCalendar]} 
+                bookings={bookings.filter(b => b.carId === selectedCarForCalendar.id)} 
+              />
             </div>
 
             <div className="flex justify-end mt-6 pt-4 border-t">
