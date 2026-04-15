@@ -85,6 +85,7 @@ const FleetSection = () => {
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showUnavailableCars, setShowUnavailableCars] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const { getMonthAvailabilities, blockDatesForBooking, setAvailabilities } = useAvailabilities();
 
   // Initialiser selectedCar pour le calendrier avec la première voiture disponible
@@ -151,6 +152,9 @@ const FleetSection = () => {
             blockDatesForBooking(carId, start, end, b.dropoff_time);
           }
         });
+        
+        // Forcer le re-rendu du calendrier
+        setForceUpdate(prev => prev + 1);
       })
       .catch(err => console.error('Erreur chargement réservations calendrier:', err));
   };
@@ -354,6 +358,8 @@ const FleetSection = () => {
                     const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Ajuster pour commencer lundi
                     const daysInMonth = lastDay.getDate();
                     const monthAvailabilities = calendarCar ? getMonthAvailabilities(calendarCar.id, currentYear, currentMonth) : new Map();
+// Utiliser forceUpdate pour forcer le recalcul quand les disponibilités changent
+const _ = forceUpdate;
                     
                     const days = [];
                     // Jours du mois précédent
