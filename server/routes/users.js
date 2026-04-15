@@ -118,4 +118,59 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Réinitialiser le mot de passe d'un utilisateur
+router.post('/:id/reset-password', async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    
+    if (!newPassword) {
+      return res.status(400).json({ error: 'Nouveau mot de passe requis' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      'UPDATE users SET password_hash = ? WHERE id = ?',
+      [hashedPassword, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur réinitialisation mot de passe:', error);
+    res.status(500).json({ error: 'Erreur lors de la réinitialisation du mot de passe' });
+  }
+});
+
+// Changer le rôle d'un utilisateur
+router.put('/:id/role', async (req, res) => {
+  try {
+    const { role } = req.body;
+
+    if (!role || !['user', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'Rôle invalide' });
+    }
+
+    await pool.query(
+      'UPDATE users SET role = ? WHERE id = ?',
+      [role, req.params.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur changement rôle:', error);
+    res.status(500).json({ error: 'Erreur lors du changement de rôle' });
+  }
+});
+
+// Supprimer un utilisateur
+router.delete('/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM users WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur suppression utilisateur:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de l\'utilisateur' });
+  }
+});
+
 module.exports = router;

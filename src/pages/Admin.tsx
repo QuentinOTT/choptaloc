@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, ChevronUp, ChevronDown, User, FileText } from "lucide-react";
+import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, ChevronUp, ChevronDown, User, FileText, Shield, Key } from "lucide-react";
 
 const documentLabels: Record<string, string> = {
   id_card_front: "Carte d'identité - Recto",
@@ -95,6 +95,7 @@ const Admin = () => {
   const [bookingTab, setBookingTab] = useState<"new" | "modifications">("new");
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedCarForCalendar, setSelectedCarForCalendar] = useState<Car | null>(null);
+  const [contactMessages, setContactMessages] = useState<any[]>([]);
 
   // Charger les données depuis l'API
   useEffect(() => {
@@ -140,6 +141,15 @@ const Admin = () => {
         .catch(err => {
           console.error('Erreur chargement documents:', err);
           setUserDocuments([]);
+        });
+
+      // Charger les messages de contact
+      fetch(`${API_URL}/contact`)
+        .then(res => res.json())
+        .then(data => setContactMessages(Array.isArray(data) ? data : []))
+        .catch(err => {
+          console.error('Erreur chargement messages:', err);
+          setContactMessages([]);
         });
     }
   }, [isAuthenticated]);
@@ -366,7 +376,7 @@ const Admin = () => {
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-[700px] h-auto p-1">
+          <TabsList className="grid w-full grid-cols-6 lg:w-[850px] h-auto p-1">
             <TabsTrigger value="bookings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Calendar className="w-4 h-4" />
               <span className="hidden md:inline">Réservations</span>
@@ -391,6 +401,16 @@ const Admin = () => {
               <Calendar className="w-4 h-4" />
               <span className="hidden md:inline">Calendrier Global</span>
               <span className="md:hidden">Calendrier</span>
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
+              <FileText className="w-4 h-4" />
+              <span className="hidden md:inline">Messagerie</span>
+              <span className="md:hidden">Msg</span>
+              {contactMessages.filter(m => !m.is_read).length > 0 && (
+                <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] md:text-xs px-1 md:px-1.5 py-0.5">
+                  {contactMessages.filter(m => !m.is_read).length}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Settings className="w-4 h-4" />
@@ -1142,6 +1162,99 @@ const Admin = () => {
                               </div>
                             </div>
 
+                            {/* Actions administrateur */}
+                            <div>
+                              <h4 className="font-medium mb-3 flex items-center gap-2">
+                                <Settings className="w-4 h-4" />
+                                Actions administrateur
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    if (confirm(`Réinitialiser le mot de passe de ${user.firstName} ${user.lastName} ?`)) {
+                                      try {
+                                        const response = await fetch(`${API_URL}/users/${user.id}/reset-password`, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ newPassword: 'Choptaloc2026' })
+                                        });
+                                        if (response.ok) {
+                                          alert("Mot de passe réinitialisé avec succès !");
+                                        } else {
+                                          alert("Erreur lors de la réinitialisation");
+                                        }
+                                      } catch (error) {
+                                        console.error('Erreur API:', error);
+                                        alert("Erreur lors de la réinitialisation");
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Key className="w-4 h-4" />
+                                  Réinitialiser mot de passe
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant={user.role === "admin" ? "destructive" : "default"}
+                                  onClick={async () => {
+                                    const newRole = user.role === "admin" ? "user" : "admin";
+                                    if (confirm(`Changer le rôle de ${user.firstName} ${user.lastName} de ${user.role} à ${newRole} ?`)) {
+                                      try {
+                                        const response = await fetch(`${API_URL}/users/${user.id}/role`, {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ role: newRole })
+                                        });
+                                        if (response.ok) {
+                                          const updatedUsers = users.map(u => 
+                                            u.id === user.id ? { ...u, role: newRole } : u
+                                          );
+                                          setUsers(updatedUsers);
+                                          alert(`Rôle changé en ${newRole} avec succès !`);
+                                        } else {
+                                          alert("Erreur lors du changement de rôle");
+                                        }
+                                      } catch (error) {
+                                        console.error('Erreur API:', error);
+                                        alert("Erreur lors du changement de rôle");
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Shield className="w-4 h-4" />
+                                  {user.role === "admin" ? "Rétrograder" : "Promouvoir"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={async () => {
+                                    if (confirm(`Supprimer le compte de ${user.firstName} ${user.lastName} ? Cette action est irréversible !`)) {
+                                      try {
+                                        const response = await fetch(`${API_URL}/users/${user.id}`, {
+                                          method: 'DELETE'
+                                        });
+                                        if (response.ok) {
+                                          const updatedUsers = users.filter(u => u.id !== user.id);
+                                          setUsers(updatedUsers);
+                                          alert("Compte supprimé avec succès !");
+                                        } else {
+                                          alert("Erreur lors de la suppression");
+                                        }
+                                      } catch (error) {
+                                        console.error('Erreur API:', error);
+                                        alert("Erreur lors de la suppression");
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Supprimer
+                                </Button>
+                              </div>
+                            </div>
+
                             {/* Documents */}
                             <div>
                               <h4 className="font-medium mb-3 flex items-center gap-2">
@@ -1471,6 +1584,91 @@ const Admin = () => {
                 <GlobalCalendar cars={cars} bookings={bookings} />
               </div>
             </div>
+          </TabsContent>
+
+          {/* Tab Messagerie */}
+          <TabsContent value="messages" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Messagerie</h2>
+              <Badge variant="secondary">{contactMessages.length} message(s)</Badge>
+            </div>
+
+            {contactMessages.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">Aucun message pour le moment</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {contactMessages.map((message) => (
+                  <Card key={message.id} className={`${!message.is_read ? 'border-orange-500 bg-orange-50/5' : ''}`}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base">{message.name}</CardTitle>
+                            <CardDescription className="text-xs">{message.email}</CardDescription>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!message.is_read && (
+                            <Badge variant="default" className="text-xs">Non lu</Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {new Date(message.created_at).toLocaleDateString("fr-FR")}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(`${API_URL}/contact/${message.id}/read`, {
+                                  method: 'PUT'
+                                });
+                                if (response.ok) {
+                                  const updatedMessages = contactMessages.map(m => 
+                                    m.id === message.id ? { ...m, is_read: true } : m
+                                  );
+                                  setContactMessages(updatedMessages);
+                                }
+                              } catch (error) {
+                                console.error('Erreur:', error);
+                              }
+                            }}
+                          >
+                            Marquer comme lu
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {message.phone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">Téléphone:</span>
+                            <span>{message.phone}</span>
+                          </div>
+                        )}
+                        {message.subject && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">Sujet:</span>
+                            <span className="font-medium">{message.subject}</span>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-muted-foreground text-sm mb-1">Message:</p>
+                          <p className="text-sm bg-secondary/30 p-3 rounded-lg">{message.message}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Tab Statistiques */}

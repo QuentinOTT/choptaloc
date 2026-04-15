@@ -15,6 +15,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/cars', require('./routes/cars'));
+app.use('/api/contact', require('./routes/contact'));
 
 // Route de santé
 app.get('/api/health', (req, res) => {

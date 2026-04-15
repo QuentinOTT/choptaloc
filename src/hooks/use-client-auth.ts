@@ -42,7 +42,7 @@ export const useClientAuth = () => {
     firstName: string,
     lastName: string,
     phone?: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; user?: User }> => {
     try {
       const response = await fetch(`${API_URL}/users/register`, {
         method: 'POST',
@@ -71,7 +71,7 @@ export const useClientAuth = () => {
     email: string,
     password: string,
     rememberMe: boolean = false
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; user?: User }> => {
     try {
       const response = await fetch(`${API_URL}/users/login`, {
         method: 'POST',
@@ -98,7 +98,7 @@ export const useClientAuth = () => {
         localStorage.removeItem("rememberedEmail");
       }
 
-      return { success: true };
+      return { success: true, user: data.user };
     } catch (error) {
       console.error("Erreur lors de la connexion:", error);
       return { success: false, error: "Erreur lors de la connexion" };

@@ -60,13 +60,13 @@ const HeroSection = () => {
             </button>
           )}
           <a
-            href="#contact"
+            href="#fleet"
             className="inline-flex md:hidden px-3 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:brightness-110 transition-all"
           >
             Réserver
           </a>
           <a
-            href="#contact"
+            href="#fleet"
             className="hidden md:inline-flex px-4 md:px-6 py-2 md:py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold text-xs md:text-sm hover:brightness-110 transition-all"
           >
             Réserver
@@ -92,7 +92,7 @@ const HeroSection = () => {
               href="#fleet"
               className="px-6 md:px-10 py-3 md:py-4 rounded-lg bg-primary text-primary-foreground font-bold text-sm md:text-lg glow-orange hover:brightness-110 transition-all"
             >
-              Découvrir la Flotte
+              Réserver maintenant
             </a>
             <a
               href="#contact"

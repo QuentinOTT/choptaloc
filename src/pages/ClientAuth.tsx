@@ -25,7 +25,12 @@ const ClientAuth = () => {
     if (isLogin) {
       const result = await login(email, password, rememberMe);
       if (result.success) {
-        navigate("/client-dashboard");
+        // Rediriger selon le rôle de l'utilisateur
+        if (result.user?.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/client-dashboard");
+        }
       } else {
         setError(result.error || "Erreur de connexion");
       }
@@ -36,7 +41,12 @@ const ClientAuth = () => {
       }
       const result = await register(email, password, firstName, lastName, phone);
       if (result.success) {
-        navigate("/client-dashboard");
+        // Rediriger selon le rôle de l'utilisateur
+        if (result.user?.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/client-dashboard");
+        }
       } else {
         setError(result.error || "Erreur d'inscription");
       }
