@@ -96,6 +96,26 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     if (!formData.startDate) newErrors.startDate = "La date de début est requise";
     if (!formData.endDate) newErrors.endDate = "La date de fin est requise";
 
+    // Validation des dates : ne pas réserver pour une date passée
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (formData.startDate) {
+      const startDate = new Date(formData.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      if (startDate < today) {
+        newErrors.startDate = "La date de début doit être au moins aujourd'hui";
+      }
+    }
+
+    if (formData.startDate && formData.endDate) {
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      if (endDate < startDate) {
+        newErrors.endDate = "La date de fin doit être après la date de début";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

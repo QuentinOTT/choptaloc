@@ -346,6 +346,13 @@ const FleetSection = () => {
                       const isAvailable = monthAvailabilities.get(dateStr) ?? true;
                       const isSelected = selectedDates.includes(dateStr);
                       
+                      // Vérifier si la date est antérieure à aujourd'hui
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const currentDate = new Date(dateStr);
+                      currentDate.setHours(0, 0, 0, 0);
+                      const isPastDate = currentDate < today;
+                      
                       // Identifier le début et la fin de la sélection
                       const sortedDates = [...selectedDates].sort();
                       const isStart = isSelected && sortedDates[0] === dateStr;
@@ -355,7 +362,7 @@ const FleetSection = () => {
                         <div
                           key={day}
                           onClick={() => {
-                            if (!isAvailable || !calendarCar) return;
+                            if (!isAvailable || !calendarCar || isPastDate) return;
                             
                             // Si c'est la première sélection
                             if (selectedDates.length === 0) {
@@ -425,7 +432,9 @@ const FleetSection = () => {
                             }
                           }}
                           className={`w-7 md:w-9 h-7 md:h-9 flex items-center justify-center rounded-full text-[10px] md:text-xs font-medium cursor-pointer transition-colors ${
-                            isSelected
+                            isPastDate
+                              ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-40'
+                              : isSelected
                               ? isStart || isEnd
                                 ? 'bg-primary text-white ring-2 ring-primary ring-offset-2 md:ring-offset-4'
                                 : 'bg-primary text-white ring-2 ring-primary ring-offset-1 md:ring-offset-2'
