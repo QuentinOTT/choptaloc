@@ -348,47 +348,50 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header Admin */}
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button onClick={() => navigate("/")} variant="ghost" className="gap-2">
+      <div className="border-b bg-card sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Button onClick={() => navigate("/")} variant="ghost" className="gap-2 p-2 md:px-4">
               <ArrowLeft className="w-4 h-4" />
-              Retour au site
+              <span className="hidden md:inline">Retour au site</span>
             </Button>
-            <h1 className="text-2xl font-bold">Administration ChopTaLoc</h1>
+            <h1 className="text-lg md:text-2xl font-bold">Administration</h1>
           </div>
-          <Button onClick={logout} variant="outline" className="gap-2">
+          <Button onClick={logout} variant="outline" className="gap-2 p-2 md:px-4">
             <LogOut className="w-4 h-4" />
-            Déconnexion
+            <span className="hidden md:inline">Déconnexion</span>
           </Button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-[700px]">
-            <TabsTrigger value="bookings" className="gap-2 relative">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-[700px] h-auto p-1">
+            <TabsTrigger value="bookings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
               <Calendar className="w-4 h-4" />
-              Réservations
+              <span className="hidden md:inline">Réservations</span>
+              <span className="md:hidden">Réserv.</span>
               {(bookings.filter(b => b.status === "pending").length + modificationRequests.filter(m => m.status === "pending").length) > 0 && (
-                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1.5 py-0.5">
+                <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] md:text-xs px-1 md:px-1.5 py-0.5">
                   {bookings.filter(b => b.status === "pending").length + modificationRequests.filter(m => m.status === "pending").length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="cars" className="gap-2">
+            <TabsTrigger value="cars" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
               <Car className="w-4 h-4" />
-              Véhicules
+              <span className="hidden md:inline">Véhicules</span>
+              <span className="md:hidden">Véhic.</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2">
+            <TabsTrigger value="users" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
               <Users className="w-4 h-4" />
-              Utilisateurs
+              <span className="hidden md:inline">Utilisateurs</span>
+              <span className="md:hidden">Users</span>
             </TabsTrigger>
-            <TabsTrigger value="global-calendar" className="gap-2">
+            <TabsTrigger value="global-calendar" className="gap-2 relative hidden md:flex flex-row items-center py-2 text-sm">
               <Calendar className="w-4 h-4" />
               Calendrier Global
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-2">
+            <TabsTrigger value="stats" className="gap-2 relative hidden md:flex flex-row items-center py-2 text-sm">
               <Settings className="w-4 h-4" />
               Statistiques
             </TabsTrigger>
@@ -396,13 +399,14 @@ const Admin = () => {
 
           {/* Tab Réservations */}
           <TabsContent value="bookings" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Gestion des réservations</h2>
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary">{bookings.length} réservation(s)</Badge>
-                <Button onClick={() => setShowAddBooking(!showAddBooking)} className="gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h2 className="text-lg md:text-xl font-semibold">Gestion des réservations</h2>
+              <div className="flex items-center gap-2 md:gap-3">
+                <Badge variant="secondary" className="text-xs md:text-sm">{bookings.length} réservation(s)</Badge>
+                <Button onClick={() => setShowAddBooking(!showAddBooking)} className="gap-2 text-xs md:text-sm py-2 md:py-2">
                   {showAddBooking ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
-                  {showAddBooking ? 'Fermer' : 'Ajouter une réservation'}
+                  <span className="hidden md:inline">{showAddBooking ? 'Fermer' : 'Ajouter une réservation'}</span>
+                  <span className="md:hidden">{showAddBooking ? 'Fermer' : 'Ajouter'}</span>
                 </Button>
               </div>
             </div>
@@ -594,94 +598,105 @@ const Admin = () => {
               <div className="space-y-4">
                 {bookings.map((booking) => (
                   <Card key={booking.id}>
-                    <CardContent className="p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-3">
-                            <h3 className="font-semibold text-lg">
-                              {booking.carBrand} {booking.carModel}
-                            </h3>
-                            <Badge className={getStatusColor(booking.status)}>
-                              {getStatusLabel(booking.status)}
-                            </Badge>
+                    <CardContent className="p-4 md:p-6">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-semibold text-base md:text-lg">
+                                {booking.carBrand} {booking.carModel}
+                              </h3>
+                              <Badge className={getStatusColor(booking.status)}>
+                                {getStatusLabel(booking.status)}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs md:text-sm">
+                              <div>
+                                <p className="text-muted-foreground">Client</p>
+                                <p className="font-medium">{booking.userName}</p>
+                                <p className="text-muted-foreground text-xs">{booking.userEmail}</p>
+                                <p className="text-muted-foreground text-xs">{booking.userPhone}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Dates</p>
+                                <p className="font-medium">
+                                  {new Date(booking.startDate).toLocaleDateString('fr-FR')} - {new Date(booking.endDate).toLocaleDateString('fr-FR')}
+                                </p>
+                                <p className="text-muted-foreground">Prix: {booking.totalPrice}€</p>
+                              </div>
+                            </div>
+                            {booking.notes && (
+                              <div className="mt-2">
+                                <p className="text-muted-foreground text-xs">Notes:</p>
+                                <p className="text-xs">{booking.notes}</p>
+                              </div>
+                            )}
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Client</p>
-                              <p className="font-medium">{booking.userName}</p>
-                              <p className="text-muted-foreground">{booking.userEmail}</p>
-                              <p className="text-muted-foreground">{booking.userPhone}</p>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="mt-2 gap-2"
-                                onClick={() => {
-                                  const user = users.find((u: any) => u.email === booking.userEmail);
-                                  if (user) {
-                                    alert(`Profil du client:\n\nNom: ${user.first_name} ${user.last_name}\nEmail: ${user.email}\nTéléphone: ${user.phone}\nVérifié: ${user.email_verified ? 'Oui' : 'Non'}`);
-                                  }
-                                }}
-                              >
-                                <User className="w-4 h-4" />
-                                Voir le profil
-                              </Button>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Dates</p>
-                              <p className="font-medium">
-                                {new Date(booking.startDate).toLocaleDateString('fr-FR')} - {new Date(booking.endDate).toLocaleDateString('fr-FR')}
-                              </p>
-                              <p className="text-muted-foreground">Prix: {booking.totalPrice}€</p>
-                            </div>
-                          </div>
-                          {booking.notes && (
-                            <div>
-                              <p className="text-muted-foreground text-sm">Notes:</p>
-                              <p className="text-sm">{booking.notes}</p>
-                            </div>
-                          )}
                         </div>
-                        <div className="flex flex-col gap-2">
-                          {booking.status === "pending" && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => updateBookingStatus(booking.id, "confirmed")}
-                                className="gap-2"
-                              >
-                                <Check className="w-4 h-4" />
-                                Confirmer
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => updateBookingStatus(booking.id, "cancelled")}
-                                className="gap-2"
-                              >
-                                <XCircle className="w-4 h-4" />
-                                Refuser
-                              </Button>
-                            </>
-                          )}
-                          {booking.status === "confirmed" && (
-                            <Button
-                              size="sm"
-                              onClick={() => updateBookingStatus(booking.id, "completed")}
-                              className="gap-2"
-                            >
-                              <Check className="w-4 h-4" />
-                              Marquer terminée
-                            </Button>
-                          )}
+                        
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => deleteBooking(booking.id)}
-                            className="gap-2"
+                            onClick={() => {
+                              const user = users.find((u: any) => u.email === booking.userEmail);
+                              if (user) {
+                                alert(`Profil du client:\n\nNom: ${user.first_name} ${user.last_name}\nEmail: ${user.email}\nTéléphone: ${user.phone}\nVérifié: ${user.email_verified ? 'Oui' : 'Non'}`);
+                              }
+                            }}
+                            className="gap-2 text-xs md:text-sm w-full sm:w-auto"
                           >
-                            <Trash2 className="w-4 h-4" />
-                            Supprimer
+                            <User className="w-4 h-4" />
+                            <span className="hidden md:inline">Voir le profil</span>
+                            <span className="md:hidden">Profil</span>
                           </Button>
+                          
+                          <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
+                            {booking.status === "pending" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => updateBookingStatus(booking.id, "confirmed")}
+                                  className="gap-2 text-xs md:text-sm flex-1 sm:flex-none"
+                                >
+                                  <Check className="w-4 h-4" />
+                                  <span className="hidden md:inline">Confirmer</span>
+                                  <span className="md:hidden">Confirmer</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => updateBookingStatus(booking.id, "cancelled")}
+                                  className="gap-2 text-xs md:text-sm flex-1 sm:flex-none"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                  <span className="hidden md:inline">Refuser</span>
+                                  <span className="md:hidden">Refuser</span>
+                                </Button>
+                              </>
+                            )}
+                            {booking.status === "confirmed" && (
+                              <Button
+                                size="sm"
+                                onClick={() => updateBookingStatus(booking.id, "completed")}
+                                className="gap-2 text-xs md:text-sm flex-1 sm:flex-none"
+                              >
+                                <Check className="w-4 h-4" />
+                                <span className="hidden md:inline">Marquer terminée</span>
+                                <span className="md:hidden">Terminer</span>
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteBooking(booking.id)}
+                              className="gap-2 text-xs md:text-sm flex-1 sm:flex-none"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span className="hidden md:inline">Supprimer</span>
+                              <span className="md:hidden">Supprimer</span>
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -690,16 +705,17 @@ const Admin = () => {
                 
                 {/* Pagination Controls */}
                 {bookingPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 pt-4 border-t">
+                    <p className="text-xs md:text-sm text-muted-foreground text-center sm:text-left">
                       Page {bookingPage} sur {bookingPages} (Total: {bookingTotal})
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 justify-center sm:justify-start">
                       <Button
                         variant="outline"
                         size="sm"
                         disabled={bookingPage === 1}
                         onClick={() => fetchBookings(bookingPage - 1)}
+                        className="text-xs md:text-sm"
                       >
                         Précédent
                       </Button>
@@ -708,6 +724,7 @@ const Admin = () => {
                         size="sm"
                         disabled={bookingPage === bookingPages}
                         onClick={() => fetchBookings(bookingPage + 1)}
+                        className="text-xs md:text-sm"
                       >
                         Suivant
                       </Button>
@@ -716,9 +733,9 @@ const Admin = () => {
                 )}
               </div>
             )}
-              </TabsContent>
+            </TabsContent>
 
-              <TabsContent value="modifications" className="space-y-4">
+            <TabsContent value="modifications" className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">Demandes de modification</h3>
                   <Badge variant="secondary">{modificationRequests.length} demande(s)</Badge>
@@ -848,13 +865,14 @@ const Admin = () => {
 
           {/* Tab Véhicules */}
           <TabsContent value="cars" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Gestion des véhicules</h2>
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary">{cars.length} véhicule(s)</Badge>
-                <Button onClick={() => setShowAddCar(!showAddCar)} className="gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h2 className="text-lg md:text-xl font-semibold">Gestion des véhicules</h2>
+              <div className="flex items-center gap-2 md:gap-3">
+                <Badge variant="secondary" className="text-xs md:text-sm">{cars.length} véhicule(s)</Badge>
+                <Button onClick={() => setShowAddCar(!showAddCar)} className="gap-2 text-xs md:text-sm py-2 md:py-2">
                   {showAddCar ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
-                  {showAddCar ? 'Fermer' : 'Ajouter un véhicule'}
+                  <span className="hidden md:inline">{showAddCar ? 'Fermer' : 'Ajouter un véhicule'}</span>
+                  <span className="md:hidden">{showAddCar ? 'Fermer' : 'Ajouter'}</span>
                 </Button>
               </div>
             </div>
@@ -1066,27 +1084,27 @@ const Admin = () => {
                     return (
                       <Card key={user.id} className="overflow-hidden">
                         <CardHeader 
-                          className="cursor-pointer hover:bg-secondary/50 transition-colors"
+                          className="cursor-pointer hover:bg-secondary/50 transition-colors p-4 md:p-6"
                           onClick={() => setExpandedUser(isExpanded ? null : user.id)}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Users className="w-6 h-6 text-primary" />
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 md:gap-4">
+                              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Users className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                               </div>
                               <div>
-                                <CardTitle className="text-lg">{user.firstName} {user.lastName}</CardTitle>
-                                <CardDescription>{user.email}</CardDescription>
+                                <CardTitle className="text-base md:text-lg">{user.firstName} {user.lastName}</CardTitle>
+                                <CardDescription className="text-xs md:text-sm">{user.email}</CardDescription>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <Badge variant={user.emailVerified ? "default" : "secondary"}>
+                            <div className="flex items-center gap-2 md:gap-3">
+                              <Badge variant={user.emailVerified ? "default" : "secondary"} className="text-xs md:text-sm">
                                 {user.emailVerified ? "Vérifié" : "Non vérifié"}
                               </Badge>
-                              <Badge variant="outline">
-                                {userDocs.length} document(s)
+                              <Badge variant="outline" className="text-xs md:text-sm">
+                                {userDocs.length} doc(s)
                               </Badge>
-                              <Button size="sm" variant="ghost">
+                              <Button size="sm" variant="ghost" className="p-1 md:p-2">
                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                               </Button>
                             </div>

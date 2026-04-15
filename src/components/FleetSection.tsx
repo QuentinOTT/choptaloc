@@ -158,25 +158,25 @@ const FleetSection = () => {
   const upcomingCars = cars.filter(car => !car.available);
 
   return (
-    <section id="fleet" className="py-24 px-6 md:px-16">
+    <section id="fleet" className="py-16 md:py-24 px-4 md:px-16">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <p className="text-primary font-semibold tracking-[0.2em] uppercase text-sm mb-3">Notre Flotte</p>
-          <h2 className="text-3xl md:text-5xl font-black">
+        <div className="text-center mb-12 md:mb-16">
+          <p className="text-primary font-semibold tracking-[0.2em] uppercase text-xs md:text-sm mb-2 md:mb-3">Notre Flotte</p>
+          <h2 className="text-2xl md:text-4xl lg:text-5xl font-black">
             Des Véhicules d'<span className="text-gradient-orange">Exception</span>
           </h2>
         </div>
 
         {/* Section Véhicules Disponibles */}
         {availableCars.length > 0 && (
-          <div className="mb-20">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-1 bg-primary rounded-full" />
-              <h3 className="text-2xl font-bold">Véhicules Disponibles Maintenant</h3>
+          <div className="mb-16 md:mb-20">
+            <div className="flex items-center gap-3 mb-6 md:mb-8">
+              <div className="w-8 md:w-12 h-1 bg-primary rounded-full" />
+              <h3 className="text-lg md:text-2xl font-bold">Véhicules Disponibles Maintenant</h3>
               <div className="flex-1 h-px bg-border" />
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
               {/* Carte véhicule */}
               <div className="flex-1 max-w-2xl">
                 {availableCars.map((car, index) => (
@@ -187,7 +187,7 @@ const FleetSection = () => {
                     onMouseLeave={() => setHoveredIndex(null)}
                     onClick={() => setSelectedCar(car)}
                   >
-                    <div className="relative h-64 overflow-hidden">
+                    <div className="relative h-48 md:h-56 lg:h-64 overflow-hidden">
                       <img
                         src={car.image}
                         alt={`${car.brand} ${car.model}`}
@@ -196,32 +196,32 @@ const FleetSection = () => {
                       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
                     </div>
 
-                    <div className="p-6">
-                      <div className="mb-4">
-                        <h3 className="text-xl font-bold mb-1">{car.brand} {car.model}</h3>
-                        <p className="text-muted-foreground text-sm">{car.tag}</p>
+                    <div className="p-4 md:p-6">
+                      <div className="mb-3 md:mb-4">
+                        <h3 className="text-lg md:text-xl font-bold mb-1">{car.brand} {car.model}</h3>
+                        <p className="text-muted-foreground text-xs md:text-sm">{car.tag}</p>
                       </div>
 
-                      <div className="flex items-baseline gap-2 mb-4">
-                        <span className="text-3xl font-black text-gradient-orange">{car.price}€</span>
-                        <span className="text-muted-foreground">/jour</span>
+                      <div className="flex items-baseline gap-2 mb-3 md:mb-4">
+                        <span className="text-2xl md:text-3xl font-black text-gradient-orange">{car.price}€</span>
+                        <span className="text-muted-foreground text-xs md:text-sm">/jour</span>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 mb-4">
+                      <div className="flex flex-wrap gap-2 mb-3 md:mb-4">
                         {car.specs.map((spec) => (
                           <span
                             key={spec}
-                            className="px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium"
+                            className="px-2 md:px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium"
                           >
                             {spec}
                           </span>
                         ))}
                       </div>
 
-                      <div className="flex gap-3">
+                      <div className="flex gap-2 md:gap-3">
                         <button
                           onClick={() => setSelectedCar(car)}
-                          className={`flex-1 text-center py-3 rounded-lg font-semibold transition-all duration-300 ${
+                          className={`flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm ${
                             hoveredIndex === index
                               ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                               : "bg-secondary text-secondary-foreground"
@@ -234,7 +234,7 @@ const FleetSection = () => {
                             setCalendarCar(car);
                             setShowBookingForm(true);
                           }}
-                          className={`flex-1 text-center py-3 rounded-lg font-semibold transition-all duration-300 ${
+                          className={`flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm ${
                             hoveredIndex === index
                               ? "bg-primary text-primary-foreground glow-orange"
                               : "bg-secondary text-secondary-foreground"
@@ -249,16 +249,16 @@ const FleetSection = () => {
               </div>
 
               {/* Calendrier à droite */}
-              <div className="flex-1 glass rounded-2xl p-6 max-w-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  <h4 className="text-lg font-semibold">Calendrier de disponibilité</h4>
+              <div className="flex-1 glass rounded-2xl p-4 md:p-6 max-w-sm">
+                <div className="flex items-center gap-2 mb-3 md:mb-4">
+                  <Calendar className="w-4 md:w-5 h-4 md:h-5 text-primary" />
+                  <h4 className="text-base md:text-lg font-semibold">Calendrier de disponibilité</h4>
                 </div>
                 
                 {/* Sélecteur de mois */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
                   <button 
-                    className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                    className="p-1.5 md:p-2 hover:bg-secondary rounded-lg transition-colors text-sm md:text-base"
                     onClick={() => {
                       if (currentMonth === 0) {
                         setCurrentMonth(11);
@@ -270,11 +270,11 @@ const FleetSection = () => {
                   >
                     ←
                   </button>
-                  <span className="font-semibold">
+                  <span className="font-semibold text-xs md:text-sm">
                     {new Date(currentYear, currentMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
                   </span>
                   <button 
-                    className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                    className="p-1.5 md:p-2 hover:bg-secondary rounded-lg transition-colors text-sm md:text-base"
                     onClick={() => {
                       if (currentMonth === 11) {
                         setCurrentMonth(0);
@@ -289,12 +289,12 @@ const FleetSection = () => {
                 </div>
 
                 {/* Grille du calendrier */}
-                <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                <div className="grid grid-cols-7 gap-0.5 md:gap-1 text-center mb-2">
                   {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
-                    <div key={day} className="text-xs text-muted-foreground font-medium py-2">{day}</div>
+                    <div key={day} className="text-[10px] md:text-xs text-muted-foreground font-medium py-1 md:py-2">{day}</div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-x-0.5 gap-y-2 justify-items-center">
+                <div className="grid grid-cols-7 gap-x-0.5 gap-y-1 md:gap-y-2 justify-items-center">
                   {(() => {
                     const firstDay = new Date(currentYear, currentMonth, 1);
                     const lastDay = new Date(currentYear, currentMonth + 1, 0);
@@ -305,7 +305,7 @@ const FleetSection = () => {
                     const days = [];
                     // Jours du mois précédent
                     for (let i = 0; i < startDay; i++) {
-                      days.push(<div key={`prev-${i}`} className="w-9 h-9" />);
+                      days.push(<div key={`prev-${i}`} className="w-7 md:w-9 h-7 md:h-9" />);
                     }
                     // Jours du mois actuel
                     for (let day = 1; day <= daysInMonth; day++) {
@@ -391,11 +391,11 @@ const FleetSection = () => {
                               setSelectedDates([dateStr]);
                             }
                           }}
-                          className={`w-9 h-9 flex items-center justify-center rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                          className={`w-7 md:w-9 h-7 md:h-9 flex items-center justify-center rounded-full text-[10px] md:text-xs font-medium cursor-pointer transition-colors ${
                             isSelected
                               ? isStart || isEnd
-                                ? 'bg-primary text-white ring-2 ring-primary ring-offset-4'
-                                : 'bg-primary text-white ring-2 ring-primary ring-offset-2'
+                                ? 'bg-primary text-white ring-2 ring-primary ring-offset-2 md:ring-offset-4'
+                                : 'bg-primary text-white ring-2 ring-primary ring-offset-1 md:ring-offset-2'
                               : isAvailable
                               ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                               : 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
@@ -409,7 +409,7 @@ const FleetSection = () => {
                     const totalCells = startDay + daysInMonth;
                     const remainingCells = totalCells > 35 ? 42 - totalCells : 35 - totalCells;
                     for (let i = 0; i < remainingCells; i++) {
-                      days.push(<div key={`next-${i}`} className="w-9 h-9" />);
+                      days.push(<div key={`next-${i}`} className="w-7 md:w-9 h-7 md:h-9" />);
                     }
                     
                     return days;
@@ -417,17 +417,17 @@ const FleetSection = () => {
                 </div>
 
                 {/* Légende */}
-                <div className="flex items-center gap-4 mt-4 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-primary" />
+                <div className="flex items-center gap-2 md:gap-4 mt-3 md:mt-4 text-[10px] md:text-xs">
+                  <div className="flex items-center gap-1 md:gap-2">
+                    <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-primary" />
                     <span className="text-muted-foreground">Disponible</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-muted" />
+                  <div className="flex items-center gap-1 md:gap-2">
+                    <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-muted" />
                     <span className="text-muted-foreground">Indisponible</span>
                   </div>
                   {selectedDates.length > 0 && (
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-1 md:gap-2 ml-auto">
                       <span className="text-primary font-medium">{selectedDates.length} jour(s) sélectionné(s)</span>
                     </div>
                   )}
@@ -440,19 +440,19 @@ const FleetSection = () => {
         {/* Section Prochains Véhicules */}
         {upcomingCars.length > 0 && (
           <div>
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-1 bg-primary rounded-full" />
-              <h3 className="text-2xl font-bold">Nos Prochains Véhicules</h3>
+            <div className="flex items-center gap-3 mb-6 md:mb-8">
+              <div className="w-8 md:w-12 h-1 bg-primary rounded-full" />
+              <h3 className="text-lg md:text-2xl font-bold">Nos Prochains Véhicules</h3>
               <div className="flex-1 h-px bg-border" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               {upcomingCars.map((car, index) => (
                 <div
                   key={`${car.brand}-${car.model}`}
                   className="group relative glass rounded-2xl overflow-hidden opacity-80"
                 >
-                  <div className="relative h-56 sm:h-52 overflow-hidden">
+                  <div className="relative h-48 sm:h-52 md:h-56 overflow-hidden">
                     <img
                       src={car.image}
                       alt={`${car.brand} ${car.model}`}
@@ -461,9 +461,9 @@ const FleetSection = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
                   </div>
 
-                  <div className="p-4 text-center">
-                    <div className="inline-flex items-center gap-2 text-primary text-sm">
-                      <Calendar className="w-4 h-4" />
+                  <div className="p-3 md:p-4 text-center">
+                    <div className="inline-flex items-center gap-1 md:gap-2 text-primary text-xs md:text-sm">
+                      <Calendar className="w-3 md:w-4 h-3 md:h-4" />
                       <span className="font-medium">Arrivée prochaine</span>
                     </div>
                   </div>
