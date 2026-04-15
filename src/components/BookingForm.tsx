@@ -103,8 +103,18 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
-    if (!car) return;
+    console.log('Début handleSubmit - FormData:', formData);
+    console.log('Car:', car);
+    console.log('User:', user);
+
+    if (!validateForm()) {
+      console.log('Validation échouée - Erreurs:', errors);
+      return;
+    }
+    if (!car) {
+      console.log('Car est null');
+      return;
+    }
 
     // Calculer les dates entre startDate et endDate
     const start = new Date(formData.startDate);
@@ -115,6 +125,8 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       dates.push(current.toISOString().split('T')[0]);
       current.setDate(current.getDate() + 1);
     }
+
+    console.log('Dates calculées:', dates);
 
     // Calculer le prix total avec prix dégressif
     const days = dates.length;
@@ -150,6 +162,8 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       newBooking.userId = user.id;
     }
 
+    console.log('Booking à envoyer:', newBooking);
+
     // Envoyer à l'API
     fetch(`${API_URL}/bookings`, {
       method: 'POST',
@@ -158,8 +172,12 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       },
       body: JSON.stringify(newBooking),
     })
-      .then(res => res.json())
+      .then(res => {
+        console.log('Réponse API - Status:', res.status);
+        return res.json();
+      })
       .then(data => {
+        console.log('Réponse API - Data:', data);
         if (data.error) {
           alert('Erreur lors de la création de la réservation: ' + data.error);
         } else {
