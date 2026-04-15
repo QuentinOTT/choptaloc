@@ -58,8 +58,13 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans overflow-x-hidden;
     font-family: 'Montserrat', sans-serif;
+  }
+
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
 

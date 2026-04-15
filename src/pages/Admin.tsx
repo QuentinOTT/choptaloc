@@ -366,8 +366,8 @@ const Admin = () => {
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:w-[700px] h-auto p-1">
-            <TabsTrigger value="bookings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[700px] h-auto p-1">
+            <TabsTrigger value="bookings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Calendar className="w-4 h-4" />
               <span className="hidden md:inline">Réservations</span>
               <span className="md:hidden">Réserv.</span>
@@ -377,23 +377,25 @@ const Admin = () => {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="cars" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
+            <TabsTrigger value="cars" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Car className="w-4 h-4" />
               <span className="hidden md:inline">Véhicules</span>
               <span className="md:hidden">Véhic.</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
+            <TabsTrigger value="users" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Users className="w-4 h-4" />
               <span className="hidden md:inline">Utilisateurs</span>
               <span className="md:hidden">Users</span>
             </TabsTrigger>
-            <TabsTrigger value="global-calendar" className="gap-2 relative hidden md:flex flex-row items-center py-2 text-sm">
+            <TabsTrigger value="global-calendar" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Calendar className="w-4 h-4" />
-              Calendrier Global
+              <span className="hidden md:inline">Calendrier Global</span>
+              <span className="md:hidden">Calendrier</span>
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-2 relative hidden md:flex flex-row items-center py-2 text-sm">
+            <TabsTrigger value="stats" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Settings className="w-4 h-4" />
-              Statistiques
+              <span className="hidden md:inline">Statistiques</span>
+              <span className="md:hidden">Stats</span>
             </TabsTrigger>
           </TabsList>
 
