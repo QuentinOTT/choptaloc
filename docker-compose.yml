@@ -18,14 +18,14 @@ services:
     networks:
       - choptaloc-network
 
-  app:
+  backend:
     build:
-      context: .
+      context: ./server
       dockerfile: Dockerfile
-    container_name: choptaloc-app
+    container_name: choptaloc-backend
     restart: unless-stopped
-    expose:
-      - 3000
+    ports:
+      - "3000:3000"
     environment:
       DB_HOST: mysql
       DB_USER: u643472395_datachoptaloc
@@ -41,6 +41,28 @@ services:
       retries: 3
     depends_on:
       - mysql
+    networks:
+      - choptaloc-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:3000/api
+    container_name: choptaloc-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=http://localhost:3000/api
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - backend
     networks:
       - choptaloc-network
 
