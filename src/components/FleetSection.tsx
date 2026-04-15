@@ -143,7 +143,7 @@ const FleetSection = () => {
         const data = response.data || response;
         console.log('Réservations récupérées:', data.length);
         if (!Array.isArray(data)) return;
-        const filteredBookings = data.filter(b => b.status === 'confirmed' || b.status === 'pending');
+        const filteredBookings = data.filter(b => b.status === 'confirmed');
         console.log('Réservations filtrées (confirmed/pending):', filteredBookings.length);
         
         filteredBookings.forEach(b => {

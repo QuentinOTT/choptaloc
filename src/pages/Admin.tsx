@@ -207,6 +207,26 @@ const Admin = () => {
 
   const updateBookingStatus = async (bookingId: string, newStatus: Booking["status"]) => {
     const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+    
+    // Si on essaie de confirmer une réservation, vérifier les conflits
+    if (newStatus === "confirmed") {
+      const conflicts = bookings.filter(b => 
+        b.id !== bookingId &&
+        b.status === "confirmed" &&
+        b.carId === booking.carId &&
+        ((b.startDate <= booking.endDate && b.endDate >= booking.startDate))
+      );
+      
+      if (conflicts.length > 0) {
+        const conflictList = conflicts.map(c => 
+          `• Réservation du ${c.startDate} au ${c.endDate} (ID: ${c.id})`
+        ).join('\n');
+        
+        alert(`⚠️ ATTENTION - CONFLIT DE RÉSERVATION\n\nCette réservation empiète sur les dates suivantes déjà acceptées :\n\n${conflictList}\n\nVeuillez vérifier avant de confirmer.`);
+        return;
+      }
+    }
     
     try {
       const response = await fetch(`${API_URL}/bookings/${bookingId}/status`, {
