@@ -20,14 +20,13 @@ FROM node:18-alpine AS backend-builder
 
 WORKDIR /app
 
-# Copier les fichiers package du backend
-COPY server/package*.json ./
+# Copier le dossier server entier
+COPY server/ ./server/
+
+WORKDIR /app/server
 
 # Installer les dépendances du backend
-RUN npm ci
-
-# Copier le code source du backend
-COPY server/ .
+RUN npm install
 
 # Étape 3 : Image finale combinée
 FROM node:18-alpine
@@ -35,11 +34,11 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copier les dépendances du backend
-COPY --from=backend-builder /app/node_modules ./node_modules
-COPY --from=backend-builder /app/package*.json ./
+COPY --from=backend-builder /app/server/node_modules ./node_modules
+COPY --from=backend-builder /app/server/package*.json ./
 
 # Copier le code source du backend
-COPY --from=backend-builder /app ./
+COPY --from=backend-builder /app/server ./
 
 # Copier le build du frontend dans le dossier public
 COPY --from=frontend-builder /app/frontend/dist ./public
