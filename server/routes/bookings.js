@@ -144,4 +144,15 @@ router.put('/modifications/:id/status', async (req, res) => {
   }
 });
 
+// Supprimer une réservation
+router.delete('/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM bookings WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur suppression réservation:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de la réservation' });
+  }
+});
+
 module.exports = router;

@@ -130,23 +130,27 @@ const FleetSection = () => {
 
   // Charger les réservations confirmées pour bloquer les dates dans le calendrier client
   const loadBookings = () => {
+    console.log('Rechargement des disponibilités...');
     // Réinitialiser les disponibilités
     setAvailabilities([]);
     
     fetch(`${API_URL}/bookings`)
       .then(res => res.json())
       .then((data: any[]) => {
+        console.log('Réservations récupérées:', data.length);
         if (!Array.isArray(data)) return;
-        data
-          .filter(b => b.status === 'confirmed' || b.status === 'pending')
-          .forEach(b => {
-            const carId  = b.car_id?.toString();
-            const start  = typeof b.start_date === 'string' ? b.start_date.slice(0,10) : new Date(b.start_date).toISOString().slice(0,10);
-            const end    = typeof b.end_date   === 'string' ? b.end_date.slice(0,10)   : new Date(b.end_date).toISOString().slice(0,10);
-            if (carId && start && end) {
-              blockDatesForBooking(carId, start, end, b.dropoff_time);
-            }
-          });
+        const filteredBookings = data.filter(b => b.status === 'confirmed' || b.status === 'pending');
+        console.log('Réservations filtrées (confirmed/pending):', filteredBookings.length);
+        
+        filteredBookings.forEach(b => {
+          const carId  = b.car_id?.toString();
+          const start  = typeof b.start_date === 'string' ? b.start_date.slice(0,10) : new Date(b.start_date).toISOString().slice(0,10);
+          const end    = typeof b.end_date   === 'string' ? b.end_date.slice(0,10)   : new Date(b.end_date).toISOString().slice(0,10);
+          console.log('Blocage dates pour voiture:', carId, 'du', start, 'au', end);
+          if (carId && start && end) {
+            blockDatesForBooking(carId, start, end, b.dropoff_time);
+          }
+        });
       })
       .catch(err => console.error('Erreur chargement réservations calendrier:', err));
   };
