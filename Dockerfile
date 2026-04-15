@@ -2,19 +2,25 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copier tous les fichiers du projet
-COPY . .
+# Copier les fichiers package du frontend
+COPY package*.json ./
 
 # Installer les dépendances du frontend
 RUN npm install
 
+# Copier le code source du frontend
+COPY . .
+
 # Build du frontend
 RUN npm run build
 
-# Installer les dépendances du backend
-RUN npm install --prefix server
+# Copier les fichiers package du backend
+COPY server/package*.json ./
 
-# Copier le build du frontend dans le dossier dist
+# Installer les dépendances du backend
+RUN npm install
+
+# Copier le build du frontend dans le dossier public
 RUN mv dist public
 
 # Exposer le port 3000
