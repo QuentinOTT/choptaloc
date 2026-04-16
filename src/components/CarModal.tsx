@@ -93,6 +93,18 @@ const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
           "Projecteurs Full LED avec signature lumineuse C-shape",
           "Jantes alliage 17\" spécifiques Alpine"
         ]
+      },
+      "Renault Clio V": {
+        description: "La Renault Clio V en finition Esprit Alpine allie modernité, sportivité et efficience hybride. Avec ses 145 CV et sa motorisation hybride de 2023, elle offre un agrément de conduite exceptionnel en ville comme sur route.",
+        features: [
+          "Finition haut de gamme Esprit Alpine",
+          "Moteur E-Tech 145 ch Hybride (vignette Crit'Air 1)",
+          "Écran multimédia 9.3\" Easy Link avec Navigation GPS",
+          "Aide au stationnement avant, arrière et caméra 360°",
+          "Régulateur de vitesse adaptatif et centrage dans la voie",
+          "Projecteurs Full LED avec signature lumineuse C-shape",
+          "Jantes alliage 17\" spécifiques Alpine"
+        ]
       }
     };
 

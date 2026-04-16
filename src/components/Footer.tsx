@@ -12,6 +12,7 @@ const Footer = () => (
         <a href="#fleet" className="hover:text-primary transition-colors">Flotte</a>
         <a href="#features" className="hover:text-primary transition-colors">Services</a>
         <a href="#contact" className="hover:text-primary transition-colors">Contact</a>
+        <a href="/legal" className="hover:text-primary transition-colors font-medium underline decoration-primary/30 text-xs">Mentions Légales & RGPD</a>
       </div>
     </div>
   </footer>
