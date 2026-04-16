@@ -14,6 +14,7 @@ CREATE TABLE users (
     role ENUM('user', 'admin') DEFAULT 'user',
     is_active BOOLEAN DEFAULT TRUE,
     email_verified BOOLEAN DEFAULT FALSE,
+    is_verified BOOLEAN DEFAULT FALSE,
     verification_token VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -151,7 +152,7 @@ CREATE TABLE settings (
 CREATE TABLE user_documents (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    document_type ENUM('id_card_front', 'id_card_back', 'license_front', 'license_back', 'proof_of_address') NOT NULL,
+    document_type ENUM('id_card_front', 'id_card_back', 'license_front', 'license_back', 'proof_of_address', 'other') NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     file_path LONGTEXT NOT NULL,
     file_size BIGINT,

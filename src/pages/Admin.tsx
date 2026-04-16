@@ -148,6 +148,7 @@ const Admin = () => {
             monthlyPrice: c.monthly_price ? parseFloat(c.monthly_price) : undefined,
             isAvailable: Boolean(c.is_available),
             imageUrl: c.image_url || '',
+            image_url: c.image_url || '', // Alias pour compatibilité
             tag: c.tag || undefined,
             color: c.color || undefined,
             licensePlate: c.license_plate || undefined,
@@ -262,6 +263,21 @@ const Admin = () => {
         console.error('Erreur chargement réservations:', err);
         setBookings([]);
       });
+  };
+
+  const updateDocumentStatus = async (docId: string, status: string) => {
+    try {
+      const response = await fetch(`${API_URL}/documents/${docId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (response.ok) {
+        setUserDocuments(prev => prev.map(d => d.id === docId ? { ...d, status } : d));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleShowUnavailableCarsChange = (value: boolean) => {
@@ -712,18 +728,22 @@ const Admin = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t">
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="ghost"
+                            className="gap-1 p-2 h-8 text-xs hover:bg-secondary"
                             onClick={() => {
-                              const user = users.find((u: any) => u.email === booking.userEmail);
-                              if (user) {
-                                alert(`Profil du client:\n\nNom: ${user.first_name} ${user.last_name}\nEmail: ${user.email}\nTéléphone: ${user.phone}\nVérifié: ${user.email_verified ? 'Oui' : 'Non'}`);
-                              }
+                              setActiveTab("users");
+                              setSearchTerm(booking.userEmail || "");
+                              setTimeout(() => {
+                                const userCard = document.getElementById(`user-card-${booking.userId}`);
+                                if (userCard) {
+                                  userCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  setExpandedUser(booking.userId?.toString() || null);
+                                }
+                              }, 100);
                             }}
-                            className="gap-2 text-xs md:text-sm w-full sm:w-auto"
                           >
-                            <User className="w-4 h-4" />
-                            <span className="hidden md:inline">Voir le profil</span>
-                            <span className="md:hidden">Profil</span>
+                            <User className="w-3 h-3" />
+                            <span className="hidden lg:inline">Voir profil</span>
                           </Button>
                           
                           <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
@@ -1245,8 +1265,17 @@ const Admin = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 md:gap-3">
-                              <Badge variant={user.emailVerified ? "default" : "secondary"} className="text-xs md:text-sm">
-                                {user.emailVerified ? "Vérifié" : "Non vérifié"}
+                              <Badge 
+                                variant={user.is_verified ? "default" : "secondary"} 
+                                className={`text-xs md:text-sm border-none ${user.is_verified ? "bg-green-500 hover:bg-green-600" : ""}`}
+                              >
+                                {user.is_verified ? (
+                                  <span className="flex items-center gap-1">
+                                    <Check className="w-3 h-3" /> Vérifié
+                                  </span>
+                                ) : (
+                                  "Non vérifié"
+                                )}
                               </Badge>
                               <Badge variant="outline" className="text-xs md:text-sm">
                                 {userDocs.length} doc(s)
@@ -1257,6 +1286,8 @@ const Admin = () => {
                             </div>
                           </div>
                         </CardHeader>
+                        
+                        <div id={`user-card-${user.id}`} />
                         
                         {isExpanded && (
                           <CardContent className="border-t pt-4 space-y-6">
@@ -1295,6 +1326,104 @@ const Admin = () => {
                                 Actions administrateur
                               </h4>
                               <div className="flex flex-wrap gap-2">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline" className="gap-2">
+                                      <FileText className="w-4 h-4" />
+                                      Voir les documents ({userDocs.length})
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                                    <DialogHeader>
+                                      <DialogTitle>Documents de {user.firstName} {user.lastName}</DialogTitle>
+                                      <DialogDescription>
+                                        Vérifiez les documents d'identité et les justificatifs fournis par l'utilisateur.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    
+                                    {userDocs.length === 0 ? (
+                                      <div className="py-12 text-center text-muted-foreground">
+                                        Aucun document uploadé par cet utilisateur.
+                                      </div>
+                                    ) : (
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                                        {userDocs.map((doc: any) => (
+                                          <Card key={doc.id} className="overflow-hidden border-2">
+                                            <CardHeader className="p-3 bg-secondary/50">
+                                              <div className="flex items-center justify-between">
+                                                <Badge variant="outline" className="uppercase text-[10px]">
+                                                  {doc.type.replace(/_/g, ' ')}
+                                                </Badge>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                  {new Date(doc.uploadedAt).toLocaleDateString()}
+                                                </span>
+                                              </div>
+                                            </CardHeader>
+                                            <CardContent className="p-0">
+                                              <div 
+                                                className="aspect-video bg-black/5 flex items-center justify-center cursor-pointer hover:bg-black/10 transition-colors"
+                                                onClick={() => setSelectedImage(doc.fileUrl)}
+                                              >
+                                                {doc.fileUrl ? (
+                                                  <img src={doc.fileUrl} alt={doc.fileName} className="w-full h-full object-contain" />
+                                                ) : (
+                                                  <div className="text-center p-4">
+                                                    <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                                                    <p className="text-xs text-muted-foreground">Aperçu non disponible</p>
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <div className="p-3 flex items-center justify-between gap-2 border-t">
+                                                <span className="text-xs truncate max-w-[150px] font-medium">{doc.fileName}</span>
+                                                <div className="flex gap-1">
+                                                  <Button 
+                                                    size="sm" 
+                                                    variant={doc.status === "verified" ? "default" : "outline"}
+                                                    className={`h-7 px-2 text-[10px] ${doc.status === "verified" ? "bg-green-600 hover:bg-green-700" : ""}`}
+                                                    onClick={() => updateDocumentStatus(doc.id, "verified")}
+                                                  >
+                                                    {doc.status === "verified" ? "Vérifié" : "Valider"}
+                                                  </Button>
+                                                  <Button 
+                                                    size="sm" 
+                                                    variant="outline"
+                                                    className="h-7 px-2 text-[10px] text-red-500 hover:text-red-600"
+                                                    onClick={() => updateDocumentStatus(doc.id, "rejected")}
+                                                  >
+                                                    Refuser
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                            </CardContent>
+                                          </Card>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </DialogContent>
+                                </Dialog>
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className={user.is_verified ? "text-red-500 hover:text-red-600 border-red-200" : "text-green-600 hover:text-green-700 border-green-200"}
+                                  onClick={async () => {
+                                    const action = user.is_verified ? "révoquer" : "valider";
+                                    if (confirm(`Souhaitez-vous ${action} manuellement ce compte utilisateur ?`)) {
+                                      try {
+                                        const response = await fetch(`${API_URL}/users/${user.id}/${user.is_verified ? 'unverify' : 'verify-documents'}`, { method: 'POST' });
+                                        if (response.ok) {
+                                          setUsers(users.map(u => u.id === user.id ? { ...u, is_verified: !u.is_verified } : u));
+                                          alert(`Le compte a été ${user.is_verified ? 'dé-vérifié' : 'vérifié'} avec succès.`);
+                                        }
+                                      } catch (e) {
+                                        console.error(e);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  {user.is_verified ? "Révoquer vérification" : "Vérifier manuellement"}
+                                </Button>
+
                                 <Button
                                   size="sm"
                                   variant="outline"

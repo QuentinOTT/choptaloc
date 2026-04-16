@@ -205,4 +205,32 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Vérifier automatiquement les documents d''un utilisateur
+router.post('/:id/verify-documents', async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE users SET is_verified = TRUE WHERE id = ?',
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur verification documents:', error);
+    res.status(500).json({ error: 'Erreur lors de la vérification' });
+  }
+});
+
+// Révoquer manuellement les documents d''un utilisateur
+router.post('/:id/unverify', async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE users SET is_verified = FALSE WHERE id = ?',
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur revocation documents:', error);
+    res.status(500).json({ error: 'Erreur lors de la révocation' });
+  }
+});
+
 module.exports = router;

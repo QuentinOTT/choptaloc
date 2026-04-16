@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, Check, X, LogOut, User, Shield, Home, ArrowLeft, Clock, Eye, AlertCircle, Calendar, Edit } from "lucide-react";
+import { Upload, FileText, Check, X, LogOut, User, Shield, Home, ArrowLeft, Clock, Eye, AlertCircle, Calendar, Edit, Save } from "lucide-react";
 
 interface Document {
   id: string;
@@ -23,12 +23,15 @@ interface Document {
 }
 
 const documentLabels: Record<string, string> = {
-  id_card_front: "Carte d'identité - Recto",
-  id_card_back: "Carte d'identité - Verso",
-  license_front: "Permis de conduire - Recto",
-  license_back: "Permis de conduire - Verso",
+  id_card_front: "Carte d'identité (Recto)",
+  id_card_back: "Carte d'identité (Verso)",
+  license_front: "Permis de conduire (Recto)",
+  license_back: "Permis de conduire (Verso)",
   proof_of_address: "Justificatif de domicile",
+  other: "Document complémentaire (Optionnel)",
 };
+
+const MANDATORY_DOCS = ['id_card_front', 'id_card_back', 'license_front', 'license_back', 'proof_of_address'];
 
 const ClientDashboard = () => {
   const { user, logout, updateUser } = useClientAuth();
@@ -47,6 +50,7 @@ const ClientDashboard = () => {
     postalCode: "",
     country: "France",
   });
+  const [pendingUploads, setPendingUploads] = useState<Record<string, { file: File, base64: string }>>({});
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [showTwoFactorSetup, setShowTwoFactorSetup] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
@@ -63,68 +67,87 @@ const ClientDashboard = () => {
   });
   const [userModifications, setUserModifications] = useState<any[]>([]);
 
-  const handleFileUpload = async (
+  const handleFileSelect = async (
     e: React.ChangeEvent<HTMLInputElement>,
     docType: string
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       alert("Le fichier est trop volumineux (max 5 Mo). Veuillez compresser votre image ou utiliser un PDF.");
       return;
     }
 
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target?.result as string);
+      reader.onerror = () => reject(new Error('Erreur lecture fichier'));
+      reader.readAsDataURL(file);
+    });
+
+    setPendingUploads(prev => ({
+      ...prev,
+      [docType]: { file, base64 }
+    }));
+  };
+
+  const handleConfirmUpload = async (docType: string) => {
+    const pending = pendingUploads[docType];
+    if (!pending || !user) return;
+
     setUploading(true);
 
     try {
-      // Convertir le fichier en base64 pour le stockage
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const result = event.target?.result as string;
-          if (result) {
-            resolve(result);
-          } else {
-            reject(new Error('Erreur lecture fichier'));
-          }
-        };
-        reader.onerror = () => reject(new Error('Erreur lecture fichier'));
-        reader.readAsDataURL(file);
-      });
-
-      // Envoyer à l'API
       const response = await fetch(`${API_URL}/documents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user?.id,
+          userId: user.id,
           type: docType,
-          fileData: base64,
-          fileName: file.name,
+          fileData: pending.base64,
+          fileName: pending.file.name,
         }),
       });
 
       if (response.ok) {
+        const newDocResult = await response.json();
         const newDocument: Document = {
-          id: `doc-${Date.now()}`,
+          id: newDocResult.documentId.toString(),
           type: docType as any,
-          fileName: file.name,
-          fileUrl: base64,
+          fileName: pending.file.name,
+          fileUrl: pending.base64,
           uploadedAt: new Date().toISOString(),
           isVerified: false,
           status: "pending",
         };
         
-        setDocuments([...documents, newDocument]);
-        alert("Document uploadé avec succès !");
+        const updatedDocs = [...documents, newDocument];
+        setDocuments(updatedDocs);
+        
+        // Nettoyer l''upload en attente
+        const newPending = { ...pendingUploads };
+        delete newPending[docType];
+        setPendingUploads(newPending);
+
+        // Auto-vérification du compte
+        const uploadedMandatoryCount = MANDATORY_DOCS.filter(type => 
+          updatedDocs.some(d => d.type === type)
+        ).length;
+
+        if (uploadedMandatoryCount === MANDATORY_DOCS.length) {
+            try {
+              await fetch(`${API_URL}/users/${user.id}/verify-documents`, { method: 'POST' });
+              alert("Bravo ! Tous vos documents sont envoyés. Votre compte est désormais en statut 'Vérifié'.");
+              window.location.reload(); 
+            } catch (e) { console.error(e); }
+        } else {
+            alert(`Document uploadé avec succès ! (${uploadedMandatoryCount}/${MANDATORY_DOCS.length} documents obligatoires fournis)`);
+        }
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Erreur API:', errorData);
-        alert(`Erreur lors de l'upload: ${errorData.error || 'Erreur serveur'}`);
+        alert("Erreur lors de l'upload du document");
       }
     } catch (error) {
       console.error('Erreur upload:', error);
@@ -157,7 +180,16 @@ const ClientDashboard = () => {
     try {
       const response = await fetch(`${API_URL}/documents/user/${user.id}`);
       const data = await response.json();
-      setDocuments(data);
+      const mapped = data.map((d: any) => ({
+        id: d.id.toString(),
+        type: d.document_type,
+        fileName: d.file_name,
+        fileUrl: d.file_path,
+        uploadedAt: d.created_at,
+        isVerified: d.is_verified,
+        status: d.is_verified ? "verified" : "pending"
+      }));
+      setDocuments(mapped);
     } catch (error) {
       console.error('Erreur chargement documents:', error);
       setDocuments([]);
@@ -502,9 +534,9 @@ const ClientDashboard = () => {
                     </>
                   )}
                   <div>
-                    <p className="text-sm text-muted-foreground">Statut</p>
-                    <Badge variant={user.emailVerified ? "default" : "secondary"}>
-                      {user.emailVerified ? "Vérifié" : "En attente de vérification"}
+                    <p className="text-sm text-muted-foreground">Statut du compte</p>
+                    <Badge variant={user.isVerified ? "default" : "secondary"} className={user.isVerified ? "bg-green-500 hover:bg-green-600" : ""}>
+                      {user.isVerified ? "Compte Vérifié" : "Documents manquants"}
                     </Badge>
                   </div>
                 </div>
@@ -884,24 +916,55 @@ const ClientDashboard = () => {
                           )}
                         </div>
                       ) : (
-                        <div>
-                          <Input
-                            type="file"
-                            id={`upload-${type}`}
-                            className="hidden"
-                            accept="image/*,.pdf"
-                            onChange={(e) => handleFileUpload(e, type)}
-                            disabled={uploading}
-                          />
-                          <label
-                            htmlFor={`upload-${type}`}
-                            className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors"
-                          >
-                            <Upload className="w-5 h-5 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">
-                              {uploading ? "Upload en cours..." : "Cliquez pour uploader"}
-                            </span>
-                          </label>
+                        <div className="space-y-4">
+                          {pendingUploads[type] ? (
+                            <div className="flex flex-col gap-3 p-3 border rounded-lg bg-primary/5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium truncate max-w-[200px]">{pendingUploads[type].file.name}</span>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-7 w-7 p-0 text-red-500"
+                                  onClick={() => {
+                                    const newPending = { ...pendingUploads };
+                                    delete newPending[type];
+                                    setPendingUploads(newPending);
+                                  }}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                className="w-full gap-2"
+                                onClick={() => handleConfirmUpload(type)}
+                                disabled={uploading}
+                              >
+                                {uploading ? "Upload..." : "Valider et envoyer"}
+                                <Save className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <Input
+                                type="file"
+                                id={`upload-${type}`}
+                                className="hidden"
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleFileSelect(e, type)}
+                                disabled={uploading}
+                              />
+                              <label
+                                htmlFor={`upload-${type}`}
+                                className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors"
+                              >
+                                <Upload className="w-5 h-5 text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground">
+                                  {uploading ? "Upload en cours..." : "Choisir un fichier"}
+                                </span>
+                              </label>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

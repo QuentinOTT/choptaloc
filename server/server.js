@@ -24,6 +24,21 @@ async function runMigrations() {
       await pool.query('ALTER TABLE cars ADD COLUMN monthly_price DECIMAL(10, 2)');
       console.log('✅ Migration: Ajout colonne monthly_price');
     }
+
+    const [userColumns] = await pool.query('SHOW COLUMNS FROM users');
+    const userColNames = userColumns.map(c => c.Field);
+    if (!userColNames.includes('is_verified')) {
+      await pool.query('ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE');
+      console.log('✅ Migration: Ajout colonne is_verified sur users');
+    }
+
+    // Mise à jour de l''enum pour les documents
+    try {
+      await pool.query("ALTER TABLE user_documents MODIFY COLUMN document_type ENUM('id_card_front', 'id_card_back', 'license_front', 'license_back', 'proof_of_address', 'other') NOT NULL");
+      console.log('✅ Migration: Mise à jour enum document_type');
+    } catch (e) {
+      console.warn('⚠️ Note Migration Enum:', e.message);
+    }
   } catch (error) {
     console.warn('⚠️ Note Migration:', error.message);
   }
