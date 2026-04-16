@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, ChevronUp, ChevronDown, User, FileText, Shield, Key } from "lucide-react";
+import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key } from "lucide-react";
 
 const documentLabels: Record<string, string> = {
   id_card_front: "Carte d'identité - Recto",
@@ -1102,6 +1102,21 @@ const Admin = () => {
                         className="flex-1"
                       >
                         {car.isAvailable ? "Rendre indisponible" : "Rendre disponible"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const pricesTab = document.querySelector('[data-value="prices"]') as HTMLElement;
+                          if (pricesTab) pricesTab.click();
+                          setTimeout(() => {
+                            const priceInput = document.getElementById(`price-${car.id}`);
+                            if (priceInput) priceInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 100);
+                        }}
+                      >
+                        <Euro className="w-4 h-4 mr-2" />
+                        Prix
                       </Button>
                       <Button
                         size="sm"
