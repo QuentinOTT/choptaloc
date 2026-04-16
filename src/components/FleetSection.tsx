@@ -84,9 +84,21 @@ const FleetSection = () => {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [showBookingForm, setShowBookingForm] = useState(false);
-  const [showUnavailableCars, setShowUnavailableCars] = useState(false);
+  const [showUnavailableCars, setShowUnavailableCars] = useState(() => {
+    return localStorage.getItem('showUnavailableCars') === 'true';
+  });
   const [forceUpdate, setForceUpdate] = useState(0);
   const { getMonthAvailabilities, blockDatesForBooking, setAvailabilities } = useAvailabilities();
+
+  // Écouter les changements de localStorage pour mettre à jour l'état
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setShowUnavailableCars(localStorage.getItem('showUnavailableCars') === 'true');
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Initialiser selectedCar pour le calendrier avec la première voiture disponible
   const [calendarCar, setCalendarCar] = useState<typeof defaultCars[0] | null>(null);

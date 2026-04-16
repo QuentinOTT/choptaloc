@@ -96,6 +96,9 @@ const Admin = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedCarForCalendar, setSelectedCarForCalendar] = useState<Car | null>(null);
   const [contactMessages, setContactMessages] = useState<any[]>([]);
+  const [showUnavailableCarsSetting, setShowUnavailableCarsSetting] = useState(() => {
+    return localStorage.getItem('showUnavailableCars') === 'true';
+  });
 
   // Charger les données depuis l'API
   useEffect(() => {
@@ -203,6 +206,11 @@ const Admin = () => {
     if (!login(email, password)) {
       setLoginError("Email ou mot de passe incorrect");
     }
+  };
+
+  const handleShowUnavailableCarsChange = (value: boolean) => {
+    setShowUnavailableCarsSetting(value);
+    localStorage.setItem('showUnavailableCars', value.toString());
   };
 
   const updateBookingStatus = async (bookingId: string, newStatus: Booking["status"]) => {
@@ -396,7 +404,7 @@ const Admin = () => {
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <Tabs defaultValue="bookings" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-[850px] h-auto p-1">
+          <TabsList className="grid w-full grid-cols-7 lg:w-[950px] h-auto p-1">
             <TabsTrigger value="bookings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Calendar className="w-4 h-4" />
               <span className="hidden md:inline">Réservations</span>
@@ -432,8 +440,13 @@ const Admin = () => {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
+            <TabsTrigger value="settings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Settings className="w-4 h-4" />
+              <span className="hidden md:inline">Réglages</span>
+              <span className="md:hidden">Réglages</span>
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
+              <DollarSign className="w-4 h-4" />
               <span className="hidden md:inline">Statistiques</span>
               <span className="md:hidden">Stats</span>
             </TabsTrigger>
@@ -1689,6 +1702,39 @@ const Admin = () => {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Tab Réglages */}
+          <TabsContent value="settings" className="space-y-6">
+            <h2 className="text-xl font-semibold">Réglages de l'application</h2>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Affichage des véhicules</CardTitle>
+                <CardDescription>Contrôlez l'affichage des véhicules indisponibles sur la page d'accueil</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Afficher les véhicules indisponibles</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Si activé, les véhicules indisponibles (prochainement disponibles) seront affichés sur la page d'accueil
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showUnavailableCarsSetting}
+                        onChange={(e) => handleShowUnavailableCarsChange(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Tab Statistiques */}
