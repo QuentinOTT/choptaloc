@@ -1608,6 +1608,7 @@ const Admin = () => {
                          <img src={car.imageUrl} alt={car.brand} className="w-full h-full object-cover" />
                       </div>
                     </div>
+                  </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div>
