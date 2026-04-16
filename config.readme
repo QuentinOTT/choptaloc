@@ -1,0 +1,30 @@
+Configuration actuelle :
+
+Application (Docker Compose) :
+
+MySQL : port 3307 (interne)
+Backend : port 3001 (exposé)
+Frontend : port 8081 (exposé)
+L'application tourne dans des conteneurs Docker
+Nginx (installé directement sur le VPS) :
+
+Écoute sur le port 80
+Fait du reverse proxy vers :
+http://localhost:8081 pour le frontend
+http://localhost:3001/api/ pour l'API
+Configuration : /etc/nginx/sites-available/choptaloc.fr
+DNS :
+
+choptaloc.fr → 134.209.198.36
+www.choptaloc.fr → 134.209.198.36
+Coolify :
+
+coolify-proxy est arrêté pour libérer le port 80
+Coolify tourne toujours sur le port 8000 mais n'est plus utilisé pour choptaloc.fr
+Comment ça fonctionne :
+
+Un utilisateur accède à http://choptaloc.fr
+La requête arrive sur nginx (port 80)
+Nginx redirige vers localhost:8081 (frontend Docker)
+Le frontend fait les requêtes API vers localhost:3001
+Nginx redirige les requêtes /api/ vers localhost:3001
