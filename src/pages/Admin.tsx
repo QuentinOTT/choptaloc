@@ -99,6 +99,9 @@ const Admin = () => {
 
   // Nouvelles fonctionnalités de paramètres
   const [maintenanceMode, setMaintenanceMode] = useState(() => localStorage.getItem('maintenanceMode') === 'true');
+  const [vacationMode, setVacationMode] = useState(() => localStorage.getItem('vacationMode') === 'true');
+  const [vacationStart, setVacationStart] = useState(() => localStorage.getItem('vacationStart') || '');
+  const [vacationEnd, setVacationEnd] = useState(() => localStorage.getItem('vacationEnd') || '');
   const [globalSiteDiscount, setGlobalSiteDiscount] = useState(() => localStorage.getItem('globalSiteDiscount') || '0');
   const [minBookingDays, setMinBookingDays] = useState(() => localStorage.getItem('minBookingDays') || '1');
   const [alertMessage, setAlertMessage] = useState(() => localStorage.getItem('alertMessage') || '');
@@ -110,11 +113,18 @@ const Admin = () => {
     alert(val ? "Mode maintenance activé" : "Mode maintenance désactivé");
   };
 
+  const handleVacationToggle = (val: boolean) => {
+    setVacationMode(val);
+    localStorage.setItem('vacationMode', String(val));
+  };
+
   const saveGlobalSettings = () => {
     localStorage.setItem('globalSiteDiscount', globalSiteDiscount);
     localStorage.setItem('minBookingDays', minBookingDays);
     localStorage.setItem('alertMessage', alertMessage);
     localStorage.setItem('enableEmailAlerts', String(enableEmailAlerts));
+    localStorage.setItem('vacationStart', vacationStart);
+    localStorage.setItem('vacationEnd', vacationEnd);
     alert("Paramètres globaux enregistrés avec succès !");
   };
 
@@ -132,8 +142,10 @@ const Admin = () => {
             id: c.id.toString(),
             brand: c.brand,
             model: c.model,
-            price: c.price_per_day,
-            isAvailable: c.is_available,
+            price: parseFloat(c.price_per_day),
+            weeklyPrice: c.weekly_price ? parseFloat(c.weekly_price) : undefined,
+            monthlyPrice: c.monthly_price ? parseFloat(c.monthly_price) : undefined,
+            isAvailable: Boolean(c.is_available),
             imageUrl: c.image_url || '',
             tag: c.tag || undefined,
             color: c.color || undefined,
@@ -158,7 +170,19 @@ const Admin = () => {
       // Charger les documents
       fetch(`${API_URL}/documents`)
         .then(res => res.json())
-        .then(data => setUserDocuments(Array.isArray(data) ? data : []))
+        .then(data => {
+          const mappedDocs = data.map((d: any) => ({
+            id: d.id.toString(),
+            user_id: d.user_id.toString(),
+            userId: d.user_id.toString(),
+            type: d.document_type,
+            fileName: d.file_name,
+            fileUrl: d.file_path,
+            uploadedAt: d.created_at,
+            status: d.is_verified ? "verified" : "pending"
+          }));
+          setUserDocuments(Array.isArray(data) ? mappedDocs : []);
+        })
         .catch(err => {
           console.error('Erreur chargement documents:', err);
           setUserDocuments([]);
@@ -1594,7 +1618,9 @@ const Admin = () => {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                  price_per_day: newDailyPrice
+                                  price_per_day: newDailyPrice,
+                                  weekly_price: newWeeklyPrice,
+                                  monthly_price: newMonthlyPrice
                                 })
                               });
                               
@@ -1791,6 +1817,49 @@ const Admin = () => {
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                     </label>
                   </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-sm">Mode Vacances / Pause</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Indique que l'agence est fermée temporairement
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={vacationMode}
+                        onChange={(e) => handleVacationToggle(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                    </label>
+                  </div>
+
+                  {vacationMode && (
+                    <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-muted-foreground">Début</label>
+                          <Input 
+                            type="date" 
+                            value={vacationStart} 
+                            onChange={(e) => setVacationStart(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-muted-foreground">Fin</label>
+                          <Input 
+                            type="date" 
+                            value={vacationEnd} 
+                            onChange={(e) => setVacationEnd(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

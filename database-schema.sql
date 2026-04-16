@@ -241,9 +241,9 @@ INSERT INTO cars (brand, model, tag, price_per_day, image_url, specs, descriptio
  '["400 ch", "S-Tronic", "5 places", "Essence"]',
  'L''Audi RS3 représente le summum de la performance dans la catégorie compacte. Son moteur 5 cylindres de 400 ch et sa transmission S-Tronic en font une machine de guerre absolue.',
  FALSE),
-('Renault', 'Clio V', 'Pratique & Moderne', 49.00, '/assets/ClioVbleu.png',
- '["100 ch", "Manuelle", "5 places", "Essence"]',
- 'La Clio V est le choix parfait pour ceux qui recherchent une voiture moderne, économique et bien équipée. Polyvalente et facile à conduire, elle s''adapte à toutes les situations.',
+('Renault', 'Clio V Esprit Alpine', '145 CV - Hybride - 2023', 70.00, '/assets/ClioVbleu.png',
+ '["145 ch", "Automatique", "5 places", "Hybride"]',
+ 'La Renault Clio V en finition Esprit Alpine allie modernité, sportivité et efficience hybride. Parfaite pour tous vos trajets avec son moteur de 145 ch et sa finition haut de gamme.',
  TRUE);
 
 -- Insérer les services disponibles

@@ -46,14 +46,47 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Mettre à jour un véhicule
+// Mettre à jour un véhicule (partiel)
 router.put('/:id', async (req, res) => {
   try {
-    const { brand, model, tag, price_per_day, image_url, specs, is_available } = req.body;
+    const { 
+      brand, 
+      model, 
+      tag, 
+      price_per_day, 
+      weekly_price, 
+      monthly_price, 
+      image_url, 
+      specs, 
+      is_available,
+      description,
+      features
+    } = req.body;
+
+    const updates = [];
+    const values = [];
+
+    if (brand !== undefined) { updates.push('brand = ?'); values.push(brand); }
+    if (model !== undefined) { updates.push('model = ?'); values.push(model); }
+    if (tag !== undefined) { updates.push('tag = ?'); values.push(tag); }
+    if (price_per_day !== undefined) { updates.push('price_per_day = ?'); values.push(price_per_day); }
+    if (weekly_price !== undefined) { updates.push('weekly_price = ?'); values.push(weekly_price); }
+    if (monthly_price !== undefined) { updates.push('monthly_price = ?'); values.push(monthly_price); }
+    if (image_url !== undefined) { updates.push('image_url = ?'); values.push(image_url); }
+    if (specs !== undefined) { updates.push('specs = ?'); values.push(JSON.stringify(specs)); }
+    if (is_available !== undefined) { updates.push('is_available = ?'); values.push(is_available); }
+    if (description !== undefined) { updates.push('description = ?'); values.push(description); }
+    if (features !== undefined) { updates.push('features = ?'); values.push(JSON.stringify(features)); }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Aucune donnée à mettre à jour' });
+    }
+
+    values.push(req.params.id);
 
     await pool.query(
-      'UPDATE cars SET brand = ?, model = ?, tag = ?, price_per_day = ?, image_url = ?, specs = ?, is_available = ? WHERE id = ?',
-      [brand, model, tag, price_per_day, image_url, JSON.stringify(specs), is_available, req.params.id]
+      `UPDATE cars SET ${updates.join(', ')} WHERE id = ?`,
+      values
     );
 
     res.json({ success: true });

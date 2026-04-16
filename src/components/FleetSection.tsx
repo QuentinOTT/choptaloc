@@ -537,8 +537,12 @@ const _ = forceUpdate;
         )}
       </div>
       
-      <CarModal 
-        car={selectedCar}
+      <CarModal
+        car={selectedCar ? {
+          ...selectedCar,
+          weeklyPrice: selectedCar.weeklyPrice,
+          monthlyPrice: selectedCar.monthlyPrice
+        } : null}
         isOpen={!!selectedCar}
         onClose={() => setSelectedCar(null)}
       />

@@ -13,6 +13,8 @@ interface Car {
   model: string;
   tag: string;
   price: number;
+  weeklyPrice?: number;
+  monthlyPrice?: number;
   image: string;
   specs: string[];
   available?: boolean;
@@ -80,16 +82,16 @@ const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
           "Mode RS Performance"
         ]
       },
-      "Renault Clio V": {
-        description: "La Clio V est le choix parfait pour ceux qui recherchent une voiture moderne, économique et bien équipée. Polyvalente et facile à conduire, elle s'adapte à toutes les situations.",
+      "Renault Clio V Esprit Alpine": {
+        description: "La Renault Clio V en finition Esprit Alpine allie modernité, sportivité et efficience hybride. Avec ses 145 CV et sa motorisation hybride de 2023, elle offre un agrément de conduite exceptionnel en ville comme sur route.",
         features: [
-          "Écran multimédia 9.3\" Easy Link",
-          "Aide au stationnement avant et arrière",
-          "Régulateur de vitesse limiteur",
-          "Allumage automatique des feux",
-          "Détecteur d'angle mort",
-          "Bluetooth et USB",
-          "Climatisation manuelle"
+          "Finition haut de gamme Esprit Alpine",
+          "Moteur E-Tech 145 ch Hybride (vignette Crit'Air 1)",
+          "Écran multimédia 9.3\" Easy Link avec Navigation GPS",
+          "Aide au stationnement avant, arrière et caméra 360°",
+          "Régulateur de vitesse adaptatif et centrage dans la voie",
+          "Projecteurs Full LED avec signature lumineuse C-shape",
+          "Jantes alliage 17\" spécifiques Alpine"
         ]
       }
     };
@@ -155,23 +157,53 @@ const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
               {carDetails.description}
             </p>
             
+            {/* Grille de prix détaillée */}
+            <div className="bg-secondary/20 p-4 rounded-xl space-y-3">
+              <h4 className="text-xs font-bold uppercase text-muted-foreground tracking-wider underline">Forfaits Disponibles</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground font-bold">1 JOUR</p>
+                  <p className="font-bold text-lg">{car.price}€</p>
+                  <p className="text-[9px] text-primary">250 km incl.</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground font-bold">WEEK-END</p>
+                  <p className="font-bold text-lg">{car.weeklyPrice ? Math.round(car.weeklyPrice * 0.6) : 250}€</p>
+                  <p className="text-[9px] text-primary">500 km incl.</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground font-bold">1 SEMAINE</p>
+                  <p className="font-bold text-lg">{car.weeklyPrice || 390}€</p>
+                  <p className="text-[9px] text-primary">1000 km incl.</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-muted-foreground font-bold">1 MOIS</p>
+                  <p className="font-bold text-lg">{car.monthlyPrice || 1190}€</p>
+                  <p className="text-[9px] text-primary">ILLIMITÉ</p>
+                </div>
+              </div>
+              <p className="text-[9px] text-muted-foreground pt-1 border-t border-muted/20">
+                Km excédentaire : <span className="text-primary font-bold">0,50 € / km</span>
+              </p>
+            </div>
+            
             {/* Icônes d'informations */}
-            <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
                 <span className="text-sm">5 places</span>
               </div>
               <div className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-primary" />
-                <span className="text-sm">{car.specs[1]}</span>
+                <span className="text-sm">{safeSpecs[1] || "Automatique"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Fuel className="h-5 w-5 text-primary" />
-                <span className="text-sm">{car.specs[3]}</span>
+                <span className="text-sm">{safeSpecs[3] || "Hybride"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
-                <span className="text-sm">Disponible maintenant</span>
+                <span className="text-sm">Caution : 1000€</span>
               </div>
             </div>
           </div>

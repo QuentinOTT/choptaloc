@@ -70,6 +70,12 @@ const ClientDashboard = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Le fichier est trop volumineux (max 5 Mo). Veuillez compresser votre image ou utiliser un PDF.");
+      return;
+    }
+
     setUploading(true);
 
     try {

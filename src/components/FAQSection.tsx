@@ -8,88 +8,72 @@ const FAQSection = () => {
     {
       icon: User,
       title: "Conditions de Location",
-      description: "Tout savoir sur les éligibilités et conditions requises",
+      description: "Tout savoir sur les éligibilités et documents requis",
       questions: [
         {
-          question: "Quel est l'âge minimum pour louer un véhicule ?",
-          answer: "L'âge minimum est de 21 ans avec 2 ans de permis. Pour les véhicules premium (Mercedes, Audi RS3, Golf R), l'âge minimum est de 25 ans avec 3 ans de permis. Le permis doit être valide et en cours de validité."
+          question: "Quels documents sont nécessaires pour louer ?",
+          answer: "Vous devez présenter : une Carte Nationale d'Identité (CNI) en cours de validité, votre permis de conduire (recto-verso), et un justificatif de domicile de moins de 3 mois."
         },
         {
-          question: "Quels documents sont nécessaires ?",
-          answer: "Vous devez présenter : votre permis de conduire en cours de validité, une pièce d'identité (carte d'identité ou passeport), et une carte de crédit au nom du conducteur principal pour la garantie."
+          question: "Quel est le montant du dépôt de garantie (caution) ?",
+          answer: "Le dépôt de garantie est de 1000€ pour les citadines et berlines. Cette somme est déduite de la caution en cas de frais supplémentaires ou dégradations."
         },
         {
-          question: "Les permis étrangers sont-ils acceptés ?",
-          answer: "Oui, les permis européens sont acceptés sans traduction. Pour les permis hors UE, un permis international ou une traduction officielle est requise."
+          question: "Quel est l'âge minimum requis ?",
+          answer: "L'âge minimum est de 21 ans avec 2 ans de permis. Pour les véhicules de catégorie supérieure, des conditions spécifiques peuvent s'appliquer."
+        }
+      ]
+    },
+    {
+      icon: AlertCircle,
+      title: "Pénalités et Frais",
+      description: "Frais applicables en cas de non-respect du règlement",
+      questions: [
+        {
+          question: "Quels sont les frais de nettoyage ?",
+          answer: "Le véhicule doit être rendu propre. Nettoyage intérieur standard : 20€. Nettoyage approfondi (ordures, boue, vomissures, etc.) : 50€."
         },
         {
-          question: "Puis-je ajouter un conducteur additionnel ?",
-          answer: "Oui, vous pouvez ajouter jusqu'à 3 conducteurs additionnels. Chaque conducteur doit respecter les mêmes conditions d'âge et de permis. Le coût est de 5€ par jour par conducteur additionnel."
+          question: "Peut-on fumer dans le véhicule ?",
+          answer: "Il est strictement interdit de fumer à bord. En cas d'odeur de cigarette détectée, des frais de désodorisation de 80€ s'appliquent. Toute brûlure ou trou de cigarette est facturé 80€ par marque détectée."
+        },
+        {
+          question: "Que se passe-t-il si le véhicule part à la fourrière ?",
+          answer: "Tous les frais de fourrière sont à la charge intégrale du locataire. De plus, ChopTaLoc applique des frais administratifs fixes de 250€."
+        },
+        {
+          question: "Quels sont les frais de carburant et kilométrage ?",
+          answer: "Le kilométrage excédentaire est facturé 0,50€ par km. En cas d'essence manquante, le plein sera refait et facturé au prix réel + 20€ de frais de service."
         }
       ]
     },
     {
       icon: CreditCard,
-      title: "Paiement et Garantie",
-      description: "Informations sur les dépôts, assurances et paiements",
+      title: "Paiement et Réservation",
+      description: "Informations sur les modalités de règlement",
       questions: [
         {
-          question: "Quel est le montant du dépôt de garantie ?",
-          answer: "Le dépôt varie selon le véhicule : Clio (300€), Mercedes (800€), Golf R (1200€), Audi RS3 (1500€). Le dépôt est bloqué sur votre carte de crédit et restitué dans les 5-7 jours suivant la restitution du véhicule."
+          question: "Comment s'effectue le paiement ?",
+          answer: "Le règlement s'effectue au moment de la prise en charge du véhicule. Nous acceptons les cartes de crédit et les virements instantanés."
         },
         {
-          question: "Quelles sont les assurances incluses ?",
-          answer: "Tous nos véhicules incluent une assurance au tiers avec une franchise de 1500€. L'assurance tous risques avec franchise réduite à 300€ est en option (+25€/jour). L'assurance zéro franchise est également disponible (+45€/jour)."
-        },
-        {
-          question: "Comment le paiement s'effectue-t-il ?",
-          answer: "Le paiement de la location s'effectue au début de la période par carte de crédit. Nous acceptons Visa, Mastercard et American Express. Le dépôt de garantie est bloqué sur la même carte."
-        },
-        {
-          question: "Y a-t-il des frais cachés ?",
-          answer: "Non, nous pratiquons une politique de transparence totale. Le prix affiché inclut tous les frais obligatoires. Seules les options supplémentaires que vous choisissez sont facturées en plus."
+          question: "Quelle est la politique d'annulation ?",
+          answer: "Annulation gratuite jusqu'à 48h avant la date de location. Moins de 48h, des frais peuvent s'appliquer comme mentionné dans votre contrat."
         }
       ]
     },
     {
       icon: Map,
       title: "Kilométrage et Zone",
-      description: "Tout sur les distances autorisées et zones de circulation",
+      description: "Tout sur les distances autorisées",
       questions: [
         {
-          question: "Quel kilométrage est inclus dans la location ?",
-          answer: "Nos tarifs incluent 200km par jour. Le kilométrage supplémentaire est facturé 0,50€/km pour les véhicules standards et 0,80€/km pour les véhicules premium. L'option kilométrage illimité est disponible à 15€/jour."
+          question: "Quel kilométrage est inclus ?",
+          answer: "Le forfait dépend de la durée : 250km inclus pour 1 jour, 500km pour un week-end, et 1000km pour une semaine. Le kilométrage est illimité pour les locations au mois."
         },
         {
-          question: "Puis-je sortir du pays avec le véhicule ?",
-          answer: "La circulation est autorisée dans toute la France métropolitaine. Pour les voyages à l'étranger (UE), une autorisation préalable est nécessaire et des frais supplémentaires s'appliquent. La circulation hors UE n'est pas autorisée."
-        },
-        {
-          question: "Y a-t-il des restrictions de circulation ?",
-          answer: "Les véhicules ne peuvent pas être utilisés pour des compétitions sportives, sur pistes fermées, ou pour le transport de marchandises. L'utilisation professionnelle nécessite une autorisation spéciale."
-        }
-      ]
-    },
-    {
-      icon: Clock,
-      title: "Réservation et Annulation",
-      description: "Modalités de réservation, modification et annulation",
-      questions: [
-        {
-          question: "Comment réserver un véhicule ?",
-          answer: "Vous pouvez réserver par téléphone, via notre site web, ou directement en agence. Un acompte de 30% est requis pour confirmer la réservation. Le solde est dû à la prise du véhicule."
-        },
-        {
-          question: "Quelle est la politique d'annulation ?",
-          answer: "Annulation gratuite jusqu'à 48h avant la date de location. Entre 48h et 24h : 50% du montant. Moins de 24h : 100% du montant. En cas d'empêchement justifié (médical), nous pouvons proposer un report sans frais."
-        },
-        {
-          question: "Puis-je modifier ma réservation ?",
-          answer: "Oui, vous pouvez modifier votre réservation (dates, véhicule) sans frais jusqu'à 72h avant la date prévue, sous réserve de disponibilité."
-        },
-        {
-          question: "Y a-t-il des tarifs dégressifs pour les longues durées ?",
-          answer: "Oui, nous proposons des tarifs dégressifs : -10% pour 7-13 jours, -20% pour 14-29 jours, -30% pour 30 jours et plus. Contactez-nous pour un devis personnalisé."
+          question: "Puis-je sortir du pays ?",
+          answer: "La circulation est autorisée en France métropolitaine. Toute sortie du territoire sans accord écrit préalable peut donner lieu à des pénalités."
         }
       ]
     }
