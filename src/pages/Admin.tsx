@@ -89,7 +89,8 @@ const Admin = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [bookingTab, setBookingTab] = useState<"new" | "modifications">("new");
+  const [activeTab, setActiveTab] = useState("bookings");
+  const [activeBookingSubTab, setActiveBookingSubTab] = useState("new");
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedCarForCalendar, setSelectedCarForCalendar] = useState<Car | null>(null);
   const [contactMessages, setContactMessages] = useState<any[]>([]);
@@ -422,7 +423,7 @@ const Admin = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
-        <Tabs defaultValue="bookings" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7 lg:w-[950px] h-auto p-1">
             <TabsTrigger value="bookings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
               <Calendar className="w-4 h-4" />
@@ -486,7 +487,7 @@ const Admin = () => {
             </div>
 
             {/* Sous-onglets pour les réservations */}
-            <Tabs value={bookingTab} onValueChange={(value) => setBookingTab(value as "new" | "modifications")} className="space-y-4">
+            <Tabs value={activeBookingSubTab} onValueChange={(value) => setActiveBookingSubTab(value as "new" | "modifications")} className="space-y-4">
               <TabsList>
                 <TabsTrigger value="new">Nouvelles demandes</TabsTrigger>
                 <TabsTrigger value="modifications">Demandes de modification</TabsTrigger>
@@ -1081,57 +1082,87 @@ const Admin = () => {
               </Card>
             )}
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cars.map((car) => (
-                <Card key={car.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>{car.brand} {car.model}</CardTitle>
-                      <Badge variant={car.isAvailable ? "default" : "secondary"}>
+            <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+              <div className="hidden md:grid md:grid-cols-6 gap-4 p-4 bg-secondary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground border-b uppercase">
+                <div className="md:col-span-2">Véhicule</div>
+                <div className="text-center">État</div>
+                <div className="text-center">Prix / Jour</div>
+                <div className="md:col-span-2 text-right">Actions</div>
+              </div>
+
+              <div className="divide-y">
+                {cars.map((car) => (
+                  <div key={car.id} className="grid md:grid-cols-6 gap-4 p-4 items-center hover:bg-secondary/10 transition-colors">
+                    <div className="md:col-span-2 flex items-center gap-3">
+                      <div className="w-16 h-10 rounded-md overflow-hidden bg-secondary/50 flex-shrink-0">
+                        <img src={car.imageUrl} alt={car.brand} className="w-full h-full object-cover" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm md:text-base">{car.brand} {car.model}</h4>
+                        <p className="text-[10px] text-muted-foreground truncate max-w-[150px]">{car.tag}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center">
+                      <Badge 
+                        variant={car.isAvailable ? "default" : "secondary"}
+                        className={`${car.isAvailable ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "bg-orange-500/10 text-orange-500"} border-none text-[10px] md:text-xs font-bold`}
+                      >
                         {car.isAvailable ? "Disponible" : "Indisponible"}
                       </Badge>
                     </div>
-                    <CardDescription>{car.price}€ / jour</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2">
-                      <Button
+
+                    <div className="text-center font-black text-sm md:text-base">
+                      {car.price}€
+                    </div>
+
+                    <div className="md:col-span-2 flex flex-wrap justify-end gap-2">
+                       <Button
                         size="sm"
-                        variant={car.isAvailable ? "destructive" : "default"}
+                        variant="ghost"
+                        className="h-8 px-2 text-xs gap-1 hover:bg-blue-500/10 hover:text-blue-500"
+                        title="Rendre disponible/indisponible"
                         onClick={() => toggleCarAvailability(car.id)}
-                        className="flex-1"
                       >
-                        {car.isAvailable ? "Rendre indisponible" : "Rendre disponible"}
+                        {car.isAvailable ? <XCircle className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                        <span className="hidden lg:inline">{car.isAvailable ? "Bloquer" : "Activer"}</span>
                       </Button>
+                      
                       <Button
                         size="sm"
-                        variant="secondary"
+                        variant="ghost"
+                        className="h-8 px-2 text-xs gap-1 hover:bg-primary/10 hover:text-primary"
+                        title="Modifier les tarifs"
                         onClick={() => {
-                          const pricesTab = document.querySelector('[data-value="prices"]') as HTMLElement;
-                          if (pricesTab) pricesTab.click();
+                          setActiveTab("prices");
                           setTimeout(() => {
                             const priceInput = document.getElementById(`price-${car.id}`);
                             if (priceInput) priceInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           }, 100);
                         }}
                       >
-                        <Euro className="w-4 h-4 mr-2" />
-                        Prix
+                        <Euro className="w-4 h-4" />
+                        <span className="hidden lg:inline">Tarifs</span>
                       </Button>
+
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
+                        className="h-8 px-2 text-xs gap-1 hover:bg-secondary"
+                        title="Voir le calendrier"
                         onClick={() => {
                           setSelectedCarForCalendar(car);
                           setShowCalendar(true);
                         }}
                       >
                         <Calendar className="w-4 h-4" />
-                        Calendrier
                       </Button>
+
                       <Button
                         size="sm"
-                        variant="destructive"
+                        variant="ghost"
+                        className="h-8 px-2 text-xs text-red-500 hover:bg-red-500/10 hover:text-red-500"
+                        title="Supprimer le véhicule"
                         onClick={async () => {
                           if (confirm('Êtes-vous sûr de vouloir supprimer ce véhicule ?')) {
                             try {
@@ -1155,9 +1186,9 @@ const Admin = () => {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </TabsContent>
 
@@ -1560,21 +1591,23 @@ const Admin = () => {
           {/* Tab Prix */}
           <TabsContent value="prices" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Gestion des prix</h2>
-              <Badge variant="secondary">{cars.length} véhicule(s)</Badge>
+              <div>
+                <h2 className="text-xl font-bold">Gestion des tarifs</h2>
+                <p className="text-sm text-muted-foreground">Ajustez les prix journaliers, hebdomadaires et mensuels</p>
+              </div>
+              <Badge variant="secondary" className="font-bold">{cars.length} véhicule(s)</Badge>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {cars.map((car) => (
-                <Card key={car.id}>
-                  <CardHeader>
+                <Card key={car.id} className="border-2 hover:border-primary/50 transition-all shadow-sm">
+                  <CardHeader className="pb-3 border-b bg-secondary/10">
                     <div className="flex items-center justify-between">
-                      <CardTitle>{car.brand} {car.model}</CardTitle>
-                      <Badge variant="outline">
-                        {car.price}€ / jour
-                      </Badge>
+                      <CardTitle className="text-base font-bold">{car.brand} {car.model}</CardTitle>
+                      <div className="w-12 h-8 rounded overflow-hidden bg-background border">
+                         <img src={car.imageUrl} alt={car.brand} className="w-full h-full object-cover" />
+                      </div>
                     </div>
-                  </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div>
