@@ -60,9 +60,20 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
-    // Retourner l'utilisateur sans le mot de passe
-    const { password: _, ...userWithoutPassword } = user;
-    res.json({ success: true, user: userWithoutPassword });
+    // Retourner l'utilisateur avec la bonne casse pour le frontend
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phone: user.phone,
+        role: user.role,
+        emailVerified: user.email_verified,
+        createdAt: user.created_at
+      }
+    });
   } catch (error) {
     console.error('Erreur connexion:', error);
     res.status(500).json({ error: 'Erreur lors de la connexion' });
@@ -75,7 +86,18 @@ router.get('/', async (req, res) => {
     const [users] = await pool.query(
       'SELECT id, email, first_name, last_name, phone, role, email_verified, created_at FROM users ORDER BY created_at DESC'
     );
-    res.json(users);
+    // Formater pour le frontend (camelCase)
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      phone: user.phone,
+      role: user.role,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at
+    }));
+    res.json(formattedUsers);
   } catch (error) {
     console.error('Erreur récupération utilisateurs:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs' });
@@ -94,7 +116,17 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    res.json(users[0]);
+    const user = users[0];
+    res.json({
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      phone: user.phone,
+      role: user.role,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at
+    });
   } catch (error) {
     console.error('Erreur récupération utilisateur:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération de l\'utilisateur' });
