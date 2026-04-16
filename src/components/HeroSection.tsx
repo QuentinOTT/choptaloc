@@ -60,9 +60,11 @@ const HeroSection = () => {
           ) : (
             <button
               onClick={() => navigate("/client-auth")}
-              className="hidden md:inline-flex px-4 md:px-6 py-2 md:py-2.5 rounded-lg bg-secondary text-secondary-foreground font-semibold text-xs md:text-sm hover:brightness-110 transition-all"
+              className="flex items-center gap-2 px-3 md:px-6 py-2 md:py-2.5 rounded-lg bg-secondary text-secondary-foreground font-semibold text-xs md:text-sm hover:brightness-110 transition-all"
+              title="Connexion / Espace Client"
             >
-              Connexion
+              <User className="w-4 h-4 md:hidden" />
+              <span className="hidden md:inline">Connexion</span>
             </button>
           )}
           <a
