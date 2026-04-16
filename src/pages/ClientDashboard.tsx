@@ -61,6 +61,7 @@ const ClientDashboard = () => {
     dropoffLocation: "",
     notes: "",
   });
+  const [userModifications, setUserModifications] = useState<any[]>([]);
 
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -182,6 +183,15 @@ const ClientDashboard = () => {
           console.error('Erreur chargement réservations:', err);
           setBookings([]);
         });
+
+      // Charger les demandes de modification du client
+      fetch(`${API_URL}/bookings/modifications/user/${user.id}`)
+        .then(res => res.json())
+        .then(data => setUserModifications(data))
+        .catch(err => {
+          console.error('Erreur chargement modifications:', err);
+          setUserModifications([]);
+        });
     }
   }, [user]);
 
@@ -208,38 +218,38 @@ const ClientDashboard = () => {
 
     // Créer les modifications demandées
     const changes: Record<string, any> = {};
-    if (modificationForm.startDate && modificationForm.startDate !== editingBooking.startDate) {
+    if (modificationForm.startDate && modificationForm.startDate !== editingBooking.start_date) {
       changes.startDate = modificationForm.startDate;
     }
-    if (modificationForm.endDate && modificationForm.endDate !== editingBooking.endDate) {
+    if (modificationForm.endDate && modificationForm.endDate !== editingBooking.end_date) {
       changes.endDate = modificationForm.endDate;
     }
-    if (modificationForm.pickupLocation && modificationForm.pickupLocation !== editingBooking.pickupLocation) {
+    if (modificationForm.pickupLocation && modificationForm.pickupLocation !== editingBooking.pickup_location) {
       changes.pickupLocation = modificationForm.pickupLocation;
     }
-    if (modificationForm.dropoffLocation && modificationForm.dropoffLocation !== editingBooking.dropoffLocation) {
+    if (modificationForm.dropoffLocation && modificationForm.dropoffLocation !== editingBooking.dropoff_location) {
       changes.dropoffLocation = modificationForm.dropoffLocation;
     }
     if (modificationForm.notes && modificationForm.notes !== editingBooking.notes) {
       changes.notes = modificationForm.notes;
     }
 
+    if (Object.keys(changes).length === 0) {
+      alert("Veuillez apporter au moins une modification");
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_URL}/bookings/${editingBooking.id}`, {
-        method: 'PUT',
+      const response = await fetch(`${API_URL}/bookings/${editingBooking.id}/modifications`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(changes)
+        body: JSON.stringify({
+          changes,
+          requestedBy: user.id
+        })
       });
 
       if (response.ok) {
-        const updatedBookings = bookings.map((b: any) => {
-          if (b.id === editingBooking.id) {
-            return { ...b, ...changes };
-          }
-          return b;
-        });
-        setBookings(updatedBookings);
-
         setShowEditBooking(false);
         setEditingBooking(null);
         setModificationForm({
@@ -249,23 +259,25 @@ const ClientDashboard = () => {
           dropoffLocation: "",
           notes: "",
         });
-        alert("Réservation modifiée avec succès !");
+        alert("Demande de modification envoyée avec succès ! Elle sera examinée par un administrateur.");
       } else {
-        alert("Erreur lors de la modification");
+        const errorData = await response.json();
+        alert(`Erreur: ${errorData.error || 'Erreur lors de l\'envoi de la demande'}`);
       }
     } catch (error) {
       console.error('Erreur API:', error);
-      alert("Erreur lors de la modification");
+      alert("Erreur lors de l'envoi de la demande");
     }
   };
 
   const openEditModal = (booking: any) => {
     setEditingBooking(booking);
+    // On utilise les noms de propriétés de la base de données (snake_case from backend)
     setModificationForm({
-      startDate: booking.startDate,
-      endDate: booking.endDate,
-      pickupLocation: booking.pickupLocation || "",
-      dropoffLocation: booking.dropoffLocation || "",
+      startDate: booking.start_date?.split('T')[0] || "",
+      endDate: booking.end_date?.split('T')[0] || "",
+      pickupLocation: booking.pickup_location || "",
+      dropoffLocation: booking.dropoff_location || "",
       notes: booking.notes || "",
     });
     setShowEditBooking(true);
@@ -934,19 +946,29 @@ const ClientDashboard = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {bookings.map((booking) => (
-                      <Card key={booking.id} className="border">
-                        <CardHeader>
+                    {bookings.map((booking) => {
+                      const modRequest = userModifications.find(m => m.booking_id === booking.id && m.status === 'pending');
+                      const lastRejectedMod = userModifications.find(m => m.booking_id === booking.id && m.status === 'rejected');
+                      
+                      return (
+                      <Card key={booking.id} className="border shadow-sm hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
-                            <div>
-                              <CardTitle className="text-lg">
-                                {booking.carBrand} {booking.carModel}
-                              </CardTitle>
-                              <CardDescription>
-                                Du {new Date(booking.startDate).toLocaleDateString("fr-FR")} au {new Date(booking.endDate).toLocaleDateString("fr-FR")}
-                              </CardDescription>
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-primary/10 rounded-lg">
+                                <Calendar className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg">
+                                  {booking.brand} {booking.model}
+                                </CardTitle>
+                                <CardDescription className="flex items-center gap-2 mt-1">
+                                  <Clock className="w-3 h-3" />
+                                  DU {new Date(booking.start_date).toLocaleDateString("fr-FR")} AU {new Date(booking.end_date).toLocaleDateString("fr-FR")}
+                                </CardDescription>
+                              </div>
                             </div>
-                            <Badge variant={
+                            <Badge className="px-3" variant={
                               booking.status === "confirmed" ? "default" : 
                               booking.status === "cancelled" ? "destructive" : 
                               booking.status === "completed" ? "secondary" : "outline"
@@ -957,23 +979,53 @@ const ClientDashboard = () => {
                             </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="grid md:grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <p className="text-muted-foreground">Prix total</p>
-                                <p className="font-semibold text-lg">{booking.totalPrice}€</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground">Lieu de récupération</p>
-                                <p>{booking.pickupLocation || "Non spécifié"}</p>
-                              </div>
+                        <CardContent className="space-y-4 pt-0">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 py-4 border-y border-dashed border-gray-100 mt-2">
+                            <div>
+                              <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1 tracking-wider">Prix total</p>
+                              <p className="font-bold text-xl text-primary">{booking.total_price}€</p>
                             </div>
-                            {booking.status === "confirmed" && (
+                            <div>
+                              <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1 tracking-wider">Récupération</p>
+                              <p className="text-sm font-medium">{booking.pickup_location || "Agence"}</p>
+                            </div>
+                            <div className="hidden md:block">
+                              <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1 tracking-wider">Retour</p>
+                              <p className="text-sm font-medium">{booking.dropoff_location || "Agence"}</p>
+                            </div>
+                          </div>
+
+                          {/* Affichage des demandes de modification */}
+                          {modRequest && (
+                            <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-blue-700 text-sm">
+                                <Clock className="w-4 h-4" />
+                                <span>Demande de modification en attente...</span>
+                              </div>
+                              <Badge variant="outline" className="bg-white text-blue-700 border-blue-200">En cours</Badge>
+                            </div>
+                          )}
+
+                          {lastRejectedMod && !modRequest && (
+                            <div className="bg-red-50 border border-red-100 p-3 rounded-lg">
+                              <div className="flex items-center gap-2 text-red-700 text-sm mb-1">
+                                <AlertCircle className="w-4 h-4" />
+                                <span className="font-semibold">Modification refusée</span>
+                              </div>
+                              <p className="text-xs text-red-600 ml-6">{lastRejectedMod.rejection_reason}</p>
+                            </div>
+                          )}
+                          
+                          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <AlertCircle className="w-3 h-3" />
+                              Ref: #{booking.id.toString().padStart(5, '0')}
+                            </div>
+                            {(booking.status === "confirmed" || booking.status === "pending") && !modRequest && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="gap-2"
+                                className="gap-2 border-primary/20 hover:border-primary hover:bg-primary/5 transition-colors"
                                 onClick={() => openEditModal(booking)}
                               >
                                 <Edit className="w-4 h-4" />
@@ -983,7 +1035,8 @@ const ClientDashboard = () => {
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

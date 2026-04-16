@@ -97,6 +97,27 @@ const Admin = () => {
     return localStorage.getItem('showUnavailableCars') === 'true';
   });
 
+  // Nouvelles fonctionnalités de paramètres
+  const [maintenanceMode, setMaintenanceMode] = useState(() => localStorage.getItem('maintenanceMode') === 'true');
+  const [globalSiteDiscount, setGlobalSiteDiscount] = useState(() => localStorage.getItem('globalSiteDiscount') || '0');
+  const [minBookingDays, setMinBookingDays] = useState(() => localStorage.getItem('minBookingDays') || '1');
+  const [alertMessage, setAlertMessage] = useState(() => localStorage.getItem('alertMessage') || '');
+  const [enableEmailAlerts, setEnableEmailAlerts] = useState(() => localStorage.getItem('enableEmailAlerts') !== 'false');
+
+  const handleMaintenanceToggle = (val: boolean) => {
+    setMaintenanceMode(val);
+    localStorage.setItem('maintenanceMode', String(val));
+    alert(val ? "Mode maintenance activé" : "Mode maintenance désactivé");
+  };
+
+  const saveGlobalSettings = () => {
+    localStorage.setItem('globalSiteDiscount', globalSiteDiscount);
+    localStorage.setItem('minBookingDays', minBookingDays);
+    localStorage.setItem('alertMessage', alertMessage);
+    localStorage.setItem('enableEmailAlerts', String(enableEmailAlerts));
+    alert("Paramètres globaux enregistrés avec succès !");
+  };
+
   // Charger les données depuis l'API
   useEffect(() => {
     if (isAuthenticated) {
@@ -150,6 +171,26 @@ const Admin = () => {
         .catch(err => {
           console.error('Erreur chargement messages:', err);
           setContactMessages([]);
+        });
+
+      // Charger les demandes de modification
+      fetch(`${API_URL}/bookings/modifications/all`)
+        .then(res => res.json())
+        .then(data => {
+          const mappedModifications = data.map((m: any) => ({
+            id: m.id.toString(),
+            bookingId: m.booking_id.toString(),
+            requestedBy: m.requested_by.toString(),
+            requestedAt: m.created_at,
+            changes: m.changes,
+            status: m.status,
+            rejectionReason: m.rejection_reason
+          }));
+          setModificationRequests(mappedModifications);
+        })
+        .catch(err => {
+          console.error('Erreur chargement modifications:', err);
+          setModificationRequests([]);
         });
     }
   }, [isAuthenticated]);
@@ -814,25 +855,38 @@ const Admin = () => {
                                       // Appliquer les modifications à la réservation
                                       if (booking) {
                                         try {
-                                          const response = await fetch(`${API_URL}/bookings/${booking.id}`, {
+                                          // 1. Mettre à jour la réservation
+                                          const updateBookingRes = await fetch(`${API_URL}/bookings/${booking.id}`, {
                                             method: 'PUT',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify(request.changes)
                                           });
                                           
-                                          if (response.ok) {
-                                            const updatedBookings = bookings.map(b =>
-                                              b.id === request.bookingId ? { ...b, ...request.changes } : b
-                                            );
-                                            setBookings(updatedBookings);
-                                            
-                                            const updatedRequests = modificationRequests.map(r =>
-                                              r.id === request.id ? { ...r, status: "approved" as const } : r
-                                            );
-                                            setModificationRequests(updatedRequests);
-                                            alert("Modification approuvée !");
+                                          if (updateBookingRes.ok) {
+                                            // 2. Mettre à jour le statut de la demande de modification
+                                            const updateRequestRes = await fetch(`${API_URL}/bookings/modifications/${request.id}/status`, {
+                                              method: 'PUT',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ status: 'approved' })
+                                            });
+
+                                            if (updateRequestRes.ok) {
+                                              const updatedBookings = bookings.map(b =>
+                                                b.id === request.bookingId ? { ...b, ...request.changes } : b
+                                              );
+                                              setBookings(updatedBookings);
+                                              
+                                              const updatedRequests = modificationRequests.map(r =>
+                                                r.id === request.id ? { ...r, status: "approved" as const } : r
+                                              );
+                                              setModificationRequests(updatedRequests);
+                                              alert("Modification approuvée avec succès !");
+                                            } else {
+                                              alert("Erreur lors du changement de statut de la demande");
+                                            }
                                           } else {
-                                            alert("Erreur lors de l'approbation");
+                                            const errorData = await updateBookingRes.json();
+                                            alert(`Erreur lors de la mise à jour de la réservation: ${errorData.error || ''}`);
                                           }
                                         } catch (error) {
                                           console.error('Erreur API:', error);
@@ -846,14 +900,29 @@ const Admin = () => {
                                   <Button
                                     size="sm"
                                     variant="destructive"
-                                    onClick={() => {
+                                    onClick={async () => {
                                       const reason = prompt("Raison du refus :");
                                       if (reason) {
-                                        const updatedRequests = modificationRequests.map(r =>
-                                          r.id === request.id ? { ...r, status: "rejected" as const, rejectionReason: reason } : r
-                                        );
-                                        setModificationRequests(updatedRequests);
-                                        alert("Modification refusée");
+                                        try {
+                                          const response = await fetch(`${API_URL}/bookings/modifications/${request.id}/status`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ status: 'rejected', rejectionReason: reason })
+                                          });
+
+                                          if (response.ok) {
+                                            const updatedRequests = modificationRequests.map(r =>
+                                              r.id === request.id ? { ...r, status: "rejected" as const, rejectionReason: reason } : r
+                                            );
+                                            setModificationRequests(updatedRequests);
+                                            alert("Modification refusée");
+                                          } else {
+                                            alert("Erreur lors du refus");
+                                          }
+                                        } catch (error) {
+                                          console.error('Erreur API:', error);
+                                          alert("Erreur lors du refus");
+                                        }
                                       }
                                     }}
                                   >
@@ -1662,20 +1731,20 @@ const Admin = () => {
           <TabsContent value="settings" className="space-y-6">
             <h2 className="text-xl font-semibold">Réglages de l'application</h2>
             
-            <Card>
-              <CardHeader>
-                <CardTitle>Affichage des véhicules</CardTitle>
-                <CardDescription>Contrôlez l'affichage des véhicules indisponibles sur la page d'accueil</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">Afficher les véhicules indisponibles</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Si activé, les véhicules indisponibles (prochainement disponibles) seront affichés sur la page d'accueil
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Affichage & Accès</CardTitle>
+                  <CardDescription>Contrôlez la visibilité et l'accès au site</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-sm">Afficher les véhicules indisponibles</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Visibilité des véhicules prochainement en ligne
+                      </p>
+                    </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
@@ -1686,9 +1755,104 @@ const Admin = () => {
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                     </label>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-sm">Mode Maintenance</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Désactive les réservations pour les clients
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={maintenanceMode}
+                        onChange={(e) => handleMaintenanceToggle(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-sm">Alertes Email Admin</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Recevoir une alerte pour chaque nouveau message
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enableEmailAlerts}
+                        onChange={(e) => setEnableEmailAlerts(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Politique Commerciale</CardTitle>
+                  <CardDescription>Règles de réservation et promotions</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Réduction globale (%)</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="number" 
+                        value={globalSiteDiscount} 
+                        onChange={(e) => setGlobalSiteDiscount(e.target.value)}
+                        placeholder="Ex: 10" 
+                      />
+                      <span className="flex items-center bg-secondary px-3 rounded-lg border">%</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Durée minimale de location (jours)</label>
+                    <Input 
+                      type="number" 
+                      value={minBookingDays} 
+                      onChange={(e) => setMinBookingDays(e.target.value)}
+                      placeholder="Ex: 1" 
+                    />
+                  </div>
+
+                  <Button className="w-full mt-2" onClick={saveGlobalSettings}>
+                    <Check className="w-4 h-4 mr-2" />
+                    Enregistrer les règles
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Communication Site</CardTitle>
+                  <CardDescription>Message d'alerte affiché sur tout le site pour les clients</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Message de bandeau (BETA)</label>
+                    <textarea 
+                      className="w-full min-h-[100px] p-3 rounded-lg border bg-secondary/20 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      value={alertMessage}
+                      onChange={(e) => setAlertMessage(e.target.value)}
+                      placeholder="Ex: Nous sommes fermés du 1er au 15 août. Les réservations restent possibles pour après cette date."
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={saveGlobalSettings}>
+                      Publier le message
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Tab Statistiques */}

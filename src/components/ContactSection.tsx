@@ -1,14 +1,38 @@
-import { Phone, Mail, MapPin } from "lucide-react";
+import { Phone, Mail, MapPin, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { API_URL } from "@/config/api";
+import { toast } from "sonner";
 
 const ContactSection = () => {
-  const [formData, setFormData] = useState({ name: "", email: "", phone: "", message: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", phone: "", subject: "Demande de location", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    alert("Merci ! Nous vous recontacterons très bientôt.");
-    setFormData({ name: "", email: "", phone: "", message: "" });
+    setIsSubmitting(true);
+    
+    try {
+      const response = await fetch(`${API_URL}/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        toast.success("Merci ! Nous vous recontacterons très bientôt.");
+        setFormData({ name: "", email: "", phone: "", subject: "Demande de location", message: "" });
+      } else {
+        const error = await response.json();
+        toast.error(`Erreur: ${error.error || 'Erreur lors de l\'envoi'}`);
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error("Erreur de connexion au serveur");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -92,9 +116,17 @@ const ContactSection = () => {
             />
             <button
               type="submit"
-              className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-bold text-lg glow-orange hover:brightness-110 transition-all"
+              disabled={isSubmitting}
+              className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-bold text-lg glow-orange hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Envoyer la Demande
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Envoi...
+                </>
+              ) : (
+                "Envoyer la Demande"
+              )}
             </button>
           </form>
         </div>

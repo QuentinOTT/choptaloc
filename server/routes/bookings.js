@@ -86,6 +86,43 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
+// Mettre à jour une réservation (champs variés)
+router.put('/:id', async (req, res) => {
+  try {
+    const fields = req.body;
+    const allowedFields = ['start_date', 'end_date', 'pickup_location', 'dropoff_location', 'total_price', 'status', 'notes', 'driver_license_number', 'driver_license_date', 'pickup_time', 'dropoff_time'];
+    
+    // Mapper les noms camelCase du frontend vers snake_case de la DB si nécessaire
+    const mappedFields = {};
+    Object.keys(fields).forEach(key => {
+      const dbKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      if (allowedFields.includes(dbKey)) {
+        mappedFields[dbKey] = fields[key];
+      } else if (allowedFields.includes(key)) {
+        mappedFields[key] = fields[key];
+      }
+    });
+
+    if (Object.keys(mappedFields).length === 0) {
+      return res.status(400).json({ error: 'Aucun champ valide à mettre à jour' });
+    }
+
+    const setClause = Object.keys(mappedFields).map(key => `${key} = ?`).join(', ');
+    const values = Object.values(mappedFields);
+    values.push(req.params.id);
+
+    await pool.query(
+      `UPDATE bookings SET ${setClause} WHERE id = ?`,
+      values
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur mise à jour réservation:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de la réservation' });
+  }
+});
+
 // Créer une demande de modification
 router.post('/:id/modifications', async (req, res) => {
   try {
@@ -141,6 +178,31 @@ router.put('/modifications/:id/status', async (req, res) => {
   } catch (error) {
     console.error('Erreur mise à jour statut modification:', error);
     res.status(500).json({ error: 'Erreur lors de la mise à jour du statut' });
+  }
+});
+
+// Récupérer les demandes de modification d'un utilisateur
+router.get('/modifications/user/:userId', async (req, res) => {
+  try {
+    const [modifications] = await pool.query(`
+      SELECT mr.*, b.status as booking_status, c.brand, c.model 
+      FROM modification_requests mr 
+      LEFT JOIN bookings b ON mr.booking_id = b.id 
+      LEFT JOIN cars c ON b.car_id = c.id 
+      WHERE mr.requested_by = ? 
+      ORDER BY mr.created_at DESC
+    `, [req.params.userId]);
+    
+    // Parser les changements JSON si nécessaire
+    const parsedModifications = modifications.map(m => ({
+      ...m,
+      changes: typeof m.changes === 'string' ? JSON.parse(m.changes) : m.changes
+    }));
+
+    res.json(parsedModifications);
+  } catch (error) {
+    console.error('Erreur récupération modifications utilisateur:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des modifications' });
   }
 });
 

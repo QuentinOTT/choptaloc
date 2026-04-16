@@ -97,12 +97,6 @@ const HeroSection = () => {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
             <a
-              href="#fleet"
-              className="px-6 md:px-10 py-3 md:py-4 rounded-lg bg-primary text-primary-foreground font-bold text-sm md:text-lg glow-orange hover:brightness-110 transition-all"
-            >
-              Réserver maintenant
-            </a>
-            <a
               href="#contact"
               className="px-6 md:px-10 py-3 md:py-4 rounded-lg glass font-semibold text-sm md:text-lg hover:bg-secondary transition-all"
             >

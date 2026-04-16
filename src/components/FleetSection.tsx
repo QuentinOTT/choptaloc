@@ -199,26 +199,6 @@ const FleetSection = () => {
           </h2>
         </div>
 
-        {/* Contrôle d'affichage des véhicules */}
-        <div className="flex items-center justify-center mb-8 md:mb-12">
-          <div className="flex items-center gap-3 bg-secondary/30 rounded-lg p-3 md:p-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showUnavailableCars}
-                onChange={(e) => setShowUnavailableCars(e.target.checked)}
-                className="w-4 h-4 md:w-5 md:h-5 text-primary rounded focus:ring-primary"
-              />
-              <span className="text-sm md:text-base font-medium">
-                Afficher les véhicules indisponibles
-              </span>
-            </label>
-            <div className="text-xs md:text-sm text-muted-foreground">
-              ({showUnavailableCars ? cars.length : availableCars.length} véhicule{showUnavailableCars ? cars.length > 1 ? 's' : '' : availableCars.length > 1 ? 's' : ''})
-            </div>
-          </div>
-        </div>
-
         {/* Section Véhicules */}
         {displayedCars.length > 0 && (
           <div className="mb-16 md:mb-20">
