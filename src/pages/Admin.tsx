@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAdminAuth } from "@/hooks/use-admin-auth";
+import { useClientAuth } from "@/hooks/use-client-auth";
 import { useAvailabilities } from "@/hooks/use-availabilities";
 import { API_URL } from "@/config/api";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
@@ -71,11 +71,8 @@ interface Car {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, login, logout, isLoading } = useAdminAuth();
+  const { isAuthenticated, user, logout, isLoading } = useClientAuth();
   const { blockDatesForBooking } = useAvailabilities();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
 
   // État pour les réservations
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -201,17 +198,13 @@ const Admin = () => {
       });
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!login(email, password)) {
-      setLoginError("Email ou mot de passe incorrect");
-    }
-  };
-
   const handleShowUnavailableCarsChange = (value: boolean) => {
     setShowUnavailableCarsSetting(value);
     localStorage.setItem('showUnavailableCars', value.toString());
   };
+
+  // Vérifier si l'utilisateur a le rôle admin
+  const isAdmin = user?.role === "admin";
 
   const updateBookingStatus = async (bookingId: string, newStatus: Booking["status"]) => {
     const booking = bookings.find(b => b.id === bookingId);
@@ -338,49 +331,10 @@ const Admin = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Administration ChopTaLoc</CardTitle>
-            <CardDescription>Connectez-vous pour accéder au panneau d'administration</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Input
-                  type="password"
-                  placeholder="Mot de passe"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              {loginError && (
-                <p className="text-red-500 text-sm">{loginError}</p>
-              )}
-              <Button type="submit" className="w-full">
-                Se connecter
-              </Button>
-            </form>
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-              <p>Email: admin@choptaloc.com</p>
-              <p>Mot de passe: admin123</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  // Rediriger vers la page de connexion si non connecté ou non admin
+  if (!isAuthenticated || !isAdmin) {
+    navigate("/client-auth");
+    return null;
   }
 
   return (
