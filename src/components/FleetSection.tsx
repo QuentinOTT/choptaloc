@@ -540,6 +540,7 @@ const _ = forceUpdate;
       <CarModal
         car={selectedCar ? {
           ...selectedCar,
+          weekendPrice: selectedCar.weekendPrice,
           weeklyPrice: selectedCar.weeklyPrice,
           monthlyPrice: selectedCar.monthlyPrice
         } : null}

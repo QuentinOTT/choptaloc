@@ -1626,6 +1626,19 @@ const Admin = () => {
                       </div>
                       <div>
                         <label className="text-sm font-medium mb-2 block">
+                          Prix Week-end (Forfait)
+                        </label>
+                        <Input
+                          type="number"
+                          defaultValue={car.weekendPrice || 250}
+                          min="0"
+                          step="1"
+                          id={`weekend-price-${car.id}`}
+                          placeholder="Prix week-end"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">
                           Prix hebdomadaire (€ / semaine)
                         </label>
                         <Input
@@ -1654,10 +1667,12 @@ const Admin = () => {
                         size="sm"
                         onClick={async () => {
                           const dailyInput = document.getElementById(`price-${car.id}`) as HTMLInputElement;
+                          const weekendInput = document.getElementById(`weekend-price-${car.id}`) as HTMLInputElement;
                           const weeklyInput = document.getElementById(`weekly-price-${car.id}`) as HTMLInputElement;
                           const monthlyInput = document.getElementById(`monthly-price-${car.id}`) as HTMLInputElement;
                           
                           const newDailyPrice = parseInt(dailyInput.value);
+                          const newWeekendPrice = parseInt(weekendInput.value);
                           const newWeeklyPrice = parseInt(weeklyInput.value);
                           const newMonthlyPrice = parseInt(monthlyInput.value);
                           
@@ -1668,6 +1683,7 @@ const Admin = () => {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                   price_per_day: newDailyPrice,
+                                  weekend_price: newWeekendPrice,
                                   weekly_price: newWeeklyPrice,
                                   monthly_price: newMonthlyPrice
                                 })
@@ -1679,6 +1695,7 @@ const Admin = () => {
                                     ? { 
                                         ...c, 
                                         price: newDailyPrice,
+                                        weekendPrice: newWeekendPrice,
                                         weeklyPrice: newWeeklyPrice || newDailyPrice * 7,
                                         monthlyPrice: newMonthlyPrice || newDailyPrice * 30
                                       } 

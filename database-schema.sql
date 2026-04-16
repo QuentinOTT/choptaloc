@@ -27,6 +27,7 @@ CREATE TABLE cars (
     model VARCHAR(100) NOT NULL,
     tag VARCHAR(255),
     price_per_day DECIMAL(10, 2) NOT NULL,
+    weekend_price DECIMAL(10, 2),
     weekly_price DECIMAL(10, 2),
     monthly_price DECIMAL(10, 2),
     image_url VARCHAR(500),
@@ -243,7 +244,7 @@ INSERT INTO cars (brand, model, tag, price_per_day, image_url, specs, descriptio
  '["400 ch", "S-Tronic", "5 places", "Essence"]',
  'L''Audi RS3 représente le summum de la performance dans la catégorie compacte. Son moteur 5 cylindres de 400 ch et sa transmission S-Tronic en font une machine de guerre absolue.',
  FALSE),
-('Renault', 'Clio V Esprit Alpine', '145 CV - Hybride - 2023', 70.00, 390.00, 1190.00, '/assets/ClioVbleu.png',
+('Renault', 'Clio V Esprit Alpine', '145 CV - Hybride - 2023', 70.00, 250.00, 390.00, 1190.00, '/assets/ClioVbleu.png',
  '["145 ch", "Automatique", "5 places", "Hybride"]',
  'La Renault Clio V en finition Esprit Alpine allie modernité, sportivité et efficience hybride. Parfaite pour tous vos trajets avec son moteur de 145 ch et sa finition haut de gamme.',
  TRUE);

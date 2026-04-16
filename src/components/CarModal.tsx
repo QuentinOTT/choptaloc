@@ -13,6 +13,7 @@ interface Car {
   model: string;
   tag: string;
   price: number;
+  weekendPrice?: number;
   weeklyPrice?: number;
   monthlyPrice?: number;
   image: string;
@@ -180,7 +181,7 @@ const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] text-muted-foreground font-bold">WEEK-END</p>
-                  <p className="font-bold text-lg">{car.weeklyPrice ? Math.round(car.weeklyPrice * 0.6) : 250}€</p>
+                  <p className="font-bold text-lg">{car.weekendPrice || 250}€</p>
                   <p className="text-[9px] text-primary">500 km incl.</p>
                 </div>
                 <div className="space-y-1">

@@ -54,6 +54,7 @@ router.put('/:id', async (req, res) => {
       model, 
       tag, 
       price_per_day, 
+      weekend_price, 
       weekly_price, 
       monthly_price, 
       image_url, 
@@ -70,6 +71,7 @@ router.put('/:id', async (req, res) => {
     if (model !== undefined) { updates.push('model = ?'); values.push(model); }
     if (tag !== undefined) { updates.push('tag = ?'); values.push(tag); }
     if (price_per_day !== undefined) { updates.push('price_per_day = ?'); values.push(price_per_day); }
+    if (weekend_price !== undefined) { updates.push('weekend_price = ?'); values.push(weekend_price); }
     if (weekly_price !== undefined) { updates.push('weekly_price = ?'); values.push(weekly_price); }
     if (monthly_price !== undefined) { updates.push('monthly_price = ?'); values.push(monthly_price); }
     if (image_url !== undefined) { updates.push('image_url = ?'); values.push(image_url); }
