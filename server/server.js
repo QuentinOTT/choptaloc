@@ -4,6 +4,27 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const pool = require('./config/database');
+
+// Migration automatique de la base de données
+async function runMigrations() {
+  try {
+    const [columns] = await pool.query('SHOW COLUMNS FROM cars');
+    const columnNames = columns.map(c => c.Field);
+    
+    if (!columnNames.includes('weekly_price')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN weekly_price DECIMAL(10, 2)');
+      console.log('✅ Migration: Ajout colonne weekly_price');
+    }
+    if (!columnNames.includes('monthly_price')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN monthly_price DECIMAL(10, 2)');
+      console.log('✅ Migration: Ajout colonne monthly_price');
+    }
+  } catch (error) {
+    console.warn('⚠️ Note Migration:', error.message);
+  }
+}
+runMigrations();
 
 // Middleware
 app.use(cors());
