@@ -6,19 +6,24 @@ import FAQSection from "@/components/FAQSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 
+import { useSettings } from "@/context/SettingsContext";
+
 const Index = () => {
-  const alertMessage = localStorage.getItem('alertMessage');
-  const maintenanceMode = localStorage.getItem('maintenanceMode') === 'true';
-  const vacationMode = localStorage.getItem('vacationMode') === 'true';
-  const vacationStart = localStorage.getItem('vacationStart');
-  const vacationEnd = localStorage.getItem('vacationEnd');
+  const { settings, isLoading } = useSettings();
+
+  if (isLoading) return null;
+
+  const maintenanceMode = settings.maintenance_mode === 'true';
+  const vacationMode = settings.vacation_mode === 'true';
+  const vacationStart = settings.vacation_start;
+  const vacationEnd = settings.vacation_end;
+  const alertMessage = settings.alert_message;
 
   const isCurrentlyOnVacation = () => {
     if (!vacationMode || !vacationStart || !vacationEnd) return false;
     const now = new Date();
     const start = new Date(vacationStart);
     const end = new Date(vacationEnd);
-    // On considère que la fin est inclusive (fin de journée)
     end.setHours(23, 59, 59, 999);
     return now >= start && now <= end;
   };

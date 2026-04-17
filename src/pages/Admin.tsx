@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key } from "lucide-react";
+import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key, Building2, Settings2, Save } from "lucide-react";
+import { useSettings } from "@/context/SettingsContext";
 
 const documentLabels: Record<string, string> = {
   id_card_front: "Carte d'identité - Recto",
@@ -111,35 +112,46 @@ const Admin = () => {
     return localStorage.getItem('showUnavailableCars') === 'true';
   });
 
-  // Nouvelles fonctionnalités de paramètres
-  const [maintenanceMode, setMaintenanceMode] = useState(() => localStorage.getItem('maintenanceMode') === 'true');
-  const [vacationMode, setVacationMode] = useState(() => localStorage.getItem('vacationMode') === 'true');
-  const [vacationStart, setVacationStart] = useState(() => localStorage.getItem('vacationStart') || '');
   const [vacationEnd, setVacationEnd] = useState(() => localStorage.getItem('vacationEnd') || '');
-  const [globalSiteDiscount, setGlobalSiteDiscount] = useState(() => localStorage.getItem('globalSiteDiscount') || '0');
-  const [minBookingDays, setMinBookingDays] = useState(() => localStorage.getItem('minBookingDays') || '1');
-  const [alertMessage, setAlertMessage] = useState(() => localStorage.getItem('alertMessage') || '');
-  const [enableEmailAlerts, setEnableEmailAlerts] = useState(() => localStorage.getItem('enableEmailAlerts') === 'true');
+  const { refreshSettings } = useSettings();
 
-  const handleMaintenanceToggle = (val: boolean) => {
-    setMaintenanceMode(val);
-    localStorage.setItem('maintenanceMode', String(val));
-    alert(val ? "Mode maintenance activé" : "Mode maintenance désactivé");
-  };
+  const [companySettings, setCompanySettings] = useState({
+    company_name: "ChopTaLoc",
+    company_siret: "",
+    company_address: "",
+    company_phone: "",
+    company_email: "",
+    rental_min_age: "21",
+    rental_min_license_years: "2",
+    rental_default_deposit: "1000",
+    opening_hours_week: "09:00 - 18:00",
+    opening_hours_weekend: "10:00 - 16:00",
+    maintenance_mode: "false",
+    vacation_mode: "false",
+    vacation_start: "",
+    vacation_end: "",
+    alert_message: "",
+    global_discount: "0"
+  });
 
-  const handleVacationToggle = (val: boolean) => {
-    setVacationMode(val);
-    localStorage.setItem('vacationMode', String(val));
-  };
+  const [settingsActiveCategory, setSettingsActiveCategory] = useState("company");
 
-  const saveGlobalSettings = () => {
-    localStorage.setItem('globalSiteDiscount', globalSiteDiscount);
-    localStorage.setItem('minBookingDays', minBookingDays);
-    localStorage.setItem('alertMessage', alertMessage);
-    localStorage.setItem('enableEmailAlerts', String(enableEmailAlerts));
-    localStorage.setItem('vacationStart', vacationStart);
-    localStorage.setItem('vacationEnd', vacationEnd);
-    alert("Paramètres globaux enregistrés avec succès !");
+  const saveGlobalSettings = async (updatedSettings: any) => {
+    try {
+      const response = await fetch(`${API_URL}/settings/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedSettings)
+      });
+      if (response.ok) {
+        setCompanySettings(prev => ({ ...prev, ...updatedSettings }));
+        await refreshSettings();
+        alert("Réglages enregistrés avec succès !");
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de l\'enregistrement');
+    }
   };
 
   const saveCompanySettings = async () => {
@@ -2005,254 +2017,275 @@ const Admin = () => {
             )}
           </TabsContent>
 
-          {/* Tab Réglages */}
           <TabsContent value="settings" className="space-y-6">
-            <h2 className="text-xl font-semibold">Réglages de l'application</h2>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight">Réglages Système</h2>
+                <p className="text-muted-foreground text-sm">Configurez l'ensemble de votre agence de location</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="gap-2 border-primary/20 hover:bg-primary/5"
+                onClick={() => saveGlobalSettings(companySettings)}
+              >
+                <Save className="w-4 h-4" /> Sauvegarder tout
+              </Button>
+            </div>
             
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Affichage & Accès</CardTitle>
-                  <CardDescription>Contrôlez la visibilité et l'accès au site</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-sm">Afficher les véhicules indisponibles</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Visibilité des véhicules prochainement en ligne
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showUnavailableCarsSetting}
-                        onChange={(e) => handleShowUnavailableCarsChange(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
-                  </div>
+            <div className="flex flex-col md:flex-row gap-8 mt-8">
+              {/* Sidebar des réglages */}
+              <div className="w-full md:w-64 space-y-2">
+                {[
+                  { id: "company", label: "Entreprise", icon: Building2 },
+                  { id: "rental", label: "Location & Tarifs", icon: Key },
+                  { id: "availability", label: "Disponibilité & Pause", icon: Calendar },
+                  { id: "system", label: "Système & Accès", icon: Settings2 },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setSettingsActiveCategory(item.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                      settingsActiveCategory === item.id 
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
+                        : "hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <item.icon className={`w-4 h-4 ${settingsActiveCategory === item.id ? "" : "text-muted-foreground"}`} />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-sm">Mode Maintenance</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Désactive les réservations pour les clients
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={maintenanceMode}
-                        onChange={(e) => handleMaintenanceToggle(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-sm">Alertes Email Admin</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Recevoir une alerte pour chaque nouveau message
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={enableEmailAlerts}
-                        onChange={(e) => setEnableEmailAlerts(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-sm">Mode Vacances / Pause</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Indique que l'agence est fermée temporairement
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={vacationMode}
-                        onChange={(e) => handleVacationToggle(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
-                    </label>
-                  </div>
-
-                  {vacationMode && (
-                    <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold uppercase text-muted-foreground">Début</label>
+              {/* Contenu des réglages */}
+              <div className="flex-1 max-w-3xl">
+                {settingsActiveCategory === "company" && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <Card className="border-none shadow-none bg-transparent">
+                      <CardHeader className="px-0 pt-0">
+                        <CardTitle className="text-xl">Coordonnées de la société</CardTitle>
+                        <CardDescription>Informations affichées sur le site et les factures</CardDescription>
+                      </CardHeader>
+                      <CardContent className="px-0 space-y-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Nom commercial</label>
+                            <Input 
+                              value={companySettings.company_name} 
+                              onChange={(e) => setCompanySettings({...companySettings, company_name: e.target.value})}
+                              className="bg-background"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Numéro SIRET</label>
+                            <Input 
+                              value={companySettings.company_siret} 
+                              onChange={(e) => setCompanySettings({...companySettings, company_siret: e.target.value})}
+                              className="bg-background"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase text-muted-foreground">Adresse du siège</label>
                           <Input 
-                            type="date" 
-                            value={vacationStart} 
-                            onChange={(e) => setVacationStart(e.target.value)}
-                            className="h-8 text-xs"
+                            value={companySettings.company_address} 
+                            onChange={(e) => setCompanySettings({...companySettings, company_address: e.target.value})}
+                            className="bg-background"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold uppercase text-muted-foreground">Fin</label>
-                          <Input 
-                            type="date" 
-                            value={vacationEnd} 
-                            onChange={(e) => setVacationEnd(e.target.value)}
-                            className="h-8 text-xs"
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Email de contact</label>
+                            <Input 
+                              value={companySettings.company_email} 
+                              onChange={(e) => setCompanySettings({...companySettings, company_email: e.target.value})}
+                              className="bg-background"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Téléphone</label>
+                            <Input 
+                              value={companySettings.company_phone} 
+                              onChange={(e) => setCompanySettings({...companySettings, company_phone: e.target.value})}
+                              className="bg-background"
+                            />
+                          </div>
+                        </div>
+                        
+                        <h3 className="font-bold text-sm pt-4 border-b pb-2">Horaires Standard (Footer)</h3>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Semaine</label>
+                            <Input 
+                              value={companySettings.opening_hours_week} 
+                              onChange={(e) => setCompanySettings({...companySettings, opening_hours_week: e.target.value})}
+                              placeholder="ex: 09:00 - 18:00"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Week-end</label>
+                            <Input 
+                              value={companySettings.opening_hours_weekend} 
+                              onChange={(e) => setCompanySettings({...companySettings, opening_hours_weekend: e.target.value})}
+                              placeholder="ex: Fermé"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {settingsActiveCategory === "rental" && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <Card className="border-none shadow-none bg-transparent">
+                      <CardHeader className="px-0 pt-0">
+                        <CardTitle className="text-xl">Politique de Location</CardTitle>
+                        <CardDescription>Règles appliquées lors des réservations</CardDescription>
+                      </CardHeader>
+                      <CardContent className="px-0 space-y-6">
+                        <div className="grid md:grid-cols-3 gap-6">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Âge minimum</label>
+                            <Input 
+                              type="number"
+                              value={companySettings.rental_min_age} 
+                              onChange={(e) => setCompanySettings({...companySettings, rental_min_age: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Ancienneté permis</label>
+                            <Input 
+                              type="number"
+                              value={companySettings.rental_min_license_years} 
+                              onChange={(e) => setCompanySettings({...companySettings, rental_min_license_years: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Caution (€)</label>
+                            <Input 
+                              type="number"
+                              value={companySettings.rental_default_deposit} 
+                              onChange={(e) => setCompanySettings({...companySettings, rental_default_deposit: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase text-muted-foreground">Réduction Globale (%)</label>
+                          <div className="relative">
+                            <Input 
+                              type="number"
+                              value={companySettings.global_discount} 
+                              onChange={(e) => setCompanySettings({...companySettings, global_discount: e.target.value})}
+                            />
+                            <span className="absolute right-3 top-2 text-muted-foreground">%</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground italic">S'applique sur l'ensemble de la flotte</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {settingsActiveCategory === "availability" && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <Card className="border-none shadow-none bg-transparent">
+                      <CardHeader className="px-0 pt-0">
+                        <CardTitle className="text-xl">Disponibilité du service</CardTitle>
+                        <CardDescription>Gérez les périodes d'ouverture et de fermeture</CardDescription>
+                      </CardHeader>
+                      <CardContent className="px-0 space-y-6">
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
+                          <div className="space-y-0.5">
+                            <h4 className="font-bold text-sm text-yellow-600">Mode Vacances / Pause</h4>
+                            <p className="text-xs text-muted-foreground">Désactive les réservations pour tout le site</p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={companySettings.vacation_mode === 'true'}
+                              onChange={(e) => setCompanySettings({...companySettings, vacation_mode: String(e.target.checked)})}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                          </label>
+                        </div>
+
+                        {companySettings.vacation_mode === 'true' && (
+                          <div className="grid grid-cols-2 gap-4 p-4 border rounded-2xl bg-secondary/20 animate-in zoom-in-95">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-muted-foreground">Date de début</label>
+                              <Input 
+                                type="date"
+                                value={companySettings.vacation_start} 
+                                onChange={(e) => setCompanySettings({...companySettings, vacation_start: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-muted-foreground">Date de fin</label>
+                              <Input 
+                                type="date"
+                                value={companySettings.vacation_end} 
+                                onChange={(e) => setCompanySettings({...companySettings, vacation_end: e.target.value})}
+                              />
+                            </div>
+                            <p className="col-span-2 text-[10px] text-muted-foreground italic text-center">
+                              Pendant cette période, les clients verront un message d'absence et les réservations seront bloquées.
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {settingsActiveCategory === "system" && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <Card className="border-none shadow-none bg-transparent">
+                      <CardHeader className="px-0 pt-0">
+                        <CardTitle className="text-xl">Maintenance & Alertes</CardTitle>
+                        <CardDescription>Contrôle technique de l'application</CardDescription>
+                      </CardHeader>
+                      <CardContent className="px-0 space-y-6">
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-red-500/10 border border-red-500/20">
+                          <div className="space-y-0.5">
+                            <h4 className="font-bold text-sm text-red-600">Mode Maintenance</h4>
+                            <p className="text-xs text-muted-foreground">Bloque tout accès client immédiat</p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={companySettings.maintenance_mode === 'true'}
+                              onChange={(e) => setCompanySettings({...companySettings, maintenance_mode: String(e.target.checked)})}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                          </label>
+                        </div>
+
+                        <div className="space-y-2 pt-4">
+                          <label className="text-xs font-bold uppercase text-muted-foreground">Message d'alerte global (Bandeau haut)</label>
+                          <textarea 
+                            className="w-full min-h-[80px] p-3 text-sm rounded-xl border bg-secondary/30 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            value={companySettings.alert_message}
+                            onChange={(e) => setCompanySettings({...companySettings, alert_message: e.target.value})}
+                            placeholder="Ex: -10% sur toutes les locations cette semaine !"
                           />
                         </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informations Entreprise</CardTitle>
-                  <CardDescription>Gérer les coordonnées de votre société</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <h4 className="font-medium text-sm border-b pb-2">Coordonnées</h4>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Nom de la société</label>
-                      <Input 
-                        value={companySettings.company_name} 
-                        onChange={(e) => setCompanySettings({...companySettings, company_name: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">SIRET</label>
-                      <Input 
-                        value={companySettings.company_siret} 
-                        onChange={(e) => setCompanySettings({...companySettings, company_siret: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Adresse complète</label>
-                      <Input 
-                        value={companySettings.company_address} 
-                        onChange={(e) => setCompanySettings({...companySettings, company_address: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Téléphone commercial</label>
-                      <Input 
-                        value={companySettings.company_phone} 
-                        onChange={(e) => setCompanySettings({...companySettings, company_phone: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Email contact</label>
-                      <Input 
-                        value={companySettings.company_email} 
-                        onChange={(e) => setCompanySettings({...companySettings, company_email: e.target.value})}
-                      />
-                    </div>
+                      </CardContent>
+                    </Card>
                   </div>
-
-                  <h4 className="font-medium text-sm border-b pb-2 pt-4">Conditions de Location</h4>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Âge minimal</label>
-                      <Input 
-                        type="number"
-                        value={companySettings.rental_min_age} 
-                        onChange={(e) => setCompanySettings({...companySettings, rental_min_age: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Années permis min.</label>
-                      <Input 
-                        type="number"
-                        value={companySettings.rental_min_license_years} 
-                        onChange={(e) => setCompanySettings({...companySettings, rental_min_license_years: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Caution standard (€)</label>
-                      <Input 
-                        type="number"
-                        value={companySettings.rental_default_deposit} 
-                        onChange={(e) => setCompanySettings({...companySettings, rental_default_deposit: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <h4 className="font-medium text-sm border-b pb-2 pt-4">Horaires d'ouverture</h4>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Lundi - Vendredi</label>
-                      <Input 
-                        value={companySettings.opening_hours_week} 
-                        onChange={(e) => setCompanySettings({...companySettings, opening_hours_week: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">Week-end</label>
-                      <Input 
-                        value={companySettings.opening_hours_weekend} 
-                        onChange={(e) => setCompanySettings({...companySettings, opening_hours_weekend: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-6">
-                    <Button className="w-full bg-primary hover:bg-primary/90" onClick={saveCompanySettings}>
-                      <Check className="w-4 h-4 mr-2" />
-                      Enregistrer tous les réglages
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Fonctionnement du Système</CardTitle>
-                  <CardDescription>Maintenance et notifications</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-sm">Mode Maintenance</h4>
-                      <p className="text-xs text-muted-foreground">Bloquer l'accès au site pour les clients</p>
-                    </div>
-                    {/* ... (Existing maintenance logic if any) */}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Communication Site</CardTitle>
-                  <CardDescription>Message d'alerte affiché sur tout le site pour les clients</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Message de bandeau (BETA)</label>
-                    <textarea 
-                      className="w-full min-h-[100px] p-3 rounded-lg border bg-secondary/20 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      value={alertMessage}
-                      onChange={(e) => setAlertMessage(e.target.value)}
-                      placeholder="Ex: Nous sommes fermés du 1er au 15 août. Les réservations restent possibles pour après cette date."
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button onClick={saveGlobalSettings}>
-                      Publier le message
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                )}
+                
+                <div className="mt-12 pt-6 border-t flex justify-end">
+                   <Button 
+                    className="gap-2 px-8 py-6 rounded-2xl text-base font-bold shadow-xl shadow-primary/20"
+                    onClick={() => saveGlobalSettings(companySettings)}
+                  >
+                    <Save className="w-5 h-5" /> Enregistrer les modifications
+                  </Button>
+                </div>
+              </div>
             </div>
           </TabsContent>
 

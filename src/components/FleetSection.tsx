@@ -76,7 +76,18 @@ const getDefaultImage = (brand: string) => {
   }
 };
 
+import { useSettings } from "@/context/SettingsContext";
+
 const FleetSection = () => {
+  const { settings } = useSettings();
+  const globalDiscount = parseFloat(settings.global_discount) || 0;
+  const isVacation = settings.vacation_mode === 'true';
+
+  const calculateDiscountedPrice = (price: number) => {
+    if (globalDiscount <= 0) return price;
+    return Math.round(price * (1 - globalDiscount / 100));
+  };
+
   const [cars, setCars] = useState(defaultCars);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedCar, setSelectedCar] = useState<typeof defaultCars[0] | null>(null);
@@ -236,9 +247,23 @@ const FleetSection = () => {
                         <p className="text-muted-foreground text-xs md:text-sm">{car.tag}</p>
                       </div>
 
-                      <div className="flex items-baseline gap-2 mb-3 md:mb-4">
-                        <span className="text-2xl md:text-3xl font-black text-gradient-orange">{car.price}€</span>
-                        <span className="text-muted-foreground text-xs md:text-sm">/jour</span>
+                      <div className="flex items-center gap-3 mb-3 md:mb-4">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl md:text-3xl font-black text-gradient-orange">
+                            {calculateDiscountedPrice(car.price)}€
+                          </span>
+                          <span className="text-muted-foreground text-xs md:text-sm">/jour</span>
+                        </div>
+                        {globalDiscount > 0 && (
+                          <span className="text-xs line-through text-muted-foreground decoration-red-500/50">
+                            {car.price}€
+                          </span>
+                        )}
+                        {globalDiscount > 0 && (
+                          <Badge className="bg-green-500 hover:bg-green-500 text-[10px] py-0 h-5">
+                            -{globalDiscount}%
+                          </Badge>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap gap-2 mb-3 md:mb-4">
@@ -263,16 +288,16 @@ const FleetSection = () => {
                         >
                           Détails
                         </button>
-                        {car.available ? (
+                        {car.available && !isVacation ? (
                           <button
                             onClick={() => {
                               setCalendarCar(car);
                               setShowBookingForm(true);
                             }}
-                            className={`flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm ${
+                            className={`flex-1 text-center py-2 md:py-3 rounded-xl font-bold transition-all duration-300 text-xs md:text-sm ${
                               hoveredIndex === index
-                                ? "bg-primary text-primary-foreground glow-orange"
-                                : "bg-secondary text-secondary-foreground"
+                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                                : "bg-primary/90 text-primary-foreground"
                             }`}
                           >
                             Réserver
@@ -280,9 +305,9 @@ const FleetSection = () => {
                         ) : (
                           <button
                             disabled
-                            className="flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm bg-muted text-muted-foreground cursor-not-allowed"
+                            className="flex-1 text-center py-2 md:py-3 rounded-xl font-semibold transition-all duration-300 text-xs md:text-sm bg-muted text-muted-foreground cursor-not-allowed border border-dashed border-muted-foreground/30"
                           >
-                            Indisponible
+                            {isVacation ? "Agence en pause" : "Indisponible"}
                           </button>
                         )}
                       </div>
