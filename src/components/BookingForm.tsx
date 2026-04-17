@@ -143,44 +143,35 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       dates.push(current.toISOString().split('T')[0]);
       current.setDate(current.getDate() + 1);
     }
-
-    console.log('Dates calculées:', dates);
+    console.log('Dates calculées:', [formData.startDate, formData.endDate]);
 
     // Calculer le prix total avec prix dégressif
-    const days = dates.length;
-    let totalPrice = days * car.price;
-    if (days === 3) {
-      totalPrice = 250;
-    } else if (days >= 7 && car.weeklyPrice) {
-      const weeks = Math.floor(days / 7);
-      const remainingDays = days % 7;
-      totalPrice = weeks * car.weeklyPrice + remainingDays * car.price;
-    } else if (days >= 30 && car.monthlyPrice) {
-      const months = Math.floor(days / 30);
-      const remainingDays = days % 30;
-      totalPrice = months * car.monthlyPrice + remainingDays * car.price;
+    let newTotalPrice = 0;
+    const daysCount = getDaysCount(formData.startDate, formData.endDate);
+    
+    // Forfait spécifique 3 jours (72h) = 250€
+    if (daysCount === 3) {
+      newTotalPrice = 250;
+    } else {
+      newTotalPrice = daysCount * car.price;
     }
 
     const deliveryFee = formData.deliveryOption ? 30 : 0;
-    const newTotalPrice = totalPrice + deliveryFee;
+    newTotalPrice += deliveryFee;
 
     // Créer la réservation avec userId si un client est connecté
     const newBooking: any = {
       carId: car.id,
+      userId: user?.id || null, // On envoie explicitement null si pas de user
       startDate: formData.startDate,
       endDate: formData.endDate,
       pickupLocation: formData.deliveryOption ? formData.pickupLocation : "Récupération sur place",
       returnLocation: formData.deliveryOption ? formData.dropoffLocation : "Récupération sur place",
       totalPrice: newTotalPrice,
       notes: formData.notes,
-      driverLicenseNumber: formData.driverLicenseNumber,
-      driverLicenseDate: formData.driverLicenseDate,
+      driverLicenseNumber: formData.driverLicenseNumber || "",
+      driverLicenseDate: formData.driverLicenseDate || "",
     };
-
-    // Ajouter userId si un client est connecté
-    if (user) {
-      newBooking.userId = user.id;
-    }
 
     console.log('Booking à envoyer:', newBooking);
 
@@ -215,8 +206,23 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
 
   if (!car) return null;
 
-  const days = selectedDates.length;
-  const totalPrice = days * car.price;
+  const getSummaryPrice = () => {
+    const daysCount = getDaysCount(formData.startDate, formData.endDate);
+    if (daysCount === 0) return 0;
+    
+    let basePrice = 0;
+    if (daysCount === 3) {
+      basePrice = 250;
+    } else {
+      basePrice = daysCount * car.price;
+    }
+    
+    const deliveryFee = formData.deliveryOption ? 30 : 0;
+    return basePrice + deliveryFee;
+  };
+
+  const totalPrice = getSummaryPrice();
+  const days = getDaysCount(formData.startDate, formData.endDate);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
