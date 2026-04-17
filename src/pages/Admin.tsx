@@ -1246,7 +1246,7 @@ const Admin = () => {
                     user.email.toLowerCase().includes(searchTerm.toLowerCase())
                   )
                   .map((user) => {
-                    const userDocs = userDocuments.filter((doc: any) => doc.userId === user.id);
+                    const userDocs = userDocuments.filter((doc: any) => String(doc.userId) === String(user.id));
                     const isExpanded = expandedUser === user.id;
                     return (
                       <Card key={user.id} className="overflow-hidden">
@@ -1693,7 +1693,7 @@ const Admin = () => {
                                         const updatedUsers = users.filter(u => u.id !== user.id);
                                         setUsers(updatedUsers);
                                         
-                                        const updatedDocs = userDocuments.filter((doc: any) => doc.userId !== user.id);
+                                        const updatedDocs = userDocuments.filter((doc: any) => String(doc.userId) !== String(user.id));
                                         setUserDocuments(updatedDocs);
                                       } else {
                                         alert("Erreur lors de la suppression");
