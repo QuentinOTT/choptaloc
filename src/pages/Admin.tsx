@@ -1181,8 +1181,12 @@ const Admin = () => {
                 {cars.map((car) => (
                   <div key={car.id} className="grid md:grid-cols-6 gap-4 p-4 items-center hover:bg-secondary/10 transition-colors">
                     <div className="md:col-span-2 flex items-center gap-3">
-                      <div className="w-16 h-10 rounded-md overflow-hidden bg-secondary/50 flex-shrink-0">
-                        <img src={car.imageUrl} alt={car.brand} className="w-full h-full object-cover" />
+                      <div className="w-16 h-10 rounded-md overflow-hidden bg-secondary/50 flex-shrink-0 flex items-center justify-center">
+                        {car.imageUrl ? (
+                          <img src={car.imageUrl} alt={car.brand} className="w-full h-full object-cover" />
+                        ) : (
+                          <Car className="w-6 h-6 text-muted-foreground opacity-30" />
+                        )}
                       </div>
                       <div>
                         <h4 className="font-bold text-sm md:text-base">{car.brand} {car.model}</h4>
@@ -2114,7 +2118,11 @@ const Admin = () => {
 
               <Card>
                 <CardHeader>
-                  <h4 className="font-medium text-sm border-b pb-2">Informations Entreprise</h4>
+                  <CardTitle>Informations Entreprise</CardTitle>
+                  <CardDescription>Gérer les coordonnées de votre société</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <h4 className="font-medium text-sm border-b pb-2">Coordonnées</h4>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase text-muted-foreground">Nom de la société</label>
@@ -2214,6 +2222,14 @@ const Admin = () => {
                   <CardDescription>Maintenance et notifications</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-sm">Mode Maintenance</h4>
+                      <p className="text-xs text-muted-foreground">Bloquer l'accès au site pour les clients</p>
+                    </div>
+                    {/* ... (Existing maintenance logic if any) */}
+                  </div>
+                </CardContent>
               </Card>
 
               <Card className="md:col-span-2">
