@@ -87,8 +87,6 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     if (!formData.lastName.trim()) newErrors.lastName = "Le nom est requis";
     if (!formData.email.trim()) newErrors.email = "L'email est requis";
     if (!formData.phone.trim()) newErrors.phone = "Le téléphone est requis";
-    if (!formData.driverLicenseNumber.trim()) newErrors.driverLicenseNumber = "Le numéro de permis est requis";
-    if (!formData.driverLicenseDate) newErrors.driverLicenseDate = "La date du permis est requise";
     if (formData.deliveryOption) {
       if (!formData.pickupLocation.trim()) newErrors.pickupLocation = "Le lieu de récupération est requis";
       if (!formData.dropoffLocation.trim()) newErrors.dropoffLocation = "Le lieu de retour est requis";
@@ -274,37 +272,6 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
                   className={errors.phone ? "border-red-500" : ""}
                 />
                 {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Permis de conduire */}
-          <div className="space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-primary" />
-              Permis de conduire
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="driverLicenseNumber">Numéro de permis *</Label>
-                <Input
-                  id="driverLicenseNumber"
-                  value={formData.driverLicenseNumber}
-                  onChange={(e) => setFormData({ ...formData, driverLicenseNumber: e.target.value })}
-                  className={errors.driverLicenseNumber ? "border-red-500" : ""}
-                />
-                {errors.driverLicenseNumber && <p className="text-red-500 text-xs mt-1">{errors.driverLicenseNumber}</p>}
-              </div>
-              <div>
-                <Label htmlFor="driverLicenseDate">Date d'obtention *</Label>
-                <Input
-                  id="driverLicenseDate"
-                  type="date"
-                  value={formData.driverLicenseDate}
-                  onChange={(e) => setFormData({ ...formData, driverLicenseDate: e.target.value })}
-                  className={errors.driverLicenseDate ? "border-red-500" : ""}
-                />
-                {errors.driverLicenseDate && <p className="text-red-500 text-xs mt-1">{errors.driverLicenseDate}</p>}
               </div>
             </div>
           </div>

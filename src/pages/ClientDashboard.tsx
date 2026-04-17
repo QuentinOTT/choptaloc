@@ -356,18 +356,17 @@ const ClientDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center justify-between w-full sm:w-auto gap-3">
             <div className="flex items-center gap-2 md:gap-3">
-              {user?.role === "admin" ? (
-                <Button onClick={() => navigate("/admin")} variant="ghost" className="gap-2 p-2 md:px-4">
+              <Button onClick={() => navigate("/")} variant="ghost" className="gap-2 p-2 md:px-4 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden md:inline">Retour au site</span>
+              </Button>
+              {user?.role === "admin" && (
+                <Button onClick={() => navigate("/admin")} variant="ghost" className="gap-2 p-2 md:px-4 text-primary hover:bg-primary/10">
                   <Shield className="w-4 h-4" />
                   <span className="hidden md:inline">Panel Admin</span>
                 </Button>
-              ) : (
-                <Button onClick={() => navigate("/")} variant="ghost" className="gap-2 p-2 md:px-4">
-                  <ArrowLeft className="w-4 h-4" />
-                  <span className="hidden md:inline">Retour au site</span>
-                </Button>
               )}
-              <h1 className="text-lg md:text-2xl font-bold">Espace Client</h1>
+              <h1 className="text-lg md:text-2xl font-bold ml-2">Mon Espace</h1>
             </div>
             <Button onClick={logout} variant="outline" className="gap-2 p-2 md:px-4 sm:hidden">
               <LogOut className="w-4 h-4" />
@@ -390,6 +389,36 @@ const ClientDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        {/* Welcome Section */}
+        <div className="mb-8 p-6 md:p-10 rounded-3xl bg-gradient-to-br from-primary/10 via-background to-background border border-primary/10 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <h2 className="text-2xl md:text-4xl font-black tracking-tight italic">Bienvenue, {user.firstName} ! 👋</h2>
+              <p className="text-muted-foreground">Ravi de vous revoir. Retrouvez ici vos documents et vos réservations en cours.</p>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <div className="bg-card/50 backdrop-blur-md border px-4 py-3 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Réservations</p>
+                  <p className="text-xl font-black">{bookings.filter(b => b.status === 'confirmed').length}</p>
+                </div>
+              </div>
+              <div className="bg-card/50 backdrop-blur-md border px-4 py-3 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Documents</p>
+                  <p className="text-xl font-black">{documents.filter(d => d.status === 'verified').length}/{MANDATORY_DOCS.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "profile" | "documents" | "bookings")} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 lg:w-[400px] h-auto p-1">
             <TabsTrigger value="profile" className="gap-2 flex-col md:flex-row items-center py-3 md:py-2 text-xs md:text-sm">
