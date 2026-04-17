@@ -292,6 +292,23 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
                 />
                 {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
               </div>
+              <div>
+                <Label htmlFor="driverLicenseNumber">Numéro de permis (optionnel)</Label>
+                <Input
+                  id="driverLicenseNumber"
+                  value={formData.driverLicenseNumber}
+                  onChange={(e) => setFormData({ ...formData, driverLicenseNumber: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="driverLicenseDate">Date d'obtention (optionnel)</Label>
+                <Input
+                  id="driverLicenseDate"
+                  type="date"
+                  value={formData.driverLicenseDate}
+                  onChange={(e) => setFormData({ ...formData, driverLicenseDate: e.target.value })}
+                />
+              </div>
             </div>
           </div>
 
