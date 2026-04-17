@@ -757,41 +757,48 @@ const Admin = () => {
             ) : (
               <div className="space-y-4">
                 {bookings.map((booking) => (
-                  <Card key={booking.id}>
+                  <Card key={booking.id} className={booking.status === 'pending' ? 'border-orange-500 shadow-md bg-orange-50/10' : ''}>
                     <CardContent className="p-4 md:p-6">
-                      <div className="flex flex-col gap-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-base md:text-lg">
-                                {booking.carBrand} {booking.carModel}
-                              </h3>
-                              <Badge className={getStatusColor(booking.status)}>
-                                {getStatusLabel(booking.status)}
-                              </Badge>
+                      <div className="flex flex-col gap-6">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${booking.status === 'pending' ? 'bg-orange-500/10' : 'bg-primary/10'}`}>
+                              <Car className={`w-6 h-6 ${booking.status === 'pending' ? 'text-orange-500' : 'text-primary'}`} />
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs md:text-sm">
-                              <div>
-                                <p className="text-muted-foreground">Client</p>
-                                <p className="font-medium">{booking.userName}</p>
-                                <p className="text-muted-foreground text-xs">{booking.userEmail}</p>
-                                <p className="text-muted-foreground text-xs">{booking.userPhone}</p>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-bold text-lg">
+                                  {booking.carBrand} {booking.carModel}
+                                </h3>
+                                <Badge className={getStatusColor(booking.status)}>
+                                  {getStatusLabel(booking.status)}
+                                </Badge>
                               </div>
-                              <div>
-                                <p className="text-muted-foreground">Dates</p>
-                                <p className="font-medium">
-                                  {new Date(booking.startDate).toLocaleDateString('fr-FR')} - {new Date(booking.endDate).toLocaleDateString('fr-FR')}
-                                </p>
-                                <p className="text-muted-foreground">Prix: {booking.totalPrice}€</p>
-                              </div>
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Dates: {new Date(booking.startDate).toLocaleDateString('fr-FR')} au {new Date(booking.endDate).toLocaleDateString('fr-FR')} • {booking.totalPrice}€
+                              </p>
                             </div>
-                            {booking.notes && (
-                              <div className="mt-2">
-                                <p className="text-muted-foreground text-xs">Notes:</p>
-                                <p className="text-xs">{booking.notes}</p>
-                              </div>
-                            )}
                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-secondary/20 rounded-xl p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                              <User className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                            <div className="text-sm">
+                              <p className="font-semibold">{booking.userName}</p>
+                              <p className="text-muted-foreground">{booking.userEmail}</p>
+                              <p className="text-muted-foreground">{booking.userPhone}</p>
+                            </div>
+                          </div>
+                          
+                          {booking.notes && (
+                            <div className="text-sm border-l-2 pl-3">
+                              <p className="font-semibold text-muted-foreground mb-1">Notes du client :</p>
+                              <p className="italic text-muted-foreground">{booking.notes}</p>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t">
