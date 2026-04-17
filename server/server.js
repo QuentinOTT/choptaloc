@@ -51,11 +51,20 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes API
-app.use('/api/users', require('./routes/users'));
-app.use('/api/bookings', require('./routes/bookings'));
-app.use('/api/documents', require('./routes/documents'));
-app.use('/api/cars', require('./routes/cars'));
-app.use('/api/contact', require('./routes/contact'));
+const apiRouter = express.Router();
+apiRouter.use('/users', require('./routes/users'));
+apiRouter.use('/bookings', require('./routes/bookings'));
+apiRouter.use('/documents', require('./routes/documents'));
+apiRouter.use('/cars', require('./routes/cars'));
+apiRouter.use('/contact', require('./routes/contact'));
+
+// Définir les routes de santé et racine sur le router API aussi
+apiRouter.get('/health', (req, res) => res.json({ status: 'ok', message: 'API healthy' }));
+
+// Monter le router API
+app.use('/api', apiRouter);
+// Fallback pour la racine du serveur
+app.get('/', (req, res) => res.json({ status: 'ok', message: 'API ChopTaLoc Root' }));
 
 // Route de santé
 app.get('/api/health', (req, res) => {

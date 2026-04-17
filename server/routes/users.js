@@ -84,7 +84,7 @@ router.post('/login', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const [users] = await pool.query(
-      'SELECT id, email, first_name, last_name, phone, role, email_verified, created_at FROM users ORDER BY created_at DESC'
+      'SELECT id, email, first_name, last_name, phone, role, email_verified, is_verified, created_at FROM users ORDER BY created_at DESC'
     );
     // Formater pour le frontend (camelCase)
     const formattedUsers = users.map(user => ({
@@ -95,6 +95,7 @@ router.get('/', async (req, res) => {
       phone: user.phone,
       role: user.role,
       emailVerified: user.email_verified,
+      is_verified: user.is_verified,
       createdAt: user.created_at
     }));
     res.json(formattedUsers);
@@ -108,7 +109,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [users] = await pool.query(
-      'SELECT id, email, first_name, last_name, phone, role, email_verified, created_at FROM users WHERE id = ?',
+      'SELECT id, email, first_name, last_name, phone, role, email_verified, is_verified, created_at FROM users WHERE id = ?',
       [req.params.id]
     );
 
@@ -125,6 +126,7 @@ router.get('/:id', async (req, res) => {
       phone: user.phone,
       role: user.role,
       emailVerified: user.email_verified,
+      is_verified: user.is_verified,
       createdAt: user.created_at
     });
   } catch (error) {
