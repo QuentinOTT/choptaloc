@@ -19,6 +19,11 @@ router.get('/fix-schema', async (req, res) => {
       results.push('driver_license_date rendu optionnel');
     } catch (e) { results.push('Erreur date permis: ' + e.message); }
 
+    try {
+      await pool.query('ALTER TABLE bookings MODIFY COLUMN driver_license_number VARCHAR(255) NULL');
+      results.push('driver_license_number rendu optionnel');
+    } catch (e) { results.push('Erreur numéro permis: ' + e.message); }
+
     // 3. ajout colonnes cars
     try {
       await pool.query('ALTER TABLE cars ADD COLUMN caution_amount DECIMAL(10, 2) DEFAULT 1000');
