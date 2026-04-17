@@ -14,10 +14,21 @@ interface Car {
   price: number;
   weeklyPrice?: number;
   monthlyPrice?: number;
+  caution_amount?: number;
+  min_license_years?: number;
   image: string;
   tag?: string;
   specs?: string[];
 }
+
+// Fonction utilitaire pour calculer le nombre de jours
+const getDaysCount = (start: string, end: string) => {
+  if (!start || !end) return 0;
+  const d1 = new Date(start);
+  const d2 = new Date(end);
+  const diffTime = Math.abs(d2.getTime() - d1.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
 
 interface BookingFormProps {
   car: Car | null;
@@ -382,26 +393,37 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
               <span className="font-medium">{car.brand} {car.model}</span>
             </div>
             {formData.startDate && formData.endDate && (() => {
-              const days = Math.ceil((new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              const days = getDaysCount(formData.startDate, formData.endDate);
+              if (days === 0) return null;
+              
               let basePrice = car.price;
+              let totalPrice = 0;
               let priceType = "journalier";
 
               if (days === 3) {
+                totalPrice = 250;
                 basePrice = 250 / 3;
                 priceType = "forfait 3 jours (72h)";
               } else if (days >= 7 && car.weeklyPrice) {
-                basePrice = car.weeklyPrice / 7;
+                const weeks = Math.floor(days / 7);
+                const remainingDays = days % 7;
+                totalPrice = weeks * car.weeklyPrice + remainingDays * car.price;
+                basePrice = totalPrice / days;
                 priceType = "hebdomadaire";
-              }
-              if (days >= 30 && car.monthlyPrice) {
-                basePrice = car.monthlyPrice / 30;
+              } else if (days >= 30 && car.monthlyPrice) {
+                const months = Math.floor(days / 30);
+                const remainingDays = days % 30;
+                totalPrice = months * car.monthlyPrice + remainingDays * car.price;
+                basePrice = totalPrice / days;
                 priceType = "mensuel";
+              } else {
+                totalPrice = days * car.price;
               }
 
               const deliveryFee = formData.deliveryOption ? 30 : 0;
-              const totalPrice = (days * basePrice) + deliveryFee;
-              const regularPrice = days * car.price + deliveryFee;
-              const discount = regularPrice - totalPrice;
+              const finalPrice = totalPrice + deliveryFee;
+              const regularPrice = (days * car.price) + deliveryFee;
+              const discount = regularPrice - finalPrice;
 
               return (
                 <>
@@ -414,7 +436,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
                     <span className="font-medium">{priceType}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Prix par jour :</span>
+                    <span>Prix moyen / jour :</span>
                     <span className="font-medium">{basePrice.toFixed(2)}€</span>
                   </div>
                   {discount > 0 && (
@@ -431,7 +453,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
                   )}
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Total :</span>
-                    <span className="text-gradient-orange">{totalPrice.toFixed(2)}€</span>
+                    <span className="text-gradient-orange">{finalPrice.toFixed(2)}€</span>
                   </div>
                 </>
               );
