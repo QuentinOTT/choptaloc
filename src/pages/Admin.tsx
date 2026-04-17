@@ -79,7 +79,6 @@ const Admin = () => {
   const [bookingPage, setBookingPage] = useState(1);
   const [bookingTotal, setBookingTotal] = useState(0);
   const [bookingPages, setBookingPages] = useState(1);
-  const [vacationEnd, setVacationEnd] = useState("");
   const [companySettings, setCompanySettings] = useState({
     company_name: "ChopTaLoc",
     company_siret: "",
