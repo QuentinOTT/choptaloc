@@ -80,19 +80,6 @@ const Admin = () => {
   const [bookingPage, setBookingPage] = useState(1);
   const [bookingTotal, setBookingTotal] = useState(0);
   const [bookingPages, setBookingPages] = useState(1);
-  const [companySettings, setCompanySettings] = useState({
-    company_name: "ChopTaLoc",
-    company_siret: "",
-    company_address: "",
-    company_phone: "",
-    company_email: "",
-    rental_min_age: "21",
-    rental_min_license_years: "2",
-    rental_default_deposit: "1000",
-    opening_hours_week: "09:00 - 18:00",
-    opening_hours_weekend: "10:00 - 16:00"
-  });
-
   const BOOKING_LIMIT = 10;
   const [modificationRequests, setModificationRequests] = useState<ModificationRequest[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
@@ -112,7 +99,6 @@ const Admin = () => {
     return localStorage.getItem('showUnavailableCars') === 'true';
   });
 
-  const [vacationEnd, setVacationEnd] = useState(() => localStorage.getItem('vacationEnd') || '');
   const { refreshSettings } = useSettings();
 
   const [companySettings, setCompanySettings] = useState({
