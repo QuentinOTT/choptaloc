@@ -61,7 +61,9 @@ router.put('/:id', async (req, res) => {
       specs, 
       is_available,
       description,
-      features
+      features,
+      caution_amount,
+      min_license_years
     } = req.body;
 
     const updates = [];
@@ -79,6 +81,8 @@ router.put('/:id', async (req, res) => {
     if (is_available !== undefined) { updates.push('is_available = ?'); values.push(is_available); }
     if (description !== undefined) { updates.push('description = ?'); values.push(description); }
     if (features !== undefined) { updates.push('features = ?'); values.push(JSON.stringify(features)); }
+    if (caution_amount !== undefined) { updates.push('caution_amount = ?'); values.push(caution_amount); }
+    if (min_license_years !== undefined) { updates.push('min_license_years = ?'); values.push(min_license_years); }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'Aucune donnée à mettre à jour' });

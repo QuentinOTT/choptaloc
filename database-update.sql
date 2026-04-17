@@ -1,4 +1,8 @@
--- ============================================
+-- Update for caution and min license years
+ALTER TABLE cars ADD COLUMN caution_amount DECIMAL(10, 2) DEFAULT 1000;
+ALTER TABLE cars ADD COLUMN min_license_years INT DEFAULT 2;
+
+============================================
 -- MISE À JOUR DE LA BASE DE DONNÉES CHOPTALOC
 -- Exécutez ce script pour ajouter les nouveaux champs
 -- ============================================

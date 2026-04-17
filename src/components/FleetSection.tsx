@@ -55,7 +55,7 @@ const defaultCars = [
     weeklyPrice: 294,
     monthlyPrice: 1260,
     image: clioImg,
-    specs: ["100 ch", "Manuelle", "5 places", "Essence"],
+    specs: ["145 cv", "Automatique", "5 places", "Hybride"],
     available: true,
   },
 ];
@@ -571,6 +571,13 @@ const _ = forceUpdate;
         } : null}
         isOpen={!!selectedCar}
         onClose={() => setSelectedCar(null)}
+        onReserve={() => {
+          if (selectedCar) {
+            setCalendarCar(selectedCar);
+            setShowBookingForm(true);
+            setSelectedCar(null);
+          }
+        }}
       />
       
       <BookingForm

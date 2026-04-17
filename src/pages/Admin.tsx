@@ -68,6 +68,8 @@ interface Car {
   tag?: string;
   color?: string;
   licensePlate?: string;
+  caution_amount?: number;
+  min_license_years?: number;
 }
 
 const Admin = () => {
@@ -201,6 +203,8 @@ const Admin = () => {
             tag: c.tag || undefined,
             color: c.color || undefined,
             licensePlate: c.license_plate || undefined,
+            caution_amount: c.caution_amount ? parseInt(c.caution_amount) : undefined,
+            min_license_years: c.min_license_years ? parseInt(c.min_license_years) : undefined,
           }));
           setCars(Array.isArray(data) ? mappedCars : []);
         })
@@ -1852,16 +1856,28 @@ const Admin = () => {
                           placeholder="Prix mensuel"
                         />
                       </div>
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Caution (€)</label>
+                        <Input type="number" defaultValue={car.caution_amount} min="0" id={`caution-${car.id}`} placeholder="Caution par défaut" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Années de permis (ans)</label>
+                        <Input type="number" defaultValue={car.min_license_years} min="0" id={`license-${car.id}`} placeholder="Années par défaut" />
+                      </div>
                       <Button
                         size="sm"
                         onClick={async () => {
                           const dailyInput = document.getElementById(`price-${car.id}`) as HTMLInputElement;
                           const weeklyInput = document.getElementById(`weekly-price-${car.id}`) as HTMLInputElement;
                           const monthlyInput = document.getElementById(`monthly-price-${car.id}`) as HTMLInputElement;
+                          const cautionInput = document.getElementById(`caution-${car.id}`) as HTMLInputElement;
+                          const licenseInput = document.getElementById(`license-${car.id}`) as HTMLInputElement;
                           
                           const newDailyPrice = parseInt(dailyInput.value);
                           const newWeeklyPrice = parseInt(weeklyInput.value);
                           const newMonthlyPrice = parseInt(monthlyInput.value);
+                          const newCaution = parseInt(cautionInput.value) || null;
+                          const newLicense = parseInt(licenseInput.value) || null;
                           
                           if (newDailyPrice && newDailyPrice > 0) {
                             try {
@@ -1871,7 +1887,9 @@ const Admin = () => {
                                 body: JSON.stringify({
                                   price_per_day: newDailyPrice,
                                   weekly_price: newWeeklyPrice,
-                                  monthly_price: newMonthlyPrice
+                                  monthly_price: newMonthlyPrice,
+                                  caution_amount: newCaution,
+                                  min_license_years: newLicense
                                 })
                               });
                               
@@ -2167,6 +2185,28 @@ const Admin = () => {
                             <span className="absolute right-3 top-2 text-muted-foreground">%</span>
                           </div>
                           <p className="text-[10px] text-muted-foreground italic">S'applique sur l'ensemble de la flotte</p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4 mt-6 pt-6 border-t border-border">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Type d'acompte</label>
+                            <select 
+                              value={(companySettings as any).booking_acompte_type || "percentage"}
+                              onChange={(e) => setCompanySettings({...companySettings, booking_acompte_type: e.target.value})}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <option value="percentage">Pourcentage (%)</option>
+                              <option value="fixed">Montant fixe (€)</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Valeur de l'acompte</label>
+                            <Input 
+                              type="number"
+                              value={(companySettings as any).booking_acompte_value || "30"} 
+                              onChange={(e) => setCompanySettings({...companySettings, booking_acompte_value: e.target.value})}
+                            />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

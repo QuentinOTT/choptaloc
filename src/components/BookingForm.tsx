@@ -149,7 +149,9 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     // Calculer le prix total avec prix dégressif
     const days = dates.length;
     let totalPrice = days * car.price;
-    if (days >= 7 && car.weeklyPrice) {
+    if (days === 3) {
+      totalPrice = 250;
+    } else if (days >= 7 && car.weeklyPrice) {
       const weeks = Math.floor(days / 7);
       const remainingDays = days % 7;
       totalPrice = weeks * car.weeklyPrice + remainingDays * car.price;
@@ -378,7 +380,10 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
               let basePrice = car.price;
               let priceType = "journalier";
 
-              if (days >= 7 && car.weeklyPrice) {
+              if (days === 3) {
+                basePrice = 250 / 3;
+                priceType = "forfait 3 jours (72h)";
+              } else if (days >= 7 && car.weeklyPrice) {
                 basePrice = car.weeklyPrice / 7;
                 priceType = "hebdomadaire";
               }

@@ -97,10 +97,10 @@ const HeroSection = () => {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
             <a
-              href="#contact"
+              href="#fleet"
               className="px-6 md:px-10 py-3 md:py-4 rounded-lg glass font-semibold text-sm md:text-lg hover:bg-secondary transition-all"
             >
-              Nous Contacter
+              Voir nos véhicules disponibles
             </a>
           </div>
         </div>

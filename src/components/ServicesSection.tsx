@@ -1,7 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileCheck, CreditCard, Car, ClipboardCheck, Wallet, Shield, CheckCircle, Clock, Users, Star, ArrowRight, MapPin, Calendar } from "lucide-react";
+import { useSettings } from "@/context/SettingsContext";
 
 const ServicesSection = () => {
+  const { settings } = useSettings();
+  const acompteValue = settings.booking_acompte_value || "30";
+  const acompteText = settings.booking_acompte_type === "fixed" ? `${acompteValue}€` : `${acompteValue}%`;
+
   const rentalSteps = [
     {
       icon: FileCheck,
@@ -12,8 +17,8 @@ const ServicesSection = () => {
     {
       icon: CreditCard,
       title: "2. Acompte",
-      description: "Versez 30% d'acompte",
-      short: "Acompte 30%"
+      description: `Versez ${acompteText} d'acompte`,
+      short: `Acompte ${acompteText}`
     },
     {
       icon: ClipboardCheck,

@@ -17,6 +17,8 @@ interface Settings {
   vacation_end: string;
   alert_message: string;
   global_discount: string;
+  booking_acompte_type?: string;
+  booking_acompte_value?: string;
 }
 
 interface SettingsContextType {
@@ -41,7 +43,9 @@ const defaultSettings: Settings = {
   vacation_start: "",
   vacation_end: "",
   alert_message: "",
-  global_discount: "0"
+  global_discount: "0",
+  booking_acompte_type: "percentage",
+  booking_acompte_value: "30"
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

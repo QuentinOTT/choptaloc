@@ -21,15 +21,18 @@ interface Car {
   available?: boolean;
   description?: string;
   features?: string[];
+  caution_amount?: number;
+  min_license_years?: number;
 }
 
 interface CarModalProps {
   car: Car | null;
   isOpen: boolean;
   onClose: () => void;
+  onReserve?: () => void;
 }
 
-const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
+const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
   if (!car) return null;
 
   // Parser les specs JSON si c'est une chaîne
@@ -157,13 +160,6 @@ const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
                 <span className="text-3xl font-black text-gradient-orange">{car.price}€</span>
                 <span className="text-muted-foreground">/jour</span>
               </div>
-              <div className="flex gap-2">
-                {safeSpecs.map((spec: string) => (
-                  <span key={spec} className="px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium">
-                    {spec}
-                  </span>
-                ))}
-              </div>
             </div>
             
             <p className="text-muted-foreground leading-relaxed">
@@ -216,7 +212,11 @@ const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
-                <span className="text-sm">Caution : 1000€</span>
+                <span className="text-sm">Caution : {car.caution_amount || 1000}€</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                <span className="text-sm">Permis : {car.min_license_years || 2} ans min.</span>
               </div>
             </div>
           </div>
@@ -240,7 +240,15 @@ const CarModal = ({ car, isOpen, onClose }: CarModalProps) => {
           <Button 
             className="flex-1" 
             disabled={!car.available}
-            onClick={() => car.available && (window.location.href = '#contact')}
+            onClick={() => {
+              if (car.available) {
+                if (onReserve) {
+                  onReserve();
+                } else {
+                  window.location.href = '#contact';
+                }
+              }
+            }}
           >
             {car.available ? 'Réserver maintenant' : 'Disponible prochainement'}
           </Button>
