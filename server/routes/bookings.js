@@ -45,6 +45,12 @@ router.get('/fix-schema', async (req, res) => {
       results.push('Clio V mise à jour');
     } catch (e) { results.push('Erreur clio: ' + e.message); }
 
+    // 5. ajout is_admin_proposal
+    try {
+      await pool.query('ALTER TABLE modification_requests ADD COLUMN is_admin_proposal TINYINT(1) DEFAULT 0');
+      results.push('is_admin_proposal ajoutée');
+    } catch (e) { results.push('Erreur is_admin_proposal: ' + e.message); }
+
     res.json({ success: true, log: results });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -186,11 +192,11 @@ router.put('/:id', async (req, res) => {
 // Créer une demande de modification
 router.post('/:id/modifications', async (req, res) => {
   try {
-    const { changes, requestedBy } = req.body;
+    const { changes, requestedBy, isAdminProposal } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO modification_requests (booking_id, requested_by, changes, status) VALUES (?, ?, ?, "pending")',
-      [req.params.id, requestedBy, JSON.stringify(changes)]
+      'INSERT INTO modification_requests (booking_id, requested_by, changes, status, is_admin_proposal) VALUES (?, ?, ?, "pending", ?)',
+      [req.params.id, requestedBy, JSON.stringify(changes), isAdminProposal ? 1 : 0]
     );
 
     res.status(201).json({ success: true, modificationId: result.insertId });
@@ -249,9 +255,9 @@ router.get('/modifications/user/:userId', async (req, res) => {
       FROM modification_requests mr 
       LEFT JOIN bookings b ON mr.booking_id = b.id 
       LEFT JOIN cars c ON b.car_id = c.id 
-      WHERE mr.requested_by = ? 
+      WHERE mr.requested_by = ? OR b.user_id = ?
       ORDER BY mr.created_at DESC
-    `, [req.params.userId]);
+    `, [req.params.userId, req.params.userId]);
     
     // Parser les changements JSON si nécessaire
     const parsedModifications = modifications.map(m => ({

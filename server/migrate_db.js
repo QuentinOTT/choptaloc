@@ -41,6 +41,12 @@ async function migrate() {
     );
     console.log('Données de la Clio V mises à jour en base.');
 
+    // 4. Ajout de is_admin_proposal
+    try {
+      await connection.query('ALTER TABLE modification_requests ADD COLUMN is_admin_proposal TINYINT(1) DEFAULT 0');
+      console.log('Colonne is_admin_proposal ajoutée.');
+    } catch (e) { console.log('is_admin_proposal existe déjà ou erreur:', e.message); }
+
   } catch (error) {
     console.error('Erreur pendant la migration:', error);
   } finally {

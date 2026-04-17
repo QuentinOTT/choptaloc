@@ -54,6 +54,7 @@ interface ModificationRequest {
   changes: Record<string, any>;
   status: "pending" | "approved" | "rejected";
   rejectionReason?: string;
+  is_admin_proposal?: boolean | number;
 }
 
 interface Car {
@@ -99,6 +100,17 @@ const Admin = () => {
   const [contactMessages, setContactMessages] = useState<any[]>([]);
   const [showUnavailableCarsSetting, setShowUnavailableCarsSetting] = useState(() => {
     return localStorage.getItem('showUnavailableCars') === 'true';
+  });
+  const [showProposeMod, setShowProposeMod] = useState(false);
+  const [selectedBookingForMod, setSelectedBookingForMod] = useState<Booking | null>(null);
+  const [modProposalForm, setModProposalForm] = useState({
+    startDate: "",
+    endDate: "",
+    pickupTime: "10:00",
+    dropoffTime: "10:00",
+    pickupLocation: "Récupération sur place",
+    dropoffLocation: "Récupération sur place",
+    notes: ""
   });
 
   const { refreshSettings } = useSettings();
@@ -822,6 +834,28 @@ const Admin = () => {
                             <span className="hidden lg:inline">Voir profil</span>
                           </Button>
                           
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-1 p-2 h-8 text-xs text-blue-600 hover:bg-blue-50"
+                            onClick={() => {
+                              setSelectedBookingForMod(booking);
+                              setModProposalForm({
+                                startDate: booking.startDate,
+                                endDate: booking.endDate,
+                                pickupTime: booking.pickupTime || "10:00",
+                                dropoffTime: booking.dropoffTime || "10:00",
+                                pickupLocation: booking.pickupLocation || "Récupération sur place",
+                                dropoffLocation: booking.dropoffLocation || "Récupération sur place",
+                                notes: booking.notes || ""
+                              });
+                              setShowProposeMod(true);
+                            }}
+                          >
+                            <Edit className="w-3 h-3" />
+                            <span className="hidden lg:inline">Proposer modif.</span>
+                          </Button>
+                          
                           <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
                             {booking.status === "pending" && (
                               <>
@@ -932,7 +966,9 @@ const Admin = () => {
                                     Modification de {booking?.carBrand} {booking?.carModel}
                                   </h4>
                                   <p className="text-sm text-muted-foreground">
-                                    Par: {users.find(u => u.id === request.requestedBy)?.firstName} {users.find(u => u.id === request.requestedBy)?.lastName}
+                                    {request.is_admin_proposal 
+                                      ? <span className="text-blue-600 font-semibold italic">Proposition envoyée par l'agence</span>
+                                      : `Demandé par: ${users.find(u => u.id === request.requestedBy)?.firstName || 'Client'} ${users.find(u => u.id === request.requestedBy)?.lastName || ''}`}
                                   </p>
                                 </div>
                                 <Badge variant={
@@ -2511,6 +2547,110 @@ const Admin = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Modal pour proposer une modification (Admin vers Client) */}
+      <Dialog open={showProposeMod} onOpenChange={setShowProposeMod}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Proposer une modification au client</DialogTitle>
+            <DialogDescription>
+              Le client recevra une notification pour accepter ou refuser ces changements.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid md:grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date de début</label>
+              <Input 
+                type="date" 
+                value={modProposalForm.startDate} 
+                onChange={(e) => setModProposalForm({...modProposalForm, startDate: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date de fin</label>
+              <Input 
+                type="date" 
+                value={modProposalForm.endDate} 
+                onChange={(e) => setModProposalForm({...modProposalForm, endDate: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Heure récupération</label>
+              <Input 
+                type="time" 
+                value={modProposalForm.pickupTime} 
+                onChange={(e) => setModProposalForm({...modProposalForm, pickupTime: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Heure retour</label>
+              <Input 
+                type="time" 
+                value={modProposalForm.dropoffTime} 
+                onChange={(e) => setModProposalForm({...modProposalForm, dropoffTime: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Lieu récupération</label>
+              <Input 
+                value={modProposalForm.pickupLocation} 
+                onChange={(e) => setModProposalForm({...modProposalForm, pickupLocation: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Lieu retour</label>
+              <Input 
+                value={modProposalForm.dropoffLocation} 
+                onChange={(e) => setModProposalForm({...modProposalForm, dropoffLocation: e.target.value})}
+              />
+            </div>
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-sm font-medium">Notes / Justification</label>
+              <Input 
+                placeholder="Ex: Véhicule indisponible, nous vous proposons ces dates..."
+                value={modProposalForm.notes} 
+                onChange={(e) => setModProposalForm({...modProposalForm, notes: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowProposeMod(false)}>Annuler</Button>
+            <Button 
+              onClick={async () => {
+                if (!selectedBookingForMod) return;
+                try {
+                  const response = await fetch(`${API_URL}/bookings/${selectedBookingForMod.id}/modifications`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      changes: modProposalForm,
+                      requestedBy: user?.id,
+                      isAdminProposal: true
+                    })
+                  });
+                  if (response.ok) {
+                    alert("Proposition envoyée au client !");
+                    setShowProposeMod(false);
+                    // Rafraîchir les modifications si nécessaire
+                    fetch(`${API_URL}/bookings/modifications/all`)
+                      .then(res => res.json())
+                      .then(data => setModificationRequests(data));
+                  } else {
+                    alert("Erreur lors de l'envoi");
+                  }
+                } catch (e) {
+                  console.error(e);
+                  alert("Erreur de connexion");
+                }
+              }}
+            >
+              Envoyer la proposition
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

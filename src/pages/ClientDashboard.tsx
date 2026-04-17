@@ -322,6 +322,44 @@ const ClientDashboard = () => {
     setShowEditBooking(true);
   };
 
+  const handleRespondToAdminProposal = async (proposal: any, status: 'approved' | 'rejected') => {
+    if (!user) return;
+
+    try {
+      if (status === 'approved') {
+        // 1. Mettre à jour la réservation elle-même (le backend gère le mapping camelCase/snakeCase)
+        const updateBookingRes = await fetch(`${API_URL}/bookings/${proposal.booking_id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(proposal.changes)
+        });
+
+        if (!updateBookingRes.ok) {
+          alert("Erreur lors de la mise à jour de la réservation");
+          return;
+        }
+      }
+
+      // 2. Mettre à jour le statut de la proposition
+      const updateProposalRes = await fetch(`${API_URL}/bookings/modifications/${proposal.id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+
+      if (updateProposalRes.ok) {
+        alert(status === 'approved' ? "Modification acceptée avec succès !" : "Modification refusée.");
+        // Rafraîchir les données
+        window.location.reload();
+      } else {
+        alert("Erreur lors de la mise à jour du statut");
+      }
+    } catch (error) {
+      console.error('Erreur API:', error);
+      alert("Une erreur est survenue lors de la réponse à la proposition");
+    }
+  };
+
   const handleSaveProfile = () => {
     if (user) {
       updateUser({
@@ -389,6 +427,28 @@ const ClientDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        {/* Proposition d'admin Alert */}
+        {userModifications.some(m => m.is_admin_proposal && m.status === 'pending') && (
+          <div className="mb-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-amber-500/20 animate-pulse-subtle border border-amber-400">
+            <div className="flex items-center gap-4 text-center sm:text-left">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="font-black text-lg">Proposition de modification</p>
+                <p className="text-sm text-white/90">L'agence Choptaloc vous propose un changement sur votre réservation. Veuillez l'examiner.</p>
+              </div>
+            </div>
+            <Button 
+              variant="secondary" 
+              className="font-bold bg-white text-amber-600 hover:bg-amber-100 px-8 rounded-xl shrink-0"
+              onClick={() => setActiveTab("bookings")}
+            >
+              Consulter
+            </Button>
+          </div>
+        )}
+
         {/* Welcome Section */}
         <div className="mb-8 p-6 md:p-10 rounded-3xl bg-gradient-to-br from-primary/10 via-background to-background border border-primary/10 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl" />
@@ -934,13 +994,61 @@ const ClientDashboard = () => {
                           </div>
 
                           {/* Affichage des demandes de modification */}
-                          {modRequest && (
+                          {modRequest && !modRequest.is_admin_proposal && (
                             <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center justify-between">
                               <div className="flex items-center gap-2 text-blue-700 text-sm">
                                 <Clock className="w-4 h-4" />
                                 <span>Demande de modification en attente...</span>
                               </div>
                               <Badge variant="outline" className="bg-white text-blue-700 border-blue-200">En cours</Badge>
+                            </div>
+                          )}
+
+                          {modRequest && modRequest.is_admin_proposal && (
+                            <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-xl space-y-4 shadow-sm animate-pulse-subtle">
+                              <div className="flex items-center gap-2 text-amber-800 font-black uppercase text-xs tracking-widest">
+                                <AlertCircle className="w-4 h-4" />
+                                <span>PROPOSITION DE MODIFICATION</span>
+                              </div>
+                              
+                              <div className="bg-white/60 backdrop-blur-sm p-3 rounded-lg border border-amber-100 text-sm space-y-2">
+                                <p className="font-medium text-amber-900 italic">
+                                  "{modRequest.changes.notes || "L'agence vous propose les changements suivants pour valider votre dossier :"}"
+                                </p>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                                  {modRequest.changes.startDate && (
+                                    <div className="flex flex-col">
+                                      <span className="text-amber-700/60 font-bold uppercase text-[9px]">Début</span>
+                                      <span className="font-bold text-amber-900">{new Date(modRequest.changes.startDate).toLocaleDateString("fr-FR")} à {modRequest.changes.pickupTime || "10:00"}</span>
+                                    </div>
+                                  )}
+                                  {modRequest.changes.endDate && (
+                                    <div className="flex flex-col">
+                                      <span className="text-amber-700/60 font-bold uppercase text-[9px]">Fin</span>
+                                      <span className="font-bold text-amber-900">{new Date(modRequest.changes.endDate).toLocaleDateString("fr-FR")} à {modRequest.changes.dropoffTime || "10:00"}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2 pt-1">
+                                <Button 
+                                  size="sm" 
+                                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold"
+                                  onClick={() => handleRespondToAdminProposal(modRequest, 'approved')}
+                                >
+                                  <Check className="w-4 h-4 mr-2" /> Accepter
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="flex-1 border-amber-300 text-amber-800 hover:bg-amber-100"
+                                  onClick={() => handleRespondToAdminProposal(modRequest, 'rejected')}
+                                >
+                                  <X className="w-4 h-4 mr-2" /> Refuser
+                                </Button>
+                              </div>
                             </div>
                           )}
 
