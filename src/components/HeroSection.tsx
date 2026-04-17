@@ -18,7 +18,7 @@ const HeroSection = () => {
 
       {/* Nav */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 md:px-16 py-4 md:py-6">
-        <button 
+        <button
           onClick={() => {
             if (user?.role === "admin") {
               navigate("/admin");
@@ -86,7 +86,7 @@ const HeroSection = () => {
       <div className="relative z-10 text-center px-4 md:px-6 max-w-4xl mx-auto">
         <div className="animate-fade-in-up">
           <p className="text-primary font-semibold tracking-[0.2em] md:tracking-[0.3em] uppercase text-xs md:text-sm mb-3 md:mb-4">
-            Avec ChopTaLoc
+            Avec ChopTaLoc Service
           </p>
           <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-7xl font-black leading-tight mb-4 md:mb-6">
             Louez l'Excellence,{" "}

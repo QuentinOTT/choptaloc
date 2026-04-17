@@ -10,7 +10,7 @@ const ContactSection = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       const response = await fetch(`${API_URL}/contact`, {
         method: 'POST',
@@ -46,38 +46,6 @@ const ContactSection = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
-          {/* Contact Info */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="glass rounded-2xl p-8 space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <Phone className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-sm">Téléphone</p>
-                  <p className="font-bold text-lg">+33 6 12 34 56 78</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <Mail className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-sm">Email</p>
-                  <p className="font-bold">contact@choptaloc.fr</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <MapPin className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-sm">Adresse</p>
-                  <p className="font-bold">Paris, France</p>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="lg:col-span-3 glass rounded-2xl p-8 space-y-5">
