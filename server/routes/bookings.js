@@ -2,6 +2,50 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
 
+// Route d'urgence pour corriger le schéma de base de données en production
+router.get('/fix-schema', async (req, res) => {
+  try {
+    const results = [];
+    
+    // 1. user_id optionnel
+    try {
+      await pool.query('ALTER TABLE bookings MODIFY COLUMN user_id INT NULL');
+      results.push('user_id rendu optionnel');
+    } catch (e) { results.push('Erreur user_id: ' + e.message); }
+
+    // 2. champs optionnels bookings
+    try {
+      await pool.query('ALTER TABLE bookings MODIFY COLUMN driver_license_date DATE NULL');
+      results.push('driver_license_date rendu optionnel');
+    } catch (e) { results.push('Erreur date permis: ' + e.message); }
+
+    // 3. ajout colonnes cars
+    try {
+      await pool.query('ALTER TABLE cars ADD COLUMN caution_amount DECIMAL(10, 2) DEFAULT 1000');
+      results.push('caution_amount ajoutée');
+    } catch (e) { results.push('Erreur caution: ' + e.message); }
+
+    try {
+      await pool.query('ALTER TABLE cars ADD COLUMN min_license_years INT DEFAULT 2');
+      results.push('min_license_years ajoutée');
+    } catch (e) { results.push('Erreur min years: ' + e.message); }
+
+    // 4. Clio V
+    try {
+      const clioSpecs = JSON.stringify(["145 cv", "Automatique", "5 places", "Hybride"]);
+      await pool.query(
+        'UPDATE cars SET specs = ?, model = "Clio V Esprit Alpine", tag = "145 CV - Hybride - 2023" WHERE id = 4 OR (brand = "Renault" AND model LIKE "Clio%")',
+        [clioSpecs]
+      );
+      results.push('Clio V mise à jour');
+    } catch (e) { results.push('Erreur clio: ' + e.message); }
+
+    res.json({ success: true, log: results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Créer une réservation
 router.post('/', async (req, res) => {
   try {
