@@ -9,7 +9,18 @@ router.post('/', async (req, res) => {
 
     const [result] = await pool.query(
       'INSERT INTO bookings (car_id, user_id, start_date, end_date, pickup_location, dropoff_location, total_price, notes, status, driver_license_number, driver_license_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "pending", ?, ?)',
-      [carId, userId, startDate, endDate, pickupLocation, returnLocation, totalPrice, notes, driverLicenseNumber || null, driverLicenseDate || null]
+      [
+        carId, 
+        userId, 
+        startDate, 
+        endDate, 
+        pickupLocation, 
+        returnLocation, 
+        totalPrice, 
+        notes, 
+        driverLicenseNumber && driverLicenseNumber.trim() !== "" ? driverLicenseNumber : null, 
+        driverLicenseDate && driverLicenseDate.trim() !== "" ? driverLicenseDate : null
+      ]
     );
 
     res.status(201).json({ success: true, bookingId: result.insertId });
