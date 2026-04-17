@@ -193,16 +193,28 @@ router.put('/:id', async (req, res) => {
 router.post('/:id/modifications', async (req, res) => {
   try {
     const { changes, requestedBy, isAdminProposal } = req.body;
+    console.log('Demande de modification reçue:', { bookingId: req.params.id, requestedBy, isAdminProposal });
+
+    // S'assurer que requestedBy est un nombre ou null
+    const proposerId = requestedBy && !isNaN(requestedBy) ? parseInt(requestedBy) : null;
 
     const [result] = await pool.query(
       'INSERT INTO modification_requests (booking_id, requested_by, changes, status, is_admin_proposal) VALUES (?, ?, ?, "pending", ?)',
-      [req.params.id, requestedBy, JSON.stringify(changes), isAdminProposal ? 1 : 0]
+      [
+        req.params.id, 
+        proposerId, 
+        JSON.stringify(changes), 
+        isAdminProposal ? 1 : 0
+      ]
     );
 
     res.status(201).json({ success: true, modificationId: result.insertId });
   } catch (error) {
     console.error('Erreur création demande modification:', error);
-    res.status(500).json({ error: 'Erreur lors de la création de la demande de modification' });
+    res.status(500).json({ 
+      error: 'Erreur lors de la création de la demande de modification',
+      details: error.message 
+    });
   }
 });
 

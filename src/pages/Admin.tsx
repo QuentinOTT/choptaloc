@@ -288,7 +288,8 @@ const Admin = () => {
               requestedAt: m.created_at,
               changes: m.changes,
               status: m.status,
-              rejectionReason: m.rejection_reason
+              rejectionReason: m.rejection_reason,
+              is_admin_proposal: m.is_admin_proposal
             }));
             setModificationRequests(mappedModifications);
           }
@@ -2636,13 +2637,29 @@ const Admin = () => {
                     // Rafraîchir les modifications si nécessaire
                     fetch(`${API_URL}/bookings/modifications/all`)
                       .then(res => res.json())
-                      .then(data => setModificationRequests(data));
+                      .then(data => {
+                        if (Array.isArray(data)) {
+                          const mappedModifications = data.map((m: any) => ({
+                            id: m.id.toString(),
+                            bookingId: m.booking_id.toString(),
+                            requestedBy: m.requested_by.toString(),
+                            requestedAt: m.created_at,
+                            changes: m.changes,
+                            status: m.status,
+                            rejectionReason: m.rejection_reason,
+                            is_admin_proposal: m.is_admin_proposal
+                          }));
+                          setModificationRequests(mappedModifications);
+                        }
+                      });
                   } else {
-                    alert("Erreur lors de l'envoi");
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error("Erreur API Modification:", errorData);
+                    alert(`Erreur lors de l'envoi: ${errorData.details || errorData.error || response.statusText}`);
                   }
                 } catch (e) {
                   console.error(e);
-                  alert("Erreur de connexion");
+                  alert("Erreur de connexion : " + (e instanceof Error ? e.message : String(e)));
                 }
               }}
             >
