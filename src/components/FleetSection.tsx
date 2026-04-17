@@ -141,9 +141,11 @@ const FleetSection = () => {
               specs: Array.isArray(parsedSpecs) ? parsedSpecs : [],
             };
           });
-          setCars(mappedCars);
+          const sortedMappedCars = mappedCars.sort((a: any, b: any) => Number(b.available) - Number(a.available));
+          setCars(sortedMappedCars);
         } else {
-          setCars(defaultCars);
+          const sortedDefaultCars = [...defaultCars].sort((a, b) => Number(b.available) - Number(a.available));
+          setCars(sortedDefaultCars);
         }
       })
       .catch(err => {

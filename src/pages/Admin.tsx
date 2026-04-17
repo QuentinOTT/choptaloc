@@ -203,10 +203,11 @@ const Admin = () => {
             tag: c.tag || undefined,
             color: c.color || undefined,
             licensePlate: c.license_plate || undefined,
-            caution_amount: c.caution_amount ? parseInt(c.caution_amount) : undefined,
-            min_license_years: c.min_license_years ? parseInt(c.min_license_years) : undefined,
+            caution_amount: c.caution_amount !== null && c.caution_amount !== undefined ? parseInt(c.caution_amount) : undefined,
+            min_license_years: c.min_license_years !== null && c.min_license_years !== undefined ? parseInt(c.min_license_years) : undefined,
           }));
-          setCars(Array.isArray(data) ? mappedCars : []);
+          const sortedCars = mappedCars.sort((a, b) => Number(b.isAvailable) - Number(a.isAvailable));
+          setCars(Array.isArray(data) ? sortedCars : []);
         })
         .catch(err => {
           console.error('Erreur chargement voitures:', err);
@@ -1810,9 +1811,6 @@ const Admin = () => {
                   <CardHeader className="pb-3 border-b bg-secondary/10">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base font-bold">{car.brand} {car.model}</CardTitle>
-                      <div className="w-12 h-8 rounded overflow-hidden bg-background border">
-                         <img src={car.imageUrl} alt={car.brand} className="w-full h-full object-cover" />
-                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -1876,8 +1874,10 @@ const Admin = () => {
                           const newDailyPrice = parseInt(dailyInput.value);
                           const newWeeklyPrice = parseInt(weeklyInput.value);
                           const newMonthlyPrice = parseInt(monthlyInput.value);
-                          const newCaution = parseInt(cautionInput.value) || null;
-                          const newLicense = parseInt(licenseInput.value) || null;
+                          const parsedCaution = parseInt(cautionInput.value);
+                          const newCaution = isNaN(parsedCaution) ? null : parsedCaution;
+                          const parsedLicense = parseInt(licenseInput.value);
+                          const newLicense = isNaN(parsedLicense) ? null : parsedLicense;
                           
                           if (newDailyPrice && newDailyPrice > 0) {
                             try {
