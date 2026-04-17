@@ -79,7 +79,21 @@ const Admin = () => {
   const [bookingPage, setBookingPage] = useState(1);
   const [bookingTotal, setBookingTotal] = useState(0);
   const [bookingPages, setBookingPages] = useState(1);
-  const BOOKING_LIMIT = 20;
+  const [vacationEnd, setVacationEnd] = useState("");
+  const [companySettings, setCompanySettings] = useState({
+    company_name: "ChopTaLoc",
+    company_siret: "",
+    company_address: "",
+    company_phone: "",
+    company_email: "",
+    rental_min_age: "21",
+    rental_min_license_years: "2",
+    rental_default_deposit: "1000",
+    opening_hours_week: "09:00 - 18:00",
+    opening_hours_weekend: "10:00 - 16:00"
+  });
+
+  const BOOKING_LIMIT = 10;
   const [modificationRequests, setModificationRequests] = useState<ModificationRequest[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
   const [showAddBooking, setShowAddBooking] = useState(false);
@@ -106,7 +120,7 @@ const Admin = () => {
   const [globalSiteDiscount, setGlobalSiteDiscount] = useState(() => localStorage.getItem('globalSiteDiscount') || '0');
   const [minBookingDays, setMinBookingDays] = useState(() => localStorage.getItem('minBookingDays') || '1');
   const [alertMessage, setAlertMessage] = useState(() => localStorage.getItem('alertMessage') || '');
-  const [enableEmailAlerts, setEnableEmailAlerts] = useState(() => localStorage.getItem('enableEmailAlerts') !== 'false');
+  const [enableEmailAlerts, setEnableEmailAlerts] = useState(() => localStorage.getItem('enableEmailAlerts') === 'true');
 
   const handleMaintenanceToggle = (val: boolean) => {
     setMaintenanceMode(val);
@@ -127,6 +141,44 @@ const Admin = () => {
     localStorage.setItem('vacationStart', vacationStart);
     localStorage.setItem('vacationEnd', vacationEnd);
     alert("Paramètres globaux enregistrés avec succès !");
+  };
+
+  const saveCompanySettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/settings/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(companySettings)
+      });
+      if (response.ok) {
+        alert('Réglages enregistrés avec succès !');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de l\'enregistrement');
+    }
+  };
+
+  const deleteMessage = async (id: number) => {
+    if (!confirm('Supprimer ce message ?')) return;
+    try {
+      const response = await fetch(`${API_URL}/contact/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setContactMessages(prev => prev.filter(m => m.id !== id));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const markMessageAsRead = (id: number) => {
+    fetch(`${API_URL}/contact/${id}/read`, { method: 'PUT' })
+      .then(res => {
+        if (res.ok) {
+          setContactMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: true } : m));
+        }
+      })
+      .catch(err => console.error(err));
   };
 
   // Charger les données depuis l'API
@@ -181,7 +233,8 @@ const Admin = () => {
             fileName: d.file_name,
             fileUrl: d.file_path,
             uploadedAt: d.created_at,
-            status: d.is_verified ? "verified" : "pending"
+            status: d.is_verified ? "verified" : (d.rejection_reason ? "rejected" : "pending"),
+            rejectionReason: d.rejection_reason
           }));
           setUserDocuments(Array.isArray(data) ? mappedDocs : []);
         })
@@ -199,25 +252,39 @@ const Admin = () => {
           setContactMessages([]);
         });
 
+      // Charger les réglages
+      fetch(`${API_URL}/settings`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && Object.keys(data).length > 0) {
+            setCompanySettings(prev => ({ ...prev, ...data }));
+          }
+        })
+        .catch(err => console.error('Erreur chargement réglages:', err));
+
       // Charger les demandes de modification
       fetch(`${API_URL}/bookings/modifications/all`)
         .then(res => res.json())
         .then(data => {
-          const mappedModifications = data.map((m: any) => ({
-            id: m.id.toString(),
-            bookingId: m.booking_id.toString(),
-            requestedBy: m.requested_by.toString(),
-            requestedAt: m.created_at,
-            changes: m.changes,
-            status: m.status,
-            rejectionReason: m.rejection_reason
-          }));
-          setModificationRequests(mappedModifications);
+          if (Array.isArray(data)) {
+            const mappedModifications = data.map((m: any) => ({
+              id: m.id.toString(),
+              bookingId: m.booking_id.toString(),
+              requestedBy: m.requested_by.toString(),
+              requestedAt: m.created_at,
+              changes: m.changes,
+              status: m.status,
+              rejectionReason: m.rejection_reason
+            }));
+            setModificationRequests(mappedModifications);
+          }
         })
         .catch(err => {
           console.error('Erreur chargement modifications:', err);
           setModificationRequests([]);
         });
+
+      // Charger les demandes de modification
     }
   }, [isAuthenticated]);
 
@@ -265,15 +332,15 @@ const Admin = () => {
       });
   };
 
-  const updateDocumentStatus = async (docId: string, status: string) => {
+  const updateDocumentStatus = async (docId: string, status: string, rejectionReason?: string) => {
     try {
       const response = await fetch(`${API_URL}/documents/${docId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, rejectionReason })
       });
       if (response.ok) {
-        setUserDocuments(prev => prev.map(d => d.id === docId ? { ...d, status } : d));
+        setUserDocuments(prev => prev.map(d => d.id === docId ? { ...d, status, rejectionReason } : d));
       }
     } catch (e) {
       console.error(e);
@@ -1388,7 +1455,12 @@ const Admin = () => {
                                                     size="sm" 
                                                     variant="outline"
                                                     className="h-7 px-2 text-[10px] text-red-500 hover:text-red-600"
-                                                    onClick={() => updateDocumentStatus(doc.id, "rejected")}
+                                                    onClick={() => {
+                                                      const reason = prompt("Raison du refus (obligatoire) :");
+                                                      if (reason) {
+                                                        updateDocumentStatus(doc.id, "rejected", reason);
+                                                      }
+                                                    }}
                                                   >
                                                     Refuser
                                                   </Button>
@@ -1755,19 +1827,6 @@ const Admin = () => {
                       </div>
                       <div>
                         <label className="text-sm font-medium mb-2 block">
-                          Prix Week-end (Forfait)
-                        </label>
-                        <Input
-                          type="number"
-                          defaultValue={car.weekendPrice || 250}
-                          min="0"
-                          step="1"
-                          id={`weekend-price-${car.id}`}
-                          placeholder="Prix week-end"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">
                           Prix hebdomadaire (€ / semaine)
                         </label>
                         <Input
@@ -1796,12 +1855,10 @@ const Admin = () => {
                         size="sm"
                         onClick={async () => {
                           const dailyInput = document.getElementById(`price-${car.id}`) as HTMLInputElement;
-                          const weekendInput = document.getElementById(`weekend-price-${car.id}`) as HTMLInputElement;
                           const weeklyInput = document.getElementById(`weekly-price-${car.id}`) as HTMLInputElement;
                           const monthlyInput = document.getElementById(`monthly-price-${car.id}`) as HTMLInputElement;
                           
                           const newDailyPrice = parseInt(dailyInput.value);
-                          const newWeekendPrice = parseInt(weekendInput.value);
                           const newWeeklyPrice = parseInt(weeklyInput.value);
                           const newMonthlyPrice = parseInt(monthlyInput.value);
                           
@@ -1812,7 +1869,6 @@ const Admin = () => {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                   price_per_day: newDailyPrice,
-                                  weekend_price: newWeekendPrice,
                                   weekly_price: newWeeklyPrice,
                                   monthly_price: newMonthlyPrice
                                 })
@@ -1824,7 +1880,6 @@ const Admin = () => {
                                     ? { 
                                         ...c, 
                                         price: newDailyPrice,
-                                        weekendPrice: newWeekendPrice,
                                         weeklyPrice: newWeeklyPrice || newDailyPrice * 7,
                                         monthlyPrice: newMonthlyPrice || newDailyPrice * 30
                                       } 
@@ -1898,27 +1953,26 @@ const Admin = () => {
                           <Badge variant="outline" className="text-xs">
                             {new Date(message.created_at).toLocaleDateString("fr-FR")}
                           </Badge>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={async () => {
-                              try {
-                                const response = await fetch(`${API_URL}/contact/${message.id}/read`, {
-                                  method: 'PUT'
-                                });
-                                if (response.ok) {
-                                  const updatedMessages = contactMessages.map(m => 
-                                    m.id === message.id ? { ...m, is_read: true } : m
-                                  );
-                                  setContactMessages(updatedMessages);
-                                }
-                              } catch (error) {
-                                console.error('Erreur:', error);
-                              }
-                            }}
-                          >
-                            Marquer comme lu
-                          </Button>
+                          <div className="flex gap-2">
+                            {!message.is_read && (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-8"
+                                onClick={() => markMessageAsRead(message.id)}
+                              >
+                                <Check className="w-3 h-3 mr-1" /> Marquer lu
+                              </Button>
+                            )}
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => deleteMessage(message.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
@@ -2060,38 +2114,106 @@ const Admin = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Politique Commerciale</CardTitle>
-                  <CardDescription>Règles de réservation et promotions</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Réduction globale (%)</label>
-                    <div className="flex gap-2">
+                  <h4 className="font-medium text-sm border-b pb-2">Informations Entreprise</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Nom de la société</label>
                       <Input 
-                        type="number" 
-                        value={globalSiteDiscount} 
-                        onChange={(e) => setGlobalSiteDiscount(e.target.value)}
-                        placeholder="Ex: 10" 
+                        value={companySettings.company_name} 
+                        onChange={(e) => setCompanySettings({...companySettings, company_name: e.target.value})}
                       />
-                      <span className="flex items-center bg-secondary px-3 rounded-lg border">%</span>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">SIRET</label>
+                      <Input 
+                        value={companySettings.company_siret} 
+                        onChange={(e) => setCompanySettings({...companySettings, company_siret: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Adresse complète</label>
+                      <Input 
+                        value={companySettings.company_address} 
+                        onChange={(e) => setCompanySettings({...companySettings, company_address: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Téléphone commercial</label>
+                      <Input 
+                        value={companySettings.company_phone} 
+                        onChange={(e) => setCompanySettings({...companySettings, company_phone: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Email contact</label>
+                      <Input 
+                        value={companySettings.company_email} 
+                        onChange={(e) => setCompanySettings({...companySettings, company_email: e.target.value})}
+                      />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Durée minimale de location (jours)</label>
-                    <Input 
-                      type="number" 
-                      value={minBookingDays} 
-                      onChange={(e) => setMinBookingDays(e.target.value)}
-                      placeholder="Ex: 1" 
-                    />
+                  <h4 className="font-medium text-sm border-b pb-2 pt-4">Conditions de Location</h4>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Âge minimal</label>
+                      <Input 
+                        type="number"
+                        value={companySettings.rental_min_age} 
+                        onChange={(e) => setCompanySettings({...companySettings, rental_min_age: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Années permis min.</label>
+                      <Input 
+                        type="number"
+                        value={companySettings.rental_min_license_years} 
+                        onChange={(e) => setCompanySettings({...companySettings, rental_min_license_years: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Caution standard (€)</label>
+                      <Input 
+                        type="number"
+                        value={companySettings.rental_default_deposit} 
+                        onChange={(e) => setCompanySettings({...companySettings, rental_default_deposit: e.target.value})}
+                      />
+                    </div>
                   </div>
 
-                  <Button className="w-full mt-2" onClick={saveGlobalSettings}>
-                    <Check className="w-4 h-4 mr-2" />
-                    Enregistrer les règles
-                  </Button>
+                  <h4 className="font-medium text-sm border-b pb-2 pt-4">Horaires d'ouverture</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Lundi - Vendredi</label>
+                      <Input 
+                        value={companySettings.opening_hours_week} 
+                        onChange={(e) => setCompanySettings({...companySettings, opening_hours_week: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">Week-end</label>
+                      <Input 
+                        value={companySettings.opening_hours_weekend} 
+                        onChange={(e) => setCompanySettings({...companySettings, opening_hours_weekend: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <Button className="w-full bg-primary hover:bg-primary/90" onClick={saveCompanySettings}>
+                      <Check className="w-4 h-4 mr-2" />
+                      Enregistrer tous les réglages
+                    </Button>
+                  </div>
                 </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Fonctionnement du Système</CardTitle>
+                  <CardDescription>Maintenance et notifications</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
               </Card>
 
               <Card className="md:col-span-2">

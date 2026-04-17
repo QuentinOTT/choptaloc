@@ -46,4 +46,15 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Supprimer un message
+router.delete('/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM contact_messages WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur suppression message:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression du message' });
+  }
+});
+
 module.exports = router;

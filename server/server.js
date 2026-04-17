@@ -39,6 +39,18 @@ async function runMigrations() {
     } catch (e) {
       console.warn('⚠️ Note Migration Enum:', e.message);
     }
+
+    // Ajout colonne rejection_reason
+    try {
+      const [docColumns] = await pool.query('SHOW COLUMNS FROM user_documents');
+      const docColNames = docColumns.map(c => c.Field);
+      if (!docColNames.includes('rejection_reason')) {
+        await pool.query('ALTER TABLE user_documents ADD COLUMN rejection_reason TEXT');
+        console.log('✅ Migration: Ajout colonne rejection_reason sur user_documents');
+      }
+    } catch (e) {
+      console.warn('⚠️ Note Migration rejection_reason:', e.message);
+    }
   } catch (error) {
     console.warn('⚠️ Note Migration:', error.message);
   }
@@ -57,6 +69,7 @@ apiRouter.use('/bookings', require('./routes/bookings'));
 apiRouter.use('/documents', require('./routes/documents'));
 apiRouter.use('/cars', require('./routes/cars'));
 apiRouter.use('/contact', require('./routes/contact'));
+apiRouter.use('/settings', require('./routes/settings'));
 
 // Définir les routes de santé et racine sur le router API aussi
 apiRouter.get('/health', (req, res) => res.json({ status: 'ok', message: 'API healthy' }));

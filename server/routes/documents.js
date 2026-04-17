@@ -56,8 +56,8 @@ router.put('/:id/status', async (req, res) => {
     const isVerified = status === 'verified';
 
     await pool.query(
-      'UPDATE user_documents SET is_verified = ? WHERE id = ?',
-      [isVerified, req.params.id]
+      'UPDATE user_documents SET is_verified = ?, rejection_reason = ? WHERE id = ?',
+      [isVerified, isVerified ? null : rejectionReason, req.params.id]
     );
 
     res.json({ success: true });

@@ -187,7 +187,8 @@ const ClientDashboard = () => {
         fileUrl: d.file_path,
         uploadedAt: d.created_at,
         isVerified: d.is_verified,
-        status: d.is_verified ? "verified" : "pending"
+        status: d.is_verified ? "verified" : (d.rejection_reason ? "rejected" : "pending"),
+        rejectionReason: d.rejection_reason
       }));
       setDocuments(mapped);
     } catch (error) {
