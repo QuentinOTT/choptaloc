@@ -16,11 +16,11 @@ const FAQSection = () => {
         },
         {
           question: "Quel est le montant du dépôt de garantie (caution) ?",
-          answer: "Le dépôt de garantie est de 1000€ pour les citadines et berlines. Cette somme est déduite de la caution en cas de frais supplémentaires ou dégradations."
+          answer: "Le dépôt de garantie est de 1000€ pour les citadines. Pour les véhicules sportifs et de catégorie supérieure, le montant est spécifique à chaque véhicule (voir détails du véhicule)."
         },
         {
           question: "Quel est l'âge minimum requis ?",
-          answer: "L'âge minimum est de 21 ans avec 2 ans de permis. Pour les véhicules de catégorie supérieure, des conditions spécifiques peuvent s'appliquer."
+          answer: "Pour les citadines, 1 an de permis suffit. Pour les véhicules sportifs et de catégorie supérieure, l'ancienneté requise est spécifique à chaque véhicule (voir détails du véhicule)."
         }
       ]
     },
@@ -69,7 +69,7 @@ const FAQSection = () => {
       questions: [
         {
           question: "Quel kilométrage est inclus ?",
-          answer: "Le forfait dépend de la durée : 250km inclus pour 1 jour, 500km pour un week-end, et 1000km pour une semaine. Le kilométrage est illimité pour les locations au mois."
+          answer: "Le kilométrage inclus dépend du forfait choisi : 250km pour 1 jour, 500km pour un week-end, 1000km pour une semaine. Les options d'extension kilométrique sont disponibles sur demande."
         },
         {
           question: "Puis-je sortir du pays ?",

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, MapPin, CreditCard, User, Phone, Mail, Car, X } from "lucide-react";
+import { Calendar, Clock, MapPin, CreditCard, User, Phone, Mail, Car, X, HelpCircle } from "lucide-react";
 import { useClientAuth } from "@/hooks/use-client-auth";
 import { API_URL } from "@/config/api";
 
@@ -167,7 +167,8 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       newTotalPrice = daysCount * car.price;
     }
 
-    const deliveryFee = formData.deliveryOption ? 30 : 0;
+    // Les frais de livraison seront calculés par l'administrateur après la réservation
+    const deliveryFee = 0;
     newTotalPrice += deliveryFee;
 
     // Créer la réservation avec userId si un client est connecté
@@ -228,7 +229,8 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       basePrice = daysCount * car.price;
     }
     
-    const deliveryFee = formData.deliveryOption ? 30 : 0;
+    // Les frais de livraison seront calculés par l'administrateur après la réservation
+    const deliveryFee = 0;
     return basePrice + deliveryFee;
   };
 
@@ -371,8 +373,14 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
                 className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
               <Label htmlFor="deliveryOption" className="cursor-pointer">
-                Option livraison (+30€)
+                Option livraison
               </Label>
+              <div className="relative group">
+                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                  Le coût de la livraison sera calculé par l'administrateur en fonction de la distance, de l'heure et de la disponibilité
+                </div>
+              </div>
             </div>
 
             {/* Champs d'adresse conditionnels */}
@@ -437,7 +445,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
                 totalPrice = days * car.price;
               }
 
-              const deliveryFee = formData.deliveryOption ? 30 : 0;
+              const deliveryFee = 0;
               const finalPrice = totalPrice + deliveryFee;
               const regularPrice = (days * car.price) + deliveryFee;
               const discount = regularPrice - finalPrice;
@@ -465,13 +473,18 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
                   {formData.deliveryOption && (
                     <div className="flex justify-between text-sm">
                       <span>Livraison :</span>
-                      <span className="font-medium">30€</span>
+                      <span className="font-medium text-orange-600">Calculé par l'administrateur</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total :</span>
+                    <span>Total estimé :</span>
                     <span className="text-gradient-orange">{finalPrice.toFixed(2)}€</span>
                   </div>
+                  {formData.deliveryOption && (
+                    <div className="text-xs text-muted-foreground mt-2">
+                      * Le coût de livraison sera ajouté par l'administrateur après confirmation de la réservation
+                    </div>
+                  )}
                 </>
               );
             })()}
