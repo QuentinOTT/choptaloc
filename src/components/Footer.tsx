@@ -39,6 +39,38 @@ const Footer = () => {
                   <p className="text-muted-foreground">{settings.opening_hours_weekend}</p>
                 </div>
               </div>
+              {/* Socials under Opening Hours */}
+              <div>
+                <h4 className="font-bold text-sm uppercase tracking-widest text-primary">Nos réseaux sociaux</h4>
+                <div className="flex flex-wrap items-center gap-3 mt-3">
+                  <a href="https://www.tiktok.com/@choptaloc.idf" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4 text-primary" fill="currentColor" aria-hidden>
+                        <path d="M34 12v13a8 8 0 1 1-8-8v-5a11 11 0 1 0 11 11V12h5V7h-9z" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium">choptaloc.idf</span>
+                  </a>
+
+                  <a href="https://www.snapchat.com/add/choptaloc.idf" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-primary" fill="currentColor" aria-hidden>
+                        <path d="M12 2c-1 0-2 .5-2 1s-1 1-1 1-1 0-1 1 0 1 0 1 0 1 1 1c1 0 1 1 1 1s0 1-1 1c-1 0-1 1-1 1s0 1 1 1 1 1 1 1 1 0 2 0 1 0 2 0 1-1 1-1 1-1 1-1 1-1 1-1 1-1 0-1-1-1-1-1-1-1-1-1c0-1 0-1-1-1s-1-.5-2-1z" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium">choptaloc.idf</span>
+                  </a>
+
+                  <a href="https://www.instagram.com/choptaloc.idf" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-primary" fill="currentColor" aria-hidden>
+                        <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 6.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm6.2-3.7a1.1 1.1 0 1 1-1.1-1.1 1.1 1.1 0 0 1 1.1 1.1z" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium">choptaloc.idf</span>
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -64,40 +96,7 @@ const Footer = () => {
                 </div>
                 <span className="text-sm text-muted-foreground">{settings.company_address || "Mantes-la-Jolie, France"}</span>
               </div>
-              {/* Socials: TikTok / Snapchat / Instagram */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-3">
-                  <a href="https://www.tiktok.com/@choptaloc.idf" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      {/* TikTok SVG (simplified) */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4 text-primary" fill="currentColor" aria-hidden>
-                        <path d="M34 12v13a8 8 0 1 1-8-8v-5a11 11 0 1 0 11 11V12h5V7h-9z" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium">choptaloc.idf</span>
-                  </a>
-
-                  <a href="https://www.snapchat.com/add/choptaloc.idf" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      {/* Snapchat SVG (simplified ghost) */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-primary" fill="currentColor" aria-hidden>
-                        <path d="M12 2c-1 0-2 .5-2 1s-1 1-1 1-1 0-1 1 0 1 0 1 0 1 1 1c1 0 1 1 1 1s0 1-1 1c-1 0-1 1-1 1s0 1 1 1 1 1 1 1 1 0 2 0 1 0 2 0 1-1 1-1 1-1 1-1 1-1 1-1 1-1 0-1-1-1-1-1-1-1-1-1c0-1 0-1-1-1s-1-.5-2-1z" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium">choptaloc.idf</span>
-                  </a>
-
-                  <a href="https://www.instagram.com/choptaloc.idf" target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      {/* Instagram SVG (simplified) */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-primary" fill="currentColor" aria-hidden>
-                        <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm5 6.5A4.5 4.5 0 1 0 16.5 13 4.5 4.5 0 0 0 12 8.5zm6.2-3.7a1.1 1.1 0 1 1-1.1-1.1 1.1 1.1 0 0 1 1.1 1.1z" />
-                      </svg>
-                    </div>
-                    <span className="text-sm font-medium">choptaloc.idf</span>
-                  </a>
-                </div>
-              </div>
+              
             </div>
           </div>
         </div>
