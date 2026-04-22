@@ -42,7 +42,7 @@ const ServicesSection = () => {
       icon: Shield,
       title: "6. Location",
       description: "Profitez en liberté",
-      short: "Km illimité"
+      short: ""
     },
     {
       icon: ArrowRight,
