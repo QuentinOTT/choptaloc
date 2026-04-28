@@ -32,11 +32,33 @@ router.get('/:id', async (req, res) => {
 // Ajouter un véhicule
 router.post('/', async (req, res) => {
   try {
-    const { brand, model, tag, price_per_day, image_url, specs, is_available } = req.body;
+    const { 
+      brand, 
+      model, 
+      tag, 
+      price_per_day, 
+      weekend_price, 
+      weekly_price, 
+      monthly_price, 
+      image_url, 
+      specs, 
+      is_available 
+    } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO cars (brand, model, tag, price_per_day, image_url, specs, is_available) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [brand, model, tag, price_per_day, image_url, JSON.stringify(specs), is_available !== false]
+      'INSERT INTO cars (brand, model, tag, price_per_day, weekend_price, weekly_price, monthly_price, image_url, specs, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        brand, 
+        model, 
+        tag, 
+        price_per_day, 
+        weekend_price || null, 
+        weekly_price || null, 
+        monthly_price || null, 
+        image_url, 
+        JSON.stringify(specs), 
+        is_available !== false
+      ]
     );
 
     res.status(201).json({ success: true, carId: result.insertId });
@@ -116,6 +138,17 @@ router.put('/:id/availability', async (req, res) => {
   } catch (error) {
     console.error('Erreur mise à jour disponibilité:', error);
     res.status(500).json({ error: 'Erreur lors de la mise à jour de la disponibilité' });
+  }
+});
+
+// Supprimer un véhicule
+router.delete('/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM cars WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur suppression véhicule:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression du véhicule' });
   }
 });
 

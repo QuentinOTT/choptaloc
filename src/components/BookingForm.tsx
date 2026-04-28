@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Calendar, Clock, MapPin, CreditCard, User, Phone, Mail, Car, X, HelpCircle } from "lucide-react";
 import { useClientAuth } from "@/hooks/use-client-auth";
 import { API_URL } from "@/config/api";
+import { useNavigate } from "react-router-dom";
+import { LogIn, UserPlus } from "lucide-react";
 
 interface Car {
   id: string;
@@ -38,7 +40,8 @@ interface BookingFormProps {
 }
 
 const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) => {
-  const { user } = useClientAuth();
+  const { user, isAuthenticated } = useClientAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -241,10 +244,42 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Réserver {car.brand} {car.model}</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">
+            {!isAuthenticated ? "Connexion requise" : `Réserver ${car.brand} ${car.model}`}
+          </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+        {!isAuthenticated ? (
+          <div className="py-8 flex flex-col items-center text-center space-y-6">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <User className="w-8 h-8 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold">Créez un compte pour réserver</h3>
+              <p className="text-muted-foreground max-w-sm">
+                Pour effectuer une réservation, vous devez être connecté à votre compte client Choptaloc.
+              </p>
+            </div>
+            <div className="flex flex-col w-full gap-3 pt-4">
+              <Button 
+                onClick={() => navigate("/client-auth?mode=login")} 
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                Se connecter
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/client-auth?mode=register")} 
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <UserPlus className="w-4 h-4" />
+                Créer un compte
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           {/* Informations personnelles */}
           <div className="space-y-4">
             <h3 className="font-semibold flex items-center gap-2">
@@ -511,6 +546,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
             </Button>
           </div>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

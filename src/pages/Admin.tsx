@@ -1166,6 +1166,8 @@ const Admin = () => {
                               model,
                               tag: 'Disponible maintenant',
                               price_per_day: price,
+                              weekly_price: weeklyPrice || null,
+                              monthly_price: monthlyPrice || null,
                               image_url: imageUrl || '/assets/placeholder.png',
                               specs: ['Automatique', '5 places', 'Essence', 'Climatisation'],
                               is_available: true
