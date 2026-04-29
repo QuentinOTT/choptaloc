@@ -238,6 +238,7 @@ const FleetSection = () => {
                       <img
                         src={car.image}
                         alt={`${car.brand} ${car.model}`}
+                        loading="lazy"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
@@ -546,6 +547,7 @@ const _ = forceUpdate;
                     <img
                       src={car.image}
                       alt={`${car.brand} ${car.model}`}
+                      loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 blur-sm"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
