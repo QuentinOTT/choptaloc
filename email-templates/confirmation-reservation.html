@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Confirmation de réservation - ChopTaLoc</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style type="text/css">
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; background-color: #0c0e12; }
+    @media only screen and (max-width: 620px) {
+      .container { width: 100% !important; padding: 0 16px !important; }
+      .content-padding { padding: 24px 20px !important; }
+      .detail-table td { display: block !important; width: 100% !important; padding: 6px 0 !important; }
+      .detail-label { text-align: left !important; }
+      .detail-value { text-align: left !important; font-size: 15px !important; }
+      .price-big { font-size: 32px !important; }
+      .header-logo { height: 40px !important; }
+      .hero-title { font-size: 22px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#0c0e12; font-family:'Montserrat',Arial,Helvetica,sans-serif;">
+
+<!-- Preheader (hidden text for inbox preview) -->
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
+  Votre réservation {{var:vehicle_name}} du {{var:start_date}} au {{var:end_date}} est confirmée ! &#8199;&#65279;&#847;
+</div>
+
+<!-- WRAPPER -->
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#0c0e12;">
+<tr><td align="center" style="padding:24px 16px;">
+
+<!-- MAIN CONTAINER 600px -->
+<table role="presentation" cellpadding="0" cellspacing="0" width="600" class="container" style="max-width:600px; width:100%;">
+
+  <!-- ============ HEADER ============ -->
+  <tr><td style="padding:32px 0 24px; text-align:center;">
+    <!-- Logo text fallback since we can't embed local images -->
+    <table role="presentation" cellpadding="0" cellspacing="0" align="center">
+    <tr>
+      <td style="padding-right:10px; vertical-align:middle;">
+        <img src="https://choptaloc.fr/favicon.ico" alt="ChopTaLoc" width="44" height="44" class="header-logo" style="border-radius:10px; display:block;" />
+      </td>
+      <td style="vertical-align:middle;">
+        <span style="font-family:'Montserrat',Arial,sans-serif; font-weight:900; font-size:22px; color:#ffffff; letter-spacing:-0.5px; font-style:italic;">CHOPTALOC</span>
+      </td>
+    </tr>
+    </table>
+  </td></tr>
+
+  <!-- ============ HERO CARD ============ -->
+  <tr><td>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#171b22; border-radius:16px; border:1px solid rgba(255,255,255,0.08); overflow:hidden;">
+
+      <!-- Orange accent bar -->
+      <tr><td style="height:4px; background:linear-gradient(90deg,#F97316,#FBBF24);font-size:0;line-height:0;">&nbsp;</td></tr>
+
+      <!-- Hero content -->
+      <tr><td class="content-padding" style="padding:40px 36px 32px; text-align:center;">
+        <!-- Check icon -->
+        <table role="presentation" cellpadding="0" cellspacing="0" align="center">
+        <tr><td style="width:64px; height:64px; background-color:rgba(249,115,22,0.12); border-radius:50%; text-align:center; vertical-align:middle; font-size:28px;">
+          ✅
+        </td></tr>
+        </table>
+
+        <h1 class="hero-title" style="font-family:'Montserrat',Arial,sans-serif; font-size:26px; font-weight:800; color:#ffffff; margin:20px 0 8px;">
+          Réservation Confirmée
+        </h1>
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:14px; color:#8b8fa3; margin:0 0 4px; line-height:1.6;">
+          Merci <strong style="color:#ffffff;">{{var:first_name}}</strong>, votre demande de réservation a bien été enregistrée.
+        </p>
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:12px; color:#6b6f82; margin:0;">
+          Réservation n° <strong style="color:#F97316;">#{{var:booking_id}}</strong>
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Spacer -->
+  <tr><td style="height:16px; font-size:0; line-height:0;">&nbsp;</td></tr>
+
+  <!-- ============ VEHICLE CARD ============ -->
+  <tr><td>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#171b22; border-radius:16px; border:1px solid rgba(255,255,255,0.08);">
+      <tr><td class="content-padding" style="padding:28px 36px;">
+
+        <!-- Section title -->
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="font-family:'Montserrat',Arial,sans-serif; font-size:11px; font-weight:700; color:#F97316; text-transform:uppercase; letter-spacing:2px; padding-bottom:16px;">
+            🚗&nbsp; Véhicule réservé
+          </td>
+        </tr>
+        </table>
+
+        <!-- Vehicle name -->
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:20px; font-weight:800; color:#ffffff; margin:0 0 4px;">
+          {{var:vehicle_name}}
+        </p>
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:12px; color:#8b8fa3; margin:0;">
+          {{var:vehicle_tag:"Premium"}}
+        </p>
+
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Spacer -->
+  <tr><td style="height:16px; font-size:0; line-height:0;">&nbsp;</td></tr>
+
+  <!-- ============ DETAILS CARD ============ -->
+  <tr><td>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#171b22; border-radius:16px; border:1px solid rgba(255,255,255,0.08);">
+      <tr><td class="content-padding" style="padding:28px 36px;">
+
+        <!-- Section title -->
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:11px; font-weight:700; color:#F97316; text-transform:uppercase; letter-spacing:2px; margin:0 0 20px;">
+          📋&nbsp; Détails de la réservation
+        </p>
+
+        <!-- Details rows -->
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="detail-table">
+
+          <!-- Date début -->
+          <tr>
+            <td class="detail-label" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#8b8fa3; padding:10px 0; width:50%; vertical-align:top;">📅 Date de début</td>
+            <td class="detail-value" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#ffffff; font-weight:600; padding:10px 0; text-align:right;">{{var:start_date}}</td>
+          </tr>
+          <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
+
+          <!-- Date fin -->
+          <tr>
+            <td class="detail-label" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#8b8fa3; padding:10px 0; vertical-align:top;">📅 Date de fin</td>
+            <td class="detail-value" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#ffffff; font-weight:600; padding:10px 0; text-align:right;">{{var:end_date}}</td>
+          </tr>
+          <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
+
+          <!-- Durée -->
+          <tr>
+            <td class="detail-label" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#8b8fa3; padding:10px 0; vertical-align:top;">⏱ Durée</td>
+            <td class="detail-value" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#ffffff; font-weight:600; padding:10px 0; text-align:right;">{{var:duration}} jour(s)</td>
+          </tr>
+          <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
+
+          <!-- Heure récupération -->
+          <tr>
+            <td class="detail-label" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#8b8fa3; padding:10px 0; vertical-align:top;">🕐 Heure récupération</td>
+            <td class="detail-value" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#ffffff; font-weight:600; padding:10px 0; text-align:right;">{{var:pickup_time:"À convenir"}}</td>
+          </tr>
+          <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
+
+          <!-- Heure retour -->
+          <tr>
+            <td class="detail-label" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#8b8fa3; padding:10px 0; vertical-align:top;">🕐 Heure de retour</td>
+            <td class="detail-value" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#ffffff; font-weight:600; padding:10px 0; text-align:right;">{{var:dropoff_time:"À convenir"}}</td>
+          </tr>
+          <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
+
+          <!-- Lieu récupération -->
+          <tr>
+            <td class="detail-label" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#8b8fa3; padding:10px 0; vertical-align:top;">📍 Lieu récupération</td>
+            <td class="detail-value" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#ffffff; font-weight:600; padding:10px 0; text-align:right;">{{var:pickup_location:"Sur place"}}</td>
+          </tr>
+          <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
+
+          <!-- Lieu retour -->
+          <tr>
+            <td class="detail-label" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#8b8fa3; padding:10px 0; vertical-align:top;">📍 Lieu de retour</td>
+            <td class="detail-value" style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#ffffff; font-weight:600; padding:10px 0; text-align:right;">{{var:return_location:"Sur place"}}</td>
+          </tr>
+
+        </table>
+
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Spacer -->
+  <tr><td style="height:16px; font-size:0; line-height:0;">&nbsp;</td></tr>
+
+  <!-- ============ PRICE CARD ============ -->
+  <tr><td>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#171b22; border-radius:16px; border:1px solid rgba(249,115,22,0.25); overflow:hidden;">
+      <!-- Orange top glow -->
+      <tr><td style="height:2px; background:linear-gradient(90deg,transparent,rgba(249,115,22,0.4),transparent);font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td class="content-padding" style="padding:28px 36px; text-align:center;">
+
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:11px; font-weight:700; color:#8b8fa3; text-transform:uppercase; letter-spacing:2px; margin:0 0 8px;">
+          Montant total estimé
+        </p>
+        <p class="price-big" style="font-family:'Montserrat',Arial,sans-serif; font-size:40px; font-weight:900; color:#F97316; margin:0; line-height:1.2;">
+          {{var:total_price}}€
+        </p>
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:11px; color:#6b6f82; margin:8px 0 0;">
+          Caution : {{var:caution_amount:"1000"}}€ · Paiement à la prise en charge
+        </p>
+
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Spacer -->
+  <tr><td style="height:16px; font-size:0; line-height:0;">&nbsp;</td></tr>
+
+  <!-- ============ NEXT STEPS CARD ============ -->
+  <tr><td>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#171b22; border-radius:16px; border:1px solid rgba(255,255,255,0.08);">
+      <tr><td class="content-padding" style="padding:28px 36px;">
+
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:11px; font-weight:700; color:#F97316; text-transform:uppercase; letter-spacing:2px; margin:0 0 20px;">
+          📌&nbsp; Prochaines étapes
+        </p>
+
+        <!-- Step 1 -->
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:14px;">
+        <tr>
+          <td style="width:32px; vertical-align:top; padding-top:2px;">
+            <div style="width:28px; height:28px; background-color:rgba(249,115,22,0.15); border-radius:50%; text-align:center; line-height:28px; font-family:'Montserrat',Arial,sans-serif; font-size:12px; font-weight:800; color:#F97316;">1</div>
+          </td>
+          <td style="padding-left:12px;">
+            <p style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; font-weight:700; color:#ffffff; margin:0 0 2px;">Validation</p>
+            <p style="font-family:'Montserrat',Arial,sans-serif; font-size:12px; color:#8b8fa3; margin:0; line-height:1.5;">Notre équipe va vérifier la disponibilité et valider votre réservation.</p>
+          </td>
+        </tr>
+        </table>
+
+        <!-- Step 2 -->
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:14px;">
+        <tr>
+          <td style="width:32px; vertical-align:top; padding-top:2px;">
+            <div style="width:28px; height:28px; background-color:rgba(249,115,22,0.15); border-radius:50%; text-align:center; line-height:28px; font-family:'Montserrat',Arial,sans-serif; font-size:12px; font-weight:800; color:#F97316;">2</div>
+          </td>
+          <td style="padding-left:12px;">
+            <p style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; font-weight:700; color:#ffffff; margin:0 0 2px;">Confirmation par téléphone</p>
+            <p style="font-family:'Montserrat',Arial,sans-serif; font-size:12px; color:#8b8fa3; margin:0; line-height:1.5;">Nous vous contacterons pour confirmer les modalités et la prise en charge.</p>
+          </td>
+        </tr>
+        </table>
+
+        <!-- Step 3 -->
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="width:32px; vertical-align:top; padding-top:2px;">
+            <div style="width:28px; height:28px; background-color:rgba(249,115,22,0.15); border-radius:50%; text-align:center; line-height:28px; font-family:'Montserrat',Arial,sans-serif; font-size:12px; font-weight:800; color:#F97316;">3</div>
+          </td>
+          <td style="padding-left:12px;">
+            <p style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; font-weight:700; color:#ffffff; margin:0 0 2px;">Remise du véhicule</p>
+            <p style="font-family:'Montserrat',Arial,sans-serif; font-size:12px; color:#8b8fa3; margin:0; line-height:1.5;">Présentez votre permis de conduire et la caution lors de la prise en charge.</p>
+          </td>
+        </tr>
+        </table>
+
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Spacer -->
+  <tr><td style="height:24px; font-size:0; line-height:0;">&nbsp;</td></tr>
+
+  <!-- ============ CTA BUTTON ============ -->
+  <tr><td style="text-align:center;">
+    <table role="presentation" cellpadding="0" cellspacing="0" align="center">
+    <tr><td style="border-radius:12px; background:linear-gradient(135deg,#F97316,#ea580c);" >
+      <a href="https://choptaloc.fr/client-dashboard" target="_blank" style="display:inline-block; padding:16px 40px; font-family:'Montserrat',Arial,sans-serif; font-size:14px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:12px;">
+        Suivre ma réservation →
+      </a>
+    </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Spacer -->
+  <tr><td style="height:32px; font-size:0; line-height:0;">&nbsp;</td></tr>
+
+  <!-- ============ CONTACT INFO ============ -->
+  <tr><td>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#171b22; border-radius:16px; border:1px solid rgba(255,255,255,0.08);">
+      <tr><td class="content-padding" style="padding:24px 36px; text-align:center;">
+
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; font-weight:600; color:#ffffff; margin:0 0 8px;">
+          Une question ? Contactez-nous
+        </p>
+        <p style="font-family:'Montserrat',Arial,sans-serif; font-size:13px; color:#8b8fa3; margin:0; line-height:1.8;">
+          📞 {{var:company_phone:"07 XX XX XX XX"}}&nbsp;&nbsp;·&nbsp;&nbsp;📧 contact@choptaloc.com
+        </p>
+
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Spacer -->
+  <tr><td style="height:24px; font-size:0; line-height:0;">&nbsp;</td></tr>
+
+  <!-- ============ SOCIAL LINKS ============ -->
+  <tr><td style="text-align:center; padding-bottom:8px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" align="center">
+    <tr>
+      <td style="padding:0 8px;">
+        <a href="https://www.instagram.com/choptaloc.idf" target="_blank" style="font-family:'Montserrat',Arial,sans-serif; font-size:12px; color:#8b8fa3; text-decoration:none;">Instagram</a>
+      </td>
+      <td style="color:#3a3d4a;">·</td>
+      <td style="padding:0 8px;">
+        <a href="https://www.tiktok.com/@choptaloc.idf" target="_blank" style="font-family:'Montserrat',Arial,sans-serif; font-size:12px; color:#8b8fa3; text-decoration:none;">TikTok</a>
+      </td>
+      <td style="color:#3a3d4a;">·</td>
+      <td style="padding:0 8px;">
+        <a href="https://www.snapchat.com/add/choptaloc.idf" target="_blank" style="font-family:'Montserrat',Arial,sans-serif; font-size:12px; color:#8b8fa3; text-decoration:none;">Snapchat</a>
+      </td>
+    </tr>
+    </table>
+  </td></tr>
+
+  <!-- ============ FOOTER ============ -->
+  <tr><td style="padding:16px 0 8px; text-align:center; border-top:1px solid rgba(255,255,255,0.06);">
+    <p style="font-family:'Montserrat',Arial,sans-serif; font-size:11px; color:#4a4d5e; margin:0 0 4px; line-height:1.6;">
+      © 2026 ChopTaLoc Service · Mantes-la-Jolie, France
+    </p>
+    <p style="font-family:'Montserrat',Arial,sans-serif; font-size:10px; color:#3a3d4a; margin:0; line-height:1.6;">
+      Vous recevez cet email suite à votre réservation sur <a href="https://choptaloc.fr" style="color:#F97316; text-decoration:none;">choptaloc.fr</a>
+    </p>
+  </td></tr>
+
+</table>
+<!-- END CONTAINER -->
+
+</td></tr>
+</table>
+<!-- END WRAPPER -->
+
+</body>
+</html>

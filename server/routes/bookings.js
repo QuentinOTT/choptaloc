@@ -2,6 +2,75 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
 
+// Configuration Mailjet
+const Mailjet = require('node-mailjet');
+const mailjet = new Mailjet({
+  apiKey: process.env.MJ_APIKEY_PUBLIC,
+  apiSecret: process.env.MJ_APIKEY_PRIVATE,
+});
+
+// Fonction d'envoi de l'email de confirmation
+async function sendBookingConfirmationEmail(bookingId, bookingData, carData, userData) {
+  try {
+    if (!process.env.MJ_APIKEY_PUBLIC || !process.env.MJ_APIKEY_PRIVATE) {
+      console.warn('⚠️ Mailjet non configuré, email de confirmation non envoyé');
+      return;
+    }
+
+    // Calcul de la durée
+    const start = new Date(bookingData.startDate);
+    const end = new Date(bookingData.endDate);
+    const duration = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24));
+
+    // Formater les dates en français
+    const formatDate = (dateStr) => {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    };
+
+    const result = await mailjet
+      .post('send', { version: 'v3.1' })
+      .request({
+        Messages: [
+          {
+            From: {
+              Email: 'quentix05@gmail.com',
+              Name: 'Choptaloc Service',
+            },
+            To: [
+              {
+                Email: userData.email,
+                Name: `${userData.firstName} ${userData.lastName}`,
+              },
+            ],
+            TemplateID: 7976290,
+            TemplateLanguage: true,
+            Subject: `Confirmation de réservation #${bookingId} - ${carData.brand} ${carData.model}`,
+            Variables: {
+              first_name: userData.firstName || 'Client',
+              booking_id: String(bookingId),
+              vehicle_name: `${carData.brand} ${carData.model}`,
+              vehicle_tag: carData.tag || 'Premium',
+              start_date: formatDate(bookingData.startDate),
+              end_date: formatDate(bookingData.endDate),
+              duration: String(duration),
+              pickup_time: bookingData.pickupTime || 'À convenir',
+              dropoff_time: bookingData.dropoffTime || 'À convenir',
+              pickup_location: bookingData.pickupLocation || 'Sur place',
+              return_location: bookingData.returnLocation || 'Sur place',
+              total_price: String(bookingData.totalPrice),
+              caution_amount: carData.caution_amount ? String(carData.caution_amount) : '1000',
+            },
+          },
+        ],
+      });
+
+    console.log(`✅ Email de confirmation envoyé pour la réservation #${bookingId} à ${userData.email}`);
+  } catch (err) {
+    console.error(`❌ Erreur envoi email confirmation #${bookingId}:`, err.message || err);
+  }
+}
+
 // Route d'urgence pour corriger le schéma de base de données en production
 router.get('/fix-schema', async (req, res) => {
   try {
@@ -78,7 +147,24 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    res.status(201).json({ success: true, bookingId: result.insertId });
+    const bookingId = result.insertId;
+
+    // Envoi de l'email de confirmation (async, non-bloquant)
+    if (userId) {
+      try {
+        // Récupérer les infos du client et du véhicule
+        const [[user]] = await pool.query('SELECT first_name, last_name, email FROM users WHERE id = ?', [userId]);
+        const [[car]] = await pool.query('SELECT brand, model, tag, caution_amount FROM cars WHERE id = ?', [carId]);
+
+        if (user && user.email && car) {
+          sendBookingConfirmationEmail(bookingId, req.body, car, user);
+        }
+      } catch (emailErr) {
+        console.error('⚠️ Erreur récupération données email:', emailErr.message);
+      }
+    }
+
+    res.status(201).json({ success: true, bookingId });
   } catch (error) {
     console.error('Erreur création réservation:', error);
     res.status(500).json({ error: 'Erreur lors de la création de la réservation' });
