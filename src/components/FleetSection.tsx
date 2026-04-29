@@ -488,7 +488,7 @@ const _ = forceUpdate;
                                 ? 'bg-primary text-white ring-2 ring-primary ring-offset-2 md:ring-offset-4'
                                 : 'bg-primary text-white ring-2 ring-primary ring-offset-1 md:ring-offset-2'
                               : isAvailable
-                              ? 'bg-gray-400 text-white hover:bg-gray-500'
+                              ? 'bg-primary text-primary-foreground hover:bg-primary/80'
                               : 'bg-gray-800 text-gray-400 cursor-not-allowed opacity-50'
                           }`}
                         >
@@ -510,7 +510,7 @@ const _ = forceUpdate;
                 {/* Légende */}
                 <div className="flex items-center gap-2 md:gap-4 mt-3 md:mt-4 text-[10px] md:text-xs">
                   <div className="flex items-center gap-1 md:gap-2">
-                    <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-gray-400" />
+                    <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-primary" />
                     <span className="text-muted-foreground">Disponible</span>
                   </div>
                   <div className="flex items-center gap-1 md:gap-2">
