@@ -51,14 +51,14 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        # ON FORCE L'IP DE TA TOUR ICI
-        VITE_API_URL: 'http://192.168.1.8:3001'
+        # URL DE L'API PRODUCTION
+        VITE_API_URL: 'https://api.choptaloc.fr/api'
     container_name: choptaloc-frontend
     restart: unless-stopped
     ports:
       - '8081:80'
     environment:
-      - VITE_API_URL=http://192.168.1.8:3001
+      - VITE_API_URL=https://api.choptaloc.fr/api
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/" ]
       interval: 30s
