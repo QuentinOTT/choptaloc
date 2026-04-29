@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration Mailjet
 const Mailjet = require('node-mailjet');
@@ -10,7 +12,7 @@ const mailjet = new Mailjet({
 });
 
 // Fonction d'envoi de l'email de confirmation
-async function sendBookingConfirmationEmail(bookingId, bookingData, carData, userData) {
+async function sendBookingConfirmationEmail(bookingId, bookingData, carData, userData, type = 'pending') {
   try {
     if (!process.env.MJ_APIKEY_PUBLIC || !process.env.MJ_APIKEY_PRIVATE) {
       console.warn('⚠️ Mailjet non configuré, email de confirmation non envoyé');
@@ -28,6 +30,15 @@ async function sendBookingConfirmationEmail(bookingId, bookingData, carData, use
       return d.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     };
 
+    // Sélection du template et du sujet
+    const templateFileName = type === 'confirmed' ? 'reservation-confirmee.html' : 'reservation-en-attente.html';
+    const subject = type === 'confirmed' 
+      ? `✅ Réservation Confirmée #${bookingId} - ${carData.brand} ${carData.model}`
+      : `⏳ Demande de réservation #${bookingId} - En attente`;
+
+    const templatePath = path.join(__dirname, '../../email-templates', templateFileName);
+    let htmlContent = fs.readFileSync(templatePath, 'utf8');
+
     const result = await mailjet
       .post('send', { version: 'v3.1' })
       .request({
@@ -43,9 +54,9 @@ async function sendBookingConfirmationEmail(bookingId, bookingData, carData, use
                 Name: `${userData.firstName} ${userData.lastName}`,
               },
             ],
-            TemplateID: 7976290,
+            Subject: subject,
+            HTMLPart: htmlContent,
             TemplateLanguage: true,
-            Subject: `Confirmation de réservation #${bookingId} - ${carData.brand} ${carData.model}`,
             Variables: {
               first_name: userData.firstName || 'Client',
               booking_id: String(bookingId),
@@ -66,9 +77,9 @@ async function sendBookingConfirmationEmail(bookingId, bookingData, carData, use
         ],
       });
 
-    console.log(`✅ Email de confirmation envoyé pour la réservation #${bookingId} à ${userData.email}`);
+    console.log(`✅ Email ${type} envoyé pour la réservation #${bookingId} à ${userData.email}`);
   } catch (err) {
-    console.error(`❌ Erreur envoi email confirmation #${bookingId}:`, err.message || err);
+    console.error(`❌ Erreur envoi email ${type} #${bookingId}:`, err.message || err);
   }
 }
 
@@ -226,11 +237,46 @@ router.get('/user/:userId', async (req, res) => {
 router.put('/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
+    const bookingId = req.params.id;
 
     await pool.query(
       'UPDATE bookings SET status = ? WHERE id = ?',
-      [status, req.params.id]
+      [status, bookingId]
     );
+
+    // Si confirmé, envoyer l'email de validation
+    if (status === 'confirmed') {
+      try {
+        // Récupérer toutes les infos nécessaires
+        const [rows] = await pool.query(`
+          SELECT b.*, u.first_name, u.last_name, u.email, c.brand, c.model, c.tag, c.caution_amount 
+          FROM bookings b
+          JOIN users u ON b.user_id = u.id
+          JOIN cars c ON b.car_id = c.id
+          WHERE b.id = ?
+        `, [bookingId]);
+        
+        if (rows.length > 0) {
+          const data = rows[0];
+          // Adapter format pour sendBookingConfirmationEmail
+          const bookingData = {
+            startDate: data.start_date,
+            endDate: data.end_date,
+            pickupTime: data.pickup_time,
+            dropoffTime: data.dropoff_time,
+            pickupLocation: data.pickup_location,
+            returnLocation: data.dropoff_location,
+            totalPrice: data.total_price
+          };
+          const carData = { brand: data.brand, model: data.model, tag: data.tag, caution_amount: data.caution_amount };
+          const userData = { firstName: data.first_name, lastName: data.last_name, email: data.email };
+          
+          sendBookingConfirmationEmail(bookingId, bookingData, carData, userData, 'confirmed');
+        }
+      } catch (emailErr) {
+        console.error('⚠️ Erreur lors de l\'envoi de l\'email de confirmation admin:', emailErr.message);
+      }
+    }
 
     res.json({ success: true });
   } catch (error) {

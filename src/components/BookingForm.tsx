@@ -184,6 +184,8 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       returnLocation: formData.deliveryOption ? formData.dropoffLocation : "Récupération sur place",
       totalPrice: newTotalPrice,
       notes: formData.notes,
+      pickupTime: formData.pickupTime,
+      dropoffTime: formData.dropoffTime,
       driverLicenseNumber: formData.driverLicenseNumber || "",
       driverLicenseDate: formData.driverLicenseDate || "",
     };
