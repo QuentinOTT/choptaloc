@@ -30,14 +30,11 @@ async function sendBookingConfirmationEmail(bookingId, bookingData, carData, use
       return d.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     };
 
-    // Sélection du template et du sujet
-    const templateFileName = type === 'confirmed' ? 'reservation-confirmee.html' : 'reservation-en-attente.html';
+    // Sélection du template ID
+    const templateId = type === 'confirmed' ? 7976290 : 7976373;
     const subject = type === 'confirmed' 
       ? `✅ Réservation Confirmée #${bookingId} - ${carData.brand} ${carData.model}`
       : `⏳ Demande de réservation #${bookingId} - En attente`;
-
-    const templatePath = path.join(__dirname, '../../email-templates', templateFileName);
-    let htmlContent = fs.readFileSync(templatePath, 'utf8');
 
     const result = await mailjet
       .post('send', { version: 'v3.1' })
@@ -54,9 +51,9 @@ async function sendBookingConfirmationEmail(bookingId, bookingData, carData, use
                 Name: `${userData.firstName} ${userData.lastName}`,
               },
             ],
-            Subject: subject,
-            HTMLPart: htmlContent,
+            TemplateID: templateId,
             TemplateLanguage: true,
+            Subject: subject,
             Variables: {
               first_name: userData.firstName || 'Client',
               booking_id: String(bookingId),
