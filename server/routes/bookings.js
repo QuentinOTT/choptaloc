@@ -60,6 +60,7 @@ async function sendBookingConfirmationEmail(bookingId, bookingData, carData, use
               return_location: bookingData.returnLocation || 'Sur place',
               total_price: String(bookingData.totalPrice),
               caution_amount: carData.caution_amount ? String(carData.caution_amount) : '1000',
+              company_phone: '07 68 00 13 47',
             },
           },
         ],
