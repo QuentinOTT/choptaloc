@@ -129,8 +129,8 @@ const AvailabilityCalendar = ({ car, bookings }: AvailabilityCalendarProps) => {
                 title={booked ? "Réservé" : `Disponible : ${car.price}€ / jour`}
                 className={`aspect-square p-3 text-center text-sm font-bold rounded-2xl shadow-md transition-all duration-300 transform hover:scale-105 cursor-pointer ${
                   booked 
-                    ? 'bg-gradient-to-br from-gray-700 to-gray-900 text-white shadow-gray-500/30' 
-                    : 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-orange-500/30'
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-950 text-white shadow-gray-900/30' 
+                    : 'bg-gradient-to-br from-gray-300 to-gray-500 text-white shadow-gray-400/30'
                 }`}
               >
                 {day.getDate()}
@@ -153,11 +153,11 @@ const AvailabilityCalendar = ({ car, bookings }: AvailabilityCalendarProps) => {
       {/* Légende */}
       <div className="flex items-center justify-center gap-8 mt-6">
         <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-md">
-          <div className="w-6 h-6 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg shadow-md"></div>
+          <div className="w-6 h-6 bg-gradient-to-br from-gray-300 to-gray-500 rounded-lg shadow-md"></div>
           <span className="text-sm font-semibold text-gray-700">Disponible</span>
         </div>
         <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-md">
-          <div className="w-6 h-6 bg-gradient-to-br from-gray-700 to-gray-900 rounded-lg shadow-md"></div>
+          <div className="w-6 h-6 bg-gradient-to-br from-gray-800 to-gray-950 rounded-lg shadow-md"></div>
           <span className="text-sm font-semibold text-gray-700">Réservé</span>
         </div>
       </div>

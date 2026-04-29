@@ -55,7 +55,7 @@ async function sendBookingConfirmationEmail(bookingId, bookingData, carData, use
             TemplateLanguage: true,
             Subject: subject,
             Variables: {
-              first_name: userData.firstName || 'Client',
+              first_name: userData.first_name || userData.firstName || 'Client',
               booking_id: String(bookingId),
               vehicle_name: `${carData.brand} ${carData.model}`,
               vehicle_tag: carData.tag || 'Premium',
