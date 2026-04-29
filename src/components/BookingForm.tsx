@@ -210,7 +210,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
           // Fermer le formulaire
           onClose();
           // Afficher un message de succès
-          alert("Votre demande de réservation a été envoyée avec succès ! Vous serez contacté sous peu.");
+          alert("Votre demande de réservation a été envoyée avec succès ! Un email de confirmation vient de vous être envoyé (pensez à vérifier vos spams). Vous serez contacté sous peu.");
         }
       })
       .catch(err => {
