@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, EyeOff, Eye } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -241,7 +241,8 @@ function BookingTooltip({ data }: { data:TooltipData }) {
     const { width, height } = ref.current.getBoundingClientRect();
     setPos({ left:x+14+width>window.innerWidth?x-width-14:x+14, top:y+14+height>window.innerHeight?y-height-14:y+14 });
   },[x,y]);
-  const name = booking.userName||booking.userEmail?.split("@")[0]||"Client";
+  const isConfidential = (data as any).isConfidential;
+  const name = isConfidential ? "Mode Confidentiel" : (booking.userName||booking.userEmail?.split("@")[0]||"Client");
   const fmt = (s:string) => parseLocalDate(s).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});
   return (
     <div ref={ref} className="fixed z-[9999] pointer-events-none" style={{left:pos.left,top:pos.top}}>
@@ -270,6 +271,7 @@ const GlobalCalendar = ({ cars, bookings }: GlobalCalendarProps) => {
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [scale,      setScale]      = useState<Scale>("1S");
   const [tooltip,    setTooltip]    = useState<TooltipData | null>(null);
+  const [isConfidential, setIsConfidential] = useState(false);
 
   const today = new Date(); today.setHours(0,0,0,0);
   const todayKey = toDateKey(today);
@@ -345,6 +347,21 @@ const GlobalCalendar = ({ cars, bookings }: GlobalCalendarProps) => {
           <LegendPill color="bg-orange-500" label="Réservé"/>
           <LegendPill color="bg-amber-600"  label="Maintenance"/>
           <LegendPill color="bg-emerald-500" label="Disponible"/>
+          
+          <div className="flex items-center gap-2 ml-2 px-3 py-1.5 rounded-lg bg-[#111] border border-[#252525] hover:border-[#333] transition-colors cursor-pointer group" onClick={() => setIsConfidential(!isConfidential)}>
+            <div className="flex items-center gap-2">
+              {isConfidential ? <EyeOff size={14} className="text-orange-500" /> : <Eye size={14} className="text-gray-400" />}
+              <span className={`text-[11px] font-bold tracking-wider uppercase transition-colors ${isConfidential ? "text-orange-500" : "text-gray-500 group-hover:text-gray-300"}`}>
+                Mode Confidentiel
+              </span>
+            </div>
+            <input 
+              type="checkbox" 
+              checked={isConfidential} 
+              onChange={() => {}} 
+              className="w-3.5 h-3.5 rounded border-[#333] bg-transparent text-orange-600 focus:ring-0 focus:ring-offset-0 cursor-pointer ml-1"
+            />
+          </div>
         </div>
       </div>
 
@@ -427,7 +444,7 @@ const GlobalCalendar = ({ cars, bookings }: GlobalCalendarProps) => {
                   if(!idx2)return null;
                   const{si,ei}=idx2;
                   const cfg=getBarConfig(booking.status);
-                  const label=booking.userName||booking.userEmail?.split("@")[0]||"Client";
+                  const label = isConfidential ? "OCCUPÉ" : (booking.userName||booking.userEmail?.split("@")[0]||"Client");
                   return(
                     <div
                       key={booking.id}
@@ -437,7 +454,7 @@ const GlobalCalendar = ({ cars, bookings }: GlobalCalendarProps) => {
                       <button
                         className={`h-10 w-full rounded-md flex items-center justify-center gap-1.5 ${cfg.text} text-[11px] font-semibold tracking-wider cursor-pointer pointer-events-auto transition-opacity hover:opacity-90 overflow-hidden`}
                         style={cfg.style}
-                        onMouseEnter={e=>setTooltip({booking,x:e.clientX,y:e.clientY})}
+                        onMouseEnter={e=>setTooltip({booking,x:e.clientX,y:e.clientY, isConfidential} as any)}
                         onMouseMove={e=>setTooltip(t=>t?{...t,x:e.clientX,y:e.clientY}:null)}
                         onMouseLeave={()=>setTooltip(null)}
                       >
