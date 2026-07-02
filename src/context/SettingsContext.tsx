@@ -45,7 +45,7 @@ const defaultSettings: Settings = {
   alert_message: "",
   global_discount: "0",
   booking_acompte_type: "percentage",
-  booking_acompte_value: "30"
+  booking_acompte_value: "50"
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

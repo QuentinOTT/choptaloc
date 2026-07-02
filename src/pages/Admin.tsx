@@ -2249,7 +2249,7 @@ const Admin = () => {
                             <label className="text-xs font-bold uppercase text-muted-foreground">Valeur de l'acompte</label>
                             <Input 
                               type="number"
-                              value={(companySettings as any).booking_acompte_value || "30"} 
+                              value={(companySettings as any).booking_acompte_value || "50"} 
                               onChange={(e) => setCompanySettings({...companySettings, booking_acompte_value: e.target.value})}
                             />
                           </div>

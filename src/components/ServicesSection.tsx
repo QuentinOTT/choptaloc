@@ -4,7 +4,7 @@ import { useSettings } from "@/context/SettingsContext";
 
 const ServicesSection = () => {
   const { settings } = useSettings();
-  const acompteValue = settings.booking_acompte_value || "30";
+  const acompteValue = settings.booking_acompte_value || "50";
   const acompteText = settings.booking_acompte_type === "fixed" ? `${acompteValue}€` : `${acompteValue}%`;
 
   const rentalSteps = [
