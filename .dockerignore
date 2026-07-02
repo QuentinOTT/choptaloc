@@ -8,3 +8,9 @@ npm-debug.log
 .venv
 .env*
 *.md
+
+# Exclude proxy & data directories from build context
+proxy_letsencrypt
+proxy_data
+nginx-proxy-manager
+mysql_data
