@@ -45,17 +45,19 @@ router.post('/', async (req, res) => {
       weekend_price, 
       weekly_price, 
       monthly_price, 
+      caution_amount,
+      min_license_years,
       image_url, 
       specs, 
       is_available 
     } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO cars (brand, model, tag, price_per_day, price_24h, price_48h, price_48h_wk, price_72h_wk, price_mon_fri, weekend_price, weekly_price, monthly_price, image_url, specs, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO cars (brand, model, tag, price_per_day, price_24h, price_48h, price_48h_wk, price_72h_wk, price_mon_fri, weekend_price, weekly_price, monthly_price, caution_amount, min_license_years, image_url, specs, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         brand, 
         model, 
-        tag, 
+        tag || 'Disponible maintenant', 
         price_per_day, 
         price_24h || null,
         price_48h || null,
@@ -64,7 +66,9 @@ router.post('/', async (req, res) => {
         price_mon_fri || null,
         weekend_price || null, 
         weekly_price || null, 
-        monthly_price || null, 
+        monthly_price || null,
+        caution_amount || null,
+        min_license_years || null,
         image_url, 
         JSON.stringify(specs || []), 
         is_available !== false
@@ -74,7 +78,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({ success: true, carId: result.insertId, insertId: result.insertId });
   } catch (error) {
     console.error('Erreur ajout véhicule:', error);
-    res.status(500).json({ error: 'Erreur lors de l\'ajout du véhicule' });
+    res.status(500).json({ error: 'Erreur lors de l\'ajout du véhicule', details: error.message });
   }
 });
 

@@ -107,6 +107,8 @@ const Admin = () => {
     price_mon_fri: "",
     weekly_price: "",
     monthly_price: "",
+    caution_amount: "",
+    min_license_years: "2",
     image_url: "",
   });
   const [newCarImagePreview, setNewCarImagePreview] = useState<string | null>(null);
@@ -1315,23 +1317,54 @@ const Admin = () => {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium mb-1 block">Prix 1 Semaine (7j) (€)</label>
+                        <label className="text-xs font-medium mb-1 block">Prix 1 Semaine (7j) (€) <span className="text-muted-foreground font-normal">— laisser vide = Sur devis</span></label>
                         <Input 
                           type="number" 
                           min="0" 
-                          placeholder="ex: 300" 
+                          placeholder="Sur devis si vide" 
                           value={newCarForm.weekly_price}
                           onChange={(e) => setNewCarForm({ ...newCarForm, weekly_price: e.target.value })}
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium mb-1 block">Prix 1 Mois (€)</label>
+                        <label className="text-xs font-medium mb-1 block">Prix 1 Mois (€) <span className="text-muted-foreground font-normal">— laisser vide = Sur devis</span></label>
                         <Input 
                           type="number" 
                           min="0" 
-                          placeholder="ex: 1100" 
+                          placeholder="Sur devis si vide" 
                           value={newCarForm.monthly_price}
                           onChange={(e) => setNewCarForm({ ...newCarForm, monthly_price: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Caution & Conditions */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                      <Shield className="w-4 h-4" /> Caution & Conditions
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Caution du véhicule (€)</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 1500" 
+                          value={newCarForm.caution_amount}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, caution_amount: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Vide = caution globale des réglages</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Années de permis minimum</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          max="10" 
+                          placeholder="ex: 2" 
+                          value={newCarForm.min_license_years}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, min_license_years: e.target.value })}
                         />
                       </div>
                     </div>
@@ -1370,6 +1403,8 @@ const Admin = () => {
                                 price_mon_fri: price_mon_fri ? parseInt(price_mon_fri) : null,
                                 weekly_price: weekly_price ? parseInt(weekly_price) : null,
                                 monthly_price: monthly_price ? parseInt(monthly_price) : null,
+                                caution_amount: newCarForm.caution_amount ? parseInt(newCarForm.caution_amount) : null,
+                                min_license_years: newCarForm.min_license_years ? parseInt(newCarForm.min_license_years) : null,
                                 image_url: image_url || '/assets/placeholder.png',
                                 specs: ['Automatique', '5 places', 'Essence', 'Climatisation'],
                                 is_available: true
@@ -1410,6 +1445,8 @@ const Admin = () => {
                                 price_mon_fri: "",
                                 weekly_price: "",
                                 monthly_price: "",
+                                caution_amount: "",
+                                min_license_years: "2",
                                 image_url: "",
                               });
                               setNewCarImagePreview(null);

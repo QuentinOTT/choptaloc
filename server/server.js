@@ -44,6 +44,14 @@ async function runMigrations() {
       await pool.query('ALTER TABLE cars ADD COLUMN monthly_price DECIMAL(10, 2)');
       console.log('✅ Migration: Ajout colonne monthly_price');
     }
+    if (!columnNames.includes('caution_amount')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN caution_amount INT DEFAULT NULL');
+      console.log('✅ Migration: Ajout colonne caution_amount');
+    }
+    if (!columnNames.includes('min_license_years')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN min_license_years INT DEFAULT NULL');
+      console.log('✅ Migration: Ajout colonne min_license_years');
+    }
 
     const [userColumns] = await pool.query('SHOW COLUMNS FROM users');
     const userColNames = userColumns.map(c => c.Field);
