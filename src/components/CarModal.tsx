@@ -131,6 +131,20 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
 
   const carDetails = getCarDetails(car.brand, car.model);
 
+  // Équipements et options à afficher (base de données ou fallback)
+  let activeFeatures: string[] = carDetails.features;
+  if (car.features) {
+    let parsed = car.features;
+    if (typeof car.features === 'string') {
+      try { parsed = JSON.parse(car.features); } catch (e) { parsed = []; }
+    }
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      activeFeatures = parsed;
+    }
+  }
+
+  const displayDescription = car.description || carDetails.description;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -168,7 +182,7 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
             </div>
             
             <p className="text-muted-foreground leading-relaxed">
-              {carDetails.description}
+              {displayDescription}
             </p>
             
             {/* Grille de prix détaillée */}
@@ -177,32 +191,32 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">24H</p>
-                  <p className="font-bold text-base text-primary">{car.price_24h || car.price}€</p>
+                  <p className="font-bold text-base text-primary">{car.price_24h ? `${car.price_24h}€` : `${car.price}€`}</p>
                   <p className="text-[9px] text-muted-foreground">250 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">48H</p>
-                  <p className="font-bold text-base text-primary">{car.price_48h || (car.price * 2)}€</p>
+                  <p className="font-bold text-base text-primary">{car.price_48h ? `${car.price_48h}€` : `${car.price * 2}€`}</p>
                   <p className="text-[9px] text-muted-foreground">400 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">48H (Spécial WK)</p>
-                  <p className="font-bold text-base text-primary">{car.price_48h_wk || car.weekendPrice || 200}€</p>
+                  <p className="font-bold text-base text-primary">{car.price_48h_wk ? `${car.price_48h_wk}€` : `${car.weekendPrice || 200}€`}</p>
                   <p className="text-[9px] text-muted-foreground">500 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">72H (Spécial WK)</p>
-                  <p className="font-bold text-base text-primary">{car.price_72h_wk || 250}€</p>
+                  <p className="font-bold text-base text-primary">{car.price_72h_wk ? `${car.price_72h_wk}€` : '250€'}</p>
                   <p className="text-[9px] text-muted-foreground">600 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">LUN. AU VEN. (5j)</p>
-                  <p className="font-bold text-base text-primary">{car.price_mon_fri || 300}€</p>
+                  <p className="font-bold text-base text-primary">{car.price_mon_fri ? `${car.price_mon_fri}€` : '300€'}</p>
                   <p className="text-[9px] text-muted-foreground">800 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">1 SEMAINE (7j)</p>
-                  <p className="font-bold text-base text-primary">{car.weeklyPrice || (car.price * 7)}€</p>
+                  <p className="font-bold text-base text-primary">{car.weeklyPrice ? `${car.weeklyPrice}€` : 'Sur devis'}</p>
                   <p className="text-[9px] text-muted-foreground">1000 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40 col-span-2 sm:col-span-3">
@@ -211,7 +225,7 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
                       <p className="text-[10px] text-muted-foreground font-bold">1 MOIS</p>
                       <p className="text-[9px] text-muted-foreground">Kilométrage illimité</p>
                     </div>
-                    <p className="font-bold text-base text-primary">{car.monthlyPrice || (car.price * 30)}€</p>
+                    <p className="font-bold text-base text-primary">{car.monthlyPrice ? `${car.monthlyPrice}€` : 'Sur devis'}</p>
                   </div>
                 </div>
               </div>
@@ -250,7 +264,7 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
         <div className="mt-6">
           <h3 className="text-lg font-semibold mb-3">Équipements et options</h3>
           <div className="grid md:grid-cols-2 gap-3">
-            {carDetails.features.map((feature) => (
+            {activeFeatures.map((feature) => (
               <div key={feature} className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-primary rounded-full" />
                 <span className="text-sm">{feature}</span>

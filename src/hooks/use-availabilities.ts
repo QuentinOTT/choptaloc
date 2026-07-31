@@ -16,66 +16,61 @@ export const useAvailabilities = () => {
   };
 
   const isCarAvailable = (carId: string, date: string): boolean => {
-    const availability = availabilities.find(a => a.carId === carId && a.date === date);
+    const availability = availabilities.find(a => String(a.carId) === String(carId) && a.date === date);
     return availability ? availability.isAvailable : true;
   };
 
-  // ── Mise à jour unitaire (avec functional update pour éviter le stale closure) ──
   const setCarAvailability = (carId: string, date: string, isAvailable: boolean) => {
     setAvailabilitiesState(prev => {
-      const idx = prev.findIndex(a => a.carId === carId && a.date === date);
+      const targetCarId = String(carId);
+      const idx = prev.findIndex(a => String(a.carId) === targetCarId && a.date === date);
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = { carId, date, isAvailable };
+        next[idx] = { carId: targetCarId, date, isAvailable };
         return next;
       }
-      return [...prev, { carId, date, isAvailable }];
+      return [...prev, { carId: targetCarId, date, isAvailable }];
     });
   };
 
   /**
-   * Bloque toutes les dates d'une réservation en UN SEUL setState.
-   * Evite le bug de stale closure qui ne gardait que la dernière date.
+   * Bloque toutes les dates d'une réservation du début à la fin inclus.
    */
   const blockDatesForBooking = (
-    carId: string,
+    carId: string | number,
     startDate: string,
-    endDate: string,
-    dropoffTime?: string
+    endDate: string
   ) => {
-    // Construire les dates à bloquer en local (on force minuit local, pas UTC)
-    const [sy, sm, sd] = startDate.split("-").map(Number);
-    const [ey, em, ed] = endDate.split("-").map(Number);
+    if (!carId || !startDate || !endDate) return;
+
+    const targetCarId = String(carId);
+    const [sy, sm, sd] = startDate.slice(0, 10).split("-").map(Number);
+    const [ey, em, ed] = endDate.slice(0, 10).split("-").map(Number);
+    
+    if (isNaN(sy) || isNaN(sm) || isNaN(sd) || isNaN(ey) || isNaN(em) || isNaN(ed)) return;
+
     const start = new Date(sy, sm - 1, sd);
     const end   = new Date(ey, em - 1, ed);
-
-    // Si restitution avant 12h, le dernier jour reste disponible
-    const shouldBlockLastDay =
-      !dropoffTime || parseInt(dropoffTime.split(":")[0], 10) >= 12;
 
     const datesToBlock: string[] = [];
     const cur = new Date(start);
 
     while (cur <= end) {
-      const isLastDay = cur.getTime() === end.getTime();
-      if (!isLastDay || shouldBlockLastDay) {
-        const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
-        datesToBlock.push(dateStr);
-      }
+      const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
+      datesToBlock.push(dateStr);
       cur.setDate(cur.getDate() + 1);
     }
 
     if (datesToBlock.length === 0) return;
 
-    // Un seul setState pour toutes les dates → pas de stale closure
     setAvailabilitiesState(prev => {
       const next = [...prev];
       for (const dateStr of datesToBlock) {
-        const idx = next.findIndex(a => a.carId === carId && a.date === dateStr);
+        const idx = next.findIndex(a => String(a.carId) === targetCarId && a.date === dateStr);
         if (idx >= 0) {
-          next[idx] = { carId, date: dateStr, isAvailable: false };
+          next[idx] = { carId: targetCarId, date: dateStr, isAvailable: false };
         } else {
-          next.push({ carId, date: dateStr, isAvailable: false });
+          next.push({ carId: targetCarId, date: dateStr, isAvailable: false });
         }
       }
       return next;
@@ -83,10 +78,11 @@ export const useAvailabilities = () => {
   };
 
   const getMonthAvailabilities = (
-    carId: string,
+    carId: string | number,
     year: number,
     month: number
   ): Map<string, boolean> => {
+    const targetCarId = String(carId);
     const map = new Map<string, boolean>();
     const first = new Date(year, month, 1);
     const last  = new Date(year, month + 1, 0);
@@ -94,7 +90,7 @@ export const useAvailabilities = () => {
 
     while (cur <= last) {
       const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
-      const entry = availabilities.find(a => a.carId === carId && a.date === dateStr);
+      const entry = availabilities.find(a => String(a.carId) === targetCarId && a.date === dateStr);
       map.set(dateStr, entry ? entry.isAvailable : true);
       cur.setDate(cur.getDate() + 1);
     }

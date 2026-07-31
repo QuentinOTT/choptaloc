@@ -219,6 +219,60 @@ const Admin = () => {
       .catch(err => console.error(err));
   };
 
+  // États pour l'édition d'un véhicule
+  const [editingCar, setEditingCar] = useState<any | null>(null);
+  const [editCarForm, setEditCarForm] = useState({
+    brand: "",
+    model: "",
+    tag: "",
+    price_per_day: "",
+    price_24h: "",
+    price_48h: "",
+    price_48h_wk: "",
+    price_72h_wk: "",
+    price_mon_fri: "",
+    weekly_price: "",
+    monthly_price: "",
+    caution_amount: "",
+    min_license_years: "2",
+    image_url: "",
+    description: "",
+  });
+  const [editCarFeatures, setEditCarFeatures] = useState<string[]>([]);
+  const [editCarFeatureInput, setEditCarFeatureInput] = useState("");
+  const [editCarImagePreview, setEditCarImagePreview] = useState<string | null>(null);
+
+  const openEditCar = (car: any) => {
+    setEditingCar(car);
+    setEditCarForm({
+      brand: car.brand || "",
+      model: car.model || "",
+      tag: car.tag || "",
+      price_per_day: car.price ? car.price.toString() : (car.price_per_day ? car.price_per_day.toString() : ""),
+      price_24h: car.price_24h ? car.price_24h.toString() : "",
+      price_48h: car.price_48h ? car.price_48h.toString() : "",
+      price_48h_wk: car.price_48h_wk ? car.price_48h_wk.toString() : "",
+      price_72h_wk: car.price_72h_wk ? car.price_72h_wk.toString() : "",
+      price_mon_fri: car.price_mon_fri ? car.price_mon_fri.toString() : "",
+      weekly_price: car.weeklyPrice ? car.weeklyPrice.toString() : (car.weekly_price ? car.weekly_price.toString() : ""),
+      monthly_price: car.monthlyPrice ? car.monthlyPrice.toString() : (car.monthly_price ? car.monthly_price.toString() : ""),
+      caution_amount: car.caution_amount !== undefined && car.caution_amount !== null ? car.caution_amount.toString() : "",
+      min_license_years: car.min_license_years !== undefined && car.min_license_years !== null ? car.min_license_years.toString() : "2",
+      image_url: car.imageUrl || car.image_url || "",
+      description: car.description || "",
+    });
+    let parsedFeatures: string[] = [];
+    if (car.features) {
+      if (typeof car.features === 'string') {
+        try { parsedFeatures = JSON.parse(car.features); } catch (e) {}
+      } else if (Array.isArray(car.features)) {
+        parsedFeatures = car.features;
+      }
+    }
+    setEditCarFeatures(parsedFeatures);
+    setEditCarImagePreview(car.imageUrl || car.image_url || null);
+  };
+
   // Charger les données depuis l'API
   useEffect(() => {
     if (isAuthenticated) {
@@ -229,29 +283,37 @@ const Admin = () => {
       fetch(`${API_URL}/cars`)
         .then(res => res.json())
         .then(data => {
-          const mappedCars = data.map((c: any) => ({
-            id: c.id.toString(),
-            brand: c.brand,
-            model: c.model,
-            price: parseFloat(c.price_per_day),
-            price_24h: c.price_24h ? parseFloat(c.price_24h) : undefined,
-            price_48h: c.price_48h ? parseFloat(c.price_48h) : undefined,
-            price_48h_wk: c.price_48h_wk ? parseFloat(c.price_48h_wk) : undefined,
-            price_72h_wk: c.price_72h_wk ? parseFloat(c.price_72h_wk) : undefined,
-            price_mon_fri: c.price_mon_fri ? parseFloat(c.price_mon_fri) : undefined,
-            weekendPrice: c.weekend_price ? parseFloat(c.weekend_price) : undefined,
-            weeklyPrice: c.weekly_price ? parseFloat(c.weekly_price) : undefined,
-            monthlyPrice: c.monthly_price ? parseFloat(c.monthly_price) : undefined,
-            isAvailable: Boolean(c.is_available),
-            imageUrl: c.image_url || '',
-            image_url: c.image_url || '', // Alias pour compatibilité
-            tag: c.tag || undefined,
-            color: c.color || undefined,
-            licensePlate: c.license_plate || undefined,
-            caution_amount: c.caution_amount !== null && c.caution_amount !== undefined ? parseInt(c.caution_amount) : undefined,
-            min_license_years: c.min_license_years !== null && c.min_license_years !== undefined ? parseInt(c.min_license_years) : undefined,
-          }));
-          const sortedCars = mappedCars.sort((a, b) => Number(b.isAvailable) - Number(a.isAvailable));
+          const mappedCars = data.map((c: any) => {
+            let parsedFeats = c.features;
+            if (typeof c.features === 'string') {
+              try { parsedFeats = JSON.parse(c.features); } catch (e) { parsedFeats = []; }
+            }
+            return {
+              id: c.id.toString(),
+              brand: c.brand,
+              model: c.model,
+              price: parseFloat(c.price_per_day),
+              price_24h: c.price_24h ? parseFloat(c.price_24h) : undefined,
+              price_48h: c.price_48h ? parseFloat(c.price_48h) : undefined,
+              price_48h_wk: c.price_48h_wk ? parseFloat(c.price_48h_wk) : undefined,
+              price_72h_wk: c.price_72h_wk ? parseFloat(c.price_72h_wk) : undefined,
+              price_mon_fri: c.price_mon_fri ? parseFloat(c.price_mon_fri) : undefined,
+              weekendPrice: c.weekend_price ? parseFloat(c.weekend_price) : undefined,
+              weeklyPrice: c.weekly_price ? parseFloat(c.weekly_price) : undefined,
+              monthlyPrice: c.monthly_price ? parseFloat(c.monthly_price) : undefined,
+              isAvailable: Boolean(c.is_available),
+              imageUrl: c.image_url || '',
+              image_url: c.image_url || '',
+              tag: c.tag || undefined,
+              color: c.color || undefined,
+              licensePlate: c.license_plate || undefined,
+              caution_amount: c.caution_amount !== null && c.caution_amount !== undefined ? parseInt(c.caution_amount) : undefined,
+              min_license_years: c.min_license_years !== null && c.min_license_years !== undefined ? parseInt(c.min_license_years) : undefined,
+              description: c.description || undefined,
+              features: Array.isArray(parsedFeats) ? parsedFeats : [],
+            };
+          });
+          const sortedCars = mappedCars.sort((a: any, b: any) => Number(b.isAvailable) - Number(a.isAvailable));
           setCars(Array.isArray(data) ? sortedCars : []);
         })
         .catch(err => {
@@ -1576,6 +1638,17 @@ const Admin = () => {
                     </div>
 
                     <div className="md:col-span-2 flex flex-wrap justify-end gap-2">
+                       <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-xs gap-1 hover:bg-primary/10 hover:text-primary font-semibold"
+                        title="Modifier la fiche complète du véhicule"
+                        onClick={() => openEditCar(car)}
+                      >
+                        <Edit className="w-4 h-4 text-primary" />
+                        <span className="inline">Éditer</span>
+                      </Button>
+
                        <Button
                         size="sm"
                         variant="ghost"
@@ -3003,6 +3076,300 @@ const Admin = () => {
               Envoyer la proposition
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog d'Édition Complète d'un Véhicule */}
+      <Dialog open={!!editingCar} onOpenChange={() => setEditingCar(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Edit className="w-5 h-5 text-primary" /> Modifier {editingCar?.brand} {editingCar?.model}
+            </DialogTitle>
+            <DialogDescription>
+              Modifiez la description, les options, l'image et les tarifs affichés sur la fiche du véhicule
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingCar && (
+            <div className="space-y-6 mt-4">
+              {/* Image Drag & Drop */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Image du véhicule (Glisser-Déposer ou Parcourir)</label>
+                <div 
+                  className="border-2 border-dashed border-primary/30 hover:border-primary rounded-xl p-4 text-center cursor-pointer transition-colors bg-secondary/10 flex flex-col items-center justify-center relative min-h-[140px]"
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      const file = e.dataTransfer.files[0];
+                      if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = (uploadEvent) => {
+                          const result = uploadEvent.target?.result as string;
+                          setEditCarImagePreview(result);
+                          setEditCarForm(prev => ({ ...prev, image_url: result }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }
+                  }}
+                  onClick={() => {
+                    const fileInput = document.getElementById('edit-car-image-input') as HTMLInputElement;
+                    if (fileInput) fileInput.click();
+                  }}
+                >
+                  <input 
+                    id="edit-car-image-input" 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.onload = (uploadEvent) => {
+                          const result = uploadEvent.target?.result as string;
+                          setEditCarImagePreview(result);
+                          setEditCarForm(prev => ({ ...prev, image_url: result }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  {editCarImagePreview ? (
+                    <div className="relative group w-full max-w-xs h-36 rounded-lg overflow-hidden border">
+                      <img src={editCarImagePreview} alt="Aperçu" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold">
+                        Cliquer pour modifier l'image
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <Upload className="w-8 h-8 text-primary mx-auto opacity-70" />
+                      <p className="text-xs font-semibold">Glissez une nouvelle image ou cliquez pour parcourir</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Marque, Modèle, Tag */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Marque</label>
+                  <Input 
+                    value={editCarForm.brand}
+                    onChange={(e) => setEditCarForm({ ...editCarForm, brand: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Modèle</label>
+                  <Input 
+                    value={editCarForm.model}
+                    onChange={(e) => setEditCarForm({ ...editCarForm, model: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Badge / Tag</label>
+                  <Input 
+                    value={editCarForm.tag}
+                    onChange={(e) => setEditCarForm({ ...editCarForm, tag: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Description & Options */}
+              <div className="space-y-3 pt-2 border-t">
+                <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Description & Équipements
+                </h4>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Description détaillée affichée sur le site</label>
+                  <textarea
+                    className="w-full min-h-[90px] rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Description du véhicule..."
+                    value={editCarForm.description}
+                    onChange={(e) => setEditCarForm({ ...editCarForm, description: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Options & Équipements (GPS, Sièges chauffants...)</label>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      placeholder="Ajouter une option..."
+                      value={editCarFeatureInput}
+                      onChange={(e) => setEditCarFeatureInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && editCarFeatureInput.trim()) {
+                          e.preventDefault();
+                          if (!editCarFeatures.includes(editCarFeatureInput.trim())) {
+                            setEditCarFeatures(prev => [...prev, editCarFeatureInput.trim()]);
+                          }
+                          setEditCarFeatureInput("");
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (editCarFeatureInput.trim() && !editCarFeatures.includes(editCarFeatureInput.trim())) {
+                          setEditCarFeatures(prev => [...prev, editCarFeatureInput.trim()]);
+                          setEditCarFeatureInput("");
+                        }
+                      }}
+                    >+</Button>
+                  </div>
+                  {editCarFeatures.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {editCarFeatures.map((f, i) => (
+                        <span key={i} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20">
+                          {f}
+                          <button
+                            type="button"
+                            onClick={() => setEditCarFeatures(prev => prev.filter((_, idx) => idx !== i))}
+                            className="hover:text-red-400 transition-colors ml-1 font-bold"
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Caution & Conditions */}
+              <div className="space-y-3 pt-2 border-t">
+                <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                  <Shield className="w-4 h-4" /> Caution & Conditions
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Caution (€)</label>
+                    <Input 
+                      type="number" 
+                      placeholder="ex: 1500" 
+                      value={editCarForm.caution_amount}
+                      onChange={(e) => setEditCarForm({ ...editCarForm, caution_amount: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Permis min. (années)</label>
+                    <Input 
+                      type="number" 
+                      placeholder="ex: 2" 
+                      value={editCarForm.min_license_years}
+                      onChange={(e) => setEditCarForm({ ...editCarForm, min_license_years: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Grille Tarifaire */}
+              <div className="space-y-3 pt-2 border-t">
+                <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                  <Euro className="w-4 h-4" /> Grille Tarifaire (€)
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Prix / Jour (€) *</label>
+                    <Input type="number" value={editCarForm.price_per_day} onChange={(e) => setEditCarForm({ ...editCarForm, price_per_day: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Prix 24H (€)</label>
+                    <Input type="number" value={editCarForm.price_24h} onChange={(e) => setEditCarForm({ ...editCarForm, price_24h: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Prix 48H (€)</label>
+                    <Input type="number" value={editCarForm.price_48h} onChange={(e) => setEditCarForm({ ...editCarForm, price_48h: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Prix 48H WK (€)</label>
+                    <Input type="number" value={editCarForm.price_48h_wk} onChange={(e) => setEditCarForm({ ...editCarForm, price_48h_wk: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Prix 72H WK (€)</label>
+                    <Input type="number" value={editCarForm.price_72h_wk} onChange={(e) => setEditCarForm({ ...editCarForm, price_72h_wk: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Prix Lun.-Ven. (€)</label>
+                    <Input type="number" value={editCarForm.price_mon_fri} onChange={(e) => setEditCarForm({ ...editCarForm, price_mon_fri: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Prix 7 Jours (€)</label>
+                    <Input type="number" placeholder="Sur devis si vide" value={editCarForm.weekly_price} onChange={(e) => setEditCarForm({ ...editCarForm, weekly_price: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Prix 1 Mois (€)</label>
+                    <Input type="number" placeholder="Sur devis si vide" value={editCarForm.monthly_price} onChange={(e) => setEditCarForm({ ...editCarForm, monthly_price: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end pt-4 border-t">
+                <Button variant="outline" onClick={() => setEditingCar(null)}>Annuler</Button>
+                <Button 
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`${API_URL}/cars/${editingCar.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          brand: editCarForm.brand,
+                          model: editCarForm.model,
+                          tag: editCarForm.tag,
+                          price_per_day: editCarForm.price_per_day ? parseFloat(editCarForm.price_per_day) : undefined,
+                          price_24h: editCarForm.price_24h ? parseFloat(editCarForm.price_24h) : null,
+                          price_48h: editCarForm.price_48h ? parseFloat(editCarForm.price_48h) : null,
+                          price_48h_wk: editCarForm.price_48h_wk ? parseFloat(editCarForm.price_48h_wk) : null,
+                          price_72h_wk: editCarForm.price_72h_wk ? parseFloat(editCarForm.price_72h_wk) : null,
+                          price_mon_fri: editCarForm.price_mon_fri ? parseFloat(editCarForm.price_mon_fri) : null,
+                          weekly_price: editCarForm.weekly_price ? parseFloat(editCarForm.weekly_price) : null,
+                          monthly_price: editCarForm.monthly_price ? parseFloat(editCarForm.monthly_price) : null,
+                          caution_amount: editCarForm.caution_amount ? parseInt(editCarForm.caution_amount) : null,
+                          min_license_years: editCarForm.min_license_years ? parseInt(editCarForm.min_license_years) : null,
+                          description: editCarForm.description || null,
+                          features: editCarFeatures,
+                          image_url: editCarForm.image_url,
+                        })
+                      });
+
+                      if (response.ok) {
+                        setCars(prev => prev.map(c => c.id === editingCar.id ? {
+                          ...c,
+                          brand: editCarForm.brand,
+                          model: editCarForm.model,
+                          tag: editCarForm.tag,
+                          price: parseFloat(editCarForm.price_per_day),
+                          price_24h: editCarForm.price_24h ? parseFloat(editCarForm.price_24h) : undefined,
+                          price_48h: editCarForm.price_48h ? parseFloat(editCarForm.price_48h) : undefined,
+                          price_48h_wk: editCarForm.price_48h_wk ? parseFloat(editCarForm.price_48h_wk) : undefined,
+                          price_72h_wk: editCarForm.price_72h_wk ? parseFloat(editCarForm.price_72h_wk) : undefined,
+                          price_mon_fri: editCarForm.price_mon_fri ? parseFloat(editCarForm.price_mon_fri) : undefined,
+                          weeklyPrice: editCarForm.weekly_price ? parseFloat(editCarForm.weekly_price) : undefined,
+                          monthlyPrice: editCarForm.monthly_price ? parseFloat(editCarForm.monthly_price) : undefined,
+                          caution_amount: editCarForm.caution_amount ? parseInt(editCarForm.caution_amount) : undefined,
+                          min_license_years: editCarForm.min_license_years ? parseInt(editCarForm.min_license_years) : undefined,
+                          description: editCarForm.description,
+                          features: editCarFeatures,
+                          imageUrl: editCarForm.image_url || c.imageUrl,
+                        } : c));
+                        alert("Fiche du véhicule mise à jour avec succès !");
+                        setEditingCar(null);
+                      } else {
+                        alert("Erreur lors de la mise à jour");
+                      }
+                    } catch (e) {
+                      console.error(e);
+                      alert("Erreur lors de la mise à jour");
+                    }
+                  }}
+                >
+                  Enregistrer les modifications
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

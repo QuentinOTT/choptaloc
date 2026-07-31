@@ -128,6 +128,10 @@ const FleetSection = () => {
                 parsedSpecs = [];
               }
             }
+            let parsedFeatures = car.features;
+            if (typeof car.features === 'string') {
+              try { parsedFeatures = JSON.parse(car.features); } catch (e) { parsedFeatures = []; }
+            }
             return {
               ...car,
               available: car.is_available,
@@ -140,6 +144,10 @@ const FleetSection = () => {
               weekendPrice: car.weekend_price ? parseFloat(car.weekend_price) : undefined,
               weeklyPrice: car.weekly_price ? parseFloat(car.weekly_price) : undefined,
               monthlyPrice: car.monthly_price ? parseFloat(car.monthly_price) : undefined,
+              caution_amount: car.caution_amount ? parseFloat(car.caution_amount) : undefined,
+              min_license_years: car.min_license_years ? parseInt(car.min_license_years) : undefined,
+              description: car.description || undefined,
+              features: Array.isArray(parsedFeatures) ? parsedFeatures : [],
               image: hasValidImage ? car.image_url : getDefaultImage(car.brand),
               specs: Array.isArray(parsedSpecs) ? parsedSpecs : [],
             };
@@ -157,23 +165,32 @@ const FleetSection = () => {
       });
   }, []);
 
-  // Charger les réservations confirmées pour bloquer les dates dans le calendrier client
+  // Charger les réservations pour bloquer les dates dans le calendrier
   const loadBookings = () => {
     setAvailabilities([]);
     
-    fetch(`${API_URL}/bookings`)
+    fetch(`${API_URL}/bookings?limit=1000`)
       .then(res => res.json())
       .then((response: any) => {
-        const data = response.data || response;
+        const data = Array.isArray(response) ? response : (response.data || []);
         if (!Array.isArray(data)) return;
-        const filteredBookings = data.filter(b => b.status === 'confirmed');
+
+        const activeBookings = data.filter((b: any) => {
+          const st = (b.status || '').toString().toLowerCase();
+          return st === 'confirmed' || st === 'pending' || st === 'confirmée' || st === 'en attente';
+        });
         
-        filteredBookings.forEach(b => {
-          const carId = b.car_id?.toString();
-          const start = typeof b.start_date === 'string' ? b.start_date.slice(0,10) : new Date(b.start_date).toISOString().slice(0,10);
-          const end = typeof b.end_date === 'string' ? b.end_date.slice(0,10) : new Date(b.end_date).toISOString().slice(0,10);
-          if (carId && start && end) {
-            blockDatesForBooking(carId, start, end, b.dropoff_time);
+        activeBookings.forEach((b: any) => {
+          const carId = (b.car_id || b.carId || '').toString();
+          
+          let startRaw = b.start_date || b.startDate;
+          let endRaw = b.end_date || b.endDate;
+          
+          if (carId && startRaw && endRaw) {
+            const startStr = typeof startRaw === 'string' ? startRaw.slice(0, 10) : new Date(startRaw).toISOString().slice(0, 10);
+            const endStr = typeof endRaw === 'string' ? endRaw.slice(0, 10) : new Date(endRaw).toISOString().slice(0, 10);
+            
+            blockDatesForBooking(carId, startStr, endStr);
           }
         });
         
