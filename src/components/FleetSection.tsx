@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar } from "lucide-react";
+import { Calendar, ChevronDown, Check } from "lucide-react";
 import mercedesImg from "@/assets/Mercedesbachée.png";
 import golfImg from "@/assets/goldbachée.png";
 import audiImg from "@/assets/Rs3bachée.png";
@@ -8,6 +8,8 @@ import { API_URL } from "@/config/api";
 import CarModal from "@/components/CarModal";
 import BookingForm from "@/components/BookingForm";
 import { useAvailabilities } from "@/hooks/use-availabilities";
+import { Badge } from "@/components/ui/badge";
+import { useSettings } from "@/context/SettingsContext";
 
 const defaultCars = [
   {
@@ -76,8 +78,6 @@ const getDefaultImage = (brand: string) => {
   }
 };
 
-import { useSettings } from "@/context/SettingsContext";
-
 const FleetSection = () => {
   const { settings } = useSettings();
   const globalDiscount = parseFloat(settings.global_discount) || 0;
@@ -91,9 +91,8 @@ const FleetSection = () => {
   const [cars, setCars] = useState(defaultCars);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedCar, setSelectedCar] = useState<typeof defaultCars[0] | null>(null);
-  // Calendrier par voiture : carId -> { month, year }
-  const [carCalendarMonths, setCarCalendarMonths] = useState<Record<string, { month: number; year: number }>>({});
-  const [expandedCalendarCarId, setExpandedCalendarCarId] = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [calendarCar, setCalendarCar] = useState<typeof defaultCars[0] | null>(null);
@@ -108,19 +107,11 @@ const FleetSection = () => {
     const handleStorageChange = () => {
       setShowUnavailableCars(localStorage.getItem('showUnavailableCars') === 'true');
     };
+
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Obtenir le mois/année du calendrier d'une voiture
-  const getCarCalendar = (carId: string) => {
-    return carCalendarMonths[carId] || { month: new Date().getMonth(), year: new Date().getFullYear() };
-  };
-
-  const setCarCalendar = (carId: string, month: number, year: number) => {
-    setCarCalendarMonths(prev => ({ ...prev, [carId]: { month, year } }));
-  };
-  
   // Charger les véhicules depuis l'API
   useEffect(() => {
     fetch(`${API_URL}/cars`)
@@ -129,7 +120,6 @@ const FleetSection = () => {
         if (data && data.length > 0) {
           const mappedCars = data.map((car: any) => {
             const hasValidImage = car.image_url && (car.image_url.startsWith('http') || car.image_url.startsWith('data:image'));
-            // Parser les specs JSON si c'est une chaîne
             let parsedSpecs = car.specs;
             if (typeof car.specs === 'string') {
               try {
@@ -169,32 +159,24 @@ const FleetSection = () => {
 
   // Charger les réservations confirmées pour bloquer les dates dans le calendrier client
   const loadBookings = () => {
-    console.log('Rechargement des disponibilités...');
-    // Réinitialiser les disponibilités
     setAvailabilities([]);
     
     fetch(`${API_URL}/bookings`)
       .then(res => res.json())
       .then((response: any) => {
-        console.log('Réponse API complète:', response);
-        // L'API renvoie { data: [], pagination: {} }
         const data = response.data || response;
-        console.log('Réservations récupérées:', data.length);
         if (!Array.isArray(data)) return;
         const filteredBookings = data.filter(b => b.status === 'confirmed');
-        console.log('Réservations filtrées (confirmed/pending):', filteredBookings.length);
         
         filteredBookings.forEach(b => {
-          const carId  = b.car_id?.toString();
-          const start  = typeof b.start_date === 'string' ? b.start_date.slice(0,10) : new Date(b.start_date).toISOString().slice(0,10);
-          const end    = typeof b.end_date   === 'string' ? b.end_date.slice(0,10)   : new Date(b.end_date).toISOString().slice(0,10);
-          console.log('Blocage dates pour voiture:', carId, 'du', start, 'au', end);
+          const carId = b.car_id?.toString();
+          const start = typeof b.start_date === 'string' ? b.start_date.slice(0,10) : new Date(b.start_date).toISOString().slice(0,10);
+          const end = typeof b.end_date === 'string' ? b.end_date.slice(0,10) : new Date(b.end_date).toISOString().slice(0,10);
           if (carId && start && end) {
             blockDatesForBooking(carId, start, end, b.dropoff_time);
           }
         });
         
-        // Forcer le re-rendu du calendrier
         setForceUpdate(prev => prev + 1);
       })
       .catch(err => console.error('Erreur chargement réservations calendrier:', err));
@@ -204,7 +186,12 @@ const FleetSection = () => {
     loadBookings();
   }, []);
 
-
+  useEffect(() => {
+    const availableCars = cars.filter(car => car.available);
+    if (availableCars.length > 0 && !calendarCar) {
+      setCalendarCar(availableCars[0]);
+    }
+  }, [cars]);
 
   const availableCars = cars.filter(car => car.available);
   const upcomingCars = cars.filter(car => !car.available);
@@ -231,236 +218,341 @@ const FleetSection = () => {
               <div className="flex-1 h-px bg-border" />
             </div>
 
-            {/* Cartes véhicules avec calendrier individuel */}
-            <div className="flex flex-col gap-6">
-              {displayedCars.map((car, index) => {
-                const carCal = getCarCalendar(car.id?.toString() || index.toString());
-                const carId = car.id?.toString() || index.toString();
-                const isCalendarOpen = expandedCalendarCarId === carId;
-                const _ = forceUpdate;
-                const monthAvailabilities = getMonthAvailabilities(carId, carCal.year, carCal.month);
+            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+              {/* Carte véhicule (gauche) */}
+              <div className="flex-1 max-w-2xl space-y-6">
+                {displayedCars.map((car, index) => {
+                  const isSelectedForCalendar = calendarCar?.id === car.id;
 
-                return (
-                  <div key={`${car.brand}-${car.model}-${index}`} className="group">
+                  return (
                     <div
-                      className="relative glass rounded-2xl overflow-hidden hover-glow-orange cursor-pointer"
+                      key={`${car.brand}-${car.model}-${index}`}
+                      className={`group relative glass rounded-2xl overflow-hidden hover-glow-orange cursor-pointer transition-all duration-300 ${
+                        isSelectedForCalendar ? 'ring-2 ring-primary shadow-lg shadow-primary/20' : ''
+                      }`}
                       onMouseEnter={() => setHoveredIndex(index)}
                       onMouseLeave={() => setHoveredIndex(null)}
-                      onClick={() => setSelectedCar(car)}
+                      onClick={() => {
+                        setCalendarCar(car);
+                        setSelectedDates([]);
+                      }}
                     >
-                      <div className="flex flex-col md:flex-row">
-                        {/* Image */}
-                        <div className="relative md:w-72 h-48 md:h-auto overflow-hidden flex-shrink-0">
-                          <img
-                            src={car.image}
-                            alt={`${car.brand} ${car.model}`}
-                            loading="lazy"
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-background/20" />
-                        </div>
-
-                        {/* Infos */}
-                        <div className="flex-1 p-4 md:p-6 flex flex-col justify-between">
-                          <div>
-                            <div className="mb-3">
-                              <h3 className="text-lg md:text-xl font-bold mb-1">{car.brand} {car.model}</h3>
-                              <p className="text-muted-foreground text-xs md:text-sm">{car.tag}</p>
-                              {(car as any).description && (
-                                <p className="text-muted-foreground text-xs mt-2 line-clamp-2">{(car as any).description}</p>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-2xl md:text-3xl font-black text-gradient-orange">
-                                  {calculateDiscountedPrice(car.price)}€
-                                </span>
-                                <span className="text-muted-foreground text-xs">/jour</span>
-                              </div>
-                              {globalDiscount > 0 && (
-                                <span className="text-xs line-through text-muted-foreground decoration-red-500/50">{car.price}€</span>
-                              )}
-                              {globalDiscount > 0 && (
-                                <Badge className="bg-green-500 hover:bg-green-500 text-[10px] py-0 h-5">-{globalDiscount}%</Badge>
-                              )}
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {car.specs.map((spec) => (
-                                <span key={spec} className="px-2 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium">{spec}</span>
-                              ))}
-                            </div>
+                      <div className="relative h-48 md:h-56 lg:h-64 overflow-hidden">
+                        <img
+                          src={car.image}
+                          alt={`${car.brand} ${car.model}`}
+                          loading="lazy"
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+                        
+                        {isSelectedForCalendar && (
+                          <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-md">
+                            <Check className="w-3.5 h-3.5" /> Sélectionné
                           </div>
-
-                          <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                            <button
-                              onClick={() => setSelectedCar(car)}
-                              className="flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                            >
-                              Détails
-                            </button>
-                            {car.available && !isVacation ? (
-                              <button
-                                onClick={() => {
-                                  setCalendarCar(car);
-                                  setExpandedCalendarCarId(isCalendarOpen ? null : carId);
-                                  setSelectedDates([]);
-                                }}
-                                className={`flex-1 text-center py-2 md:py-3 rounded-xl font-bold transition-all duration-300 text-xs md:text-sm ${
-                                  isCalendarOpen
-                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
-                                    : 'bg-primary/90 text-primary-foreground hover:bg-primary'
-                                }`}
-                              >
-                                {isCalendarOpen ? '✕ Fermer' : '📅 Réserver'}
-                              </button>
-                            ) : (
-                              <button disabled className="flex-1 text-center py-2 md:py-3 rounded-xl font-semibold text-xs md:text-sm bg-muted text-muted-foreground cursor-not-allowed border border-dashed border-muted-foreground/30">
-                                {isVacation ? 'Agence en pause' : 'Indisponible'}
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                        )}
                       </div>
-                    </div>
 
-                    {/* Calendrier individuel inline */}
-                    {isCalendarOpen && car.available && !isVacation && (
-                      <div className="mt-2 glass rounded-2xl p-4 md:p-6 border border-primary/20 animate-in slide-in-from-top-2 duration-200">
-                        <div className="flex flex-col md:flex-row gap-6">
-                          {/* Calendrier */}
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-primary" />
-                                <span className="font-semibold text-sm">Disponibilités — {car.brand} {car.model}</span>
-                              </div>
-                              <button onClick={loadBookings} className="p-1.5 hover:bg-secondary rounded-lg transition-colors text-xs" title="Recharger">
-                                🔄
-                              </button>
-                            </div>
+                      <div className="p-4 md:p-6">
+                        <div className="mb-3 md:mb-4">
+                          <h3 className="text-lg md:text-xl font-bold mb-1">{car.brand} {car.model}</h3>
+                          <p className="text-muted-foreground text-xs md:text-sm">{car.tag}</p>
+                          {(car as any).description && (
+                            <p className="text-muted-foreground text-xs mt-2 line-clamp-2">{(car as any).description}</p>
+                          )}
+                        </div>
 
-                            <div className="flex items-center justify-between mb-3">
-                              <button
-                                className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-                                onClick={() => {
-                                  const { month, year } = carCal;
-                                  if (month === 0) setCarCalendar(carId, 11, year - 1);
-                                  else setCarCalendar(carId, month - 1, year);
-                                }}
-                              >←</button>
-                              <span className="font-semibold text-xs md:text-sm">
-                                {new Date(carCal.year, carCal.month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-                              </span>
-                              <button
-                                className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-                                onClick={() => {
-                                  const { month, year } = carCal;
-                                  if (month === 11) setCarCalendar(carId, 0, year + 1);
-                                  else setCarCalendar(carId, month + 1, year);
-                                }}
-                              >→</button>
-                            </div>
-
-                            <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
-                              {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => (
-                                <div key={d} className="text-[10px] text-muted-foreground font-medium py-1">{d}</div>
-                              ))}
-                            </div>
-                            <div className="grid grid-cols-7 gap-x-0.5 gap-y-1 justify-items-center">
-                              {(() => {
-                                const firstDay = new Date(carCal.year, carCal.month, 1);
-                                const lastDay = new Date(carCal.year, carCal.month + 1, 0);
-                                const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-                                const daysInMonth = lastDay.getDate();
-                                const days = [];
-                                for (let i = 0; i < startDay; i++) days.push(<div key={`p-${i}`} className="w-8 h-8" />);
-                                for (let day = 1; day <= daysInMonth; day++) {
-                                  const dateStr = `${carCal.year}-${String(carCal.month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                                  const isAvail = monthAvailabilities.get(dateStr) ?? true;
-                                  const isSelected = selectedDates.includes(dateStr);
-                                  const today = new Date(); today.setHours(0,0,0,0);
-                                  const d = new Date(dateStr); d.setHours(0,0,0,0);
-                                  const isPast = d < today;
-                                  const sortedSel = [...selectedDates].sort();
-                                  const isStart = isSelected && sortedSel[0] === dateStr;
-                                  const isEnd = isSelected && sortedSel[sortedSel.length-1] === dateStr;
-                                  days.push(
-                                    <div
-                                      key={day}
-                                      onClick={() => {
-                                        if (!isAvail || isPast) return;
-                                        if (selectedDates.length === 0) { setSelectedDates([dateStr]); return; }
-                                        if (selectedDates.includes(dateStr)) {
-                                          if ((isStart || isEnd) && selectedDates.length > 1) setSelectedDates([dateStr]);
-                                          return;
-                                        }
-                                        const clicked = new Date(dateStr);
-                                        const s = new Date(sortedSel[0]);
-                                        const e = new Date(sortedSel[sortedSel.length-1]);
-                                        let ns = clicked < s ? clicked : s;
-                                        let ne = clicked > e ? clicked : e;
-                                        const range: string[] = [];
-                                        const cur = new Date(ns);
-                                        let blocked = false;
-                                        while (cur <= ne) {
-                                          const ds = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
-                                          if (!(monthAvailabilities.get(ds) ?? true)) { blocked = true; break; }
-                                          range.push(ds);
-                                          cur.setDate(cur.getDate()+1);
-                                        }
-                                        setSelectedDates(blocked ? [dateStr] : range);
-                                      }}
-                                      className={`w-8 h-8 flex items-center justify-center rounded-full text-[10px] font-medium cursor-pointer transition-colors ${
-                                        isPast ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-40'
-                                        : isSelected ? (isStart || isEnd ? 'bg-primary text-white ring-2 ring-primary ring-offset-2' : 'bg-primary text-white')
-                                        : isAvail ? 'bg-primary/80 text-primary-foreground hover:bg-primary'
-                                        : 'bg-gray-800 text-gray-400 cursor-not-allowed opacity-50'
-                                      }`}
-                                    >{day}</div>
-                                  );
-                                }
-                                const total = startDay + daysInMonth;
-                                const rem = total > 35 ? 42 - total : 35 - total;
-                                for (let i = 0; i < rem; i++) days.push(<div key={`n-${i}`} className="w-8 h-8" />);
-                                return days;
-                              })()}
-                            </div>
-
-                            <div className="flex items-center gap-4 mt-3 text-[10px]">
-                              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-primary" /><span className="text-muted-foreground">Disponible</span></div>
-                              <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-gray-800" /><span className="text-muted-foreground">Indisponible</span></div>
-                              {selectedDates.length > 0 && <span className="ml-auto text-primary font-medium">{selectedDates.length} jour(s)</span>}
-                            </div>
+                        <div className="flex items-center gap-3 mb-3 md:mb-4">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl md:text-3xl font-black text-gradient-orange">
+                              {calculateDiscountedPrice(car.price)}€
+                            </span>
+                            <span className="text-muted-foreground text-xs md:text-sm">/jour</span>
                           </div>
+                          {globalDiscount > 0 && (
+                            <span className="text-xs line-through text-muted-foreground decoration-red-500/50">
+                              {car.price}€
+                            </span>
+                          )}
+                          {globalDiscount > 0 && (
+                            <Badge className="bg-green-500 hover:bg-green-500 text-[10px] py-0 h-5">
+                              -{globalDiscount}%
+                            </Badge>
+                          )}
+                        </div>
 
-                          {/* Bouton confirmer */}
-                          <div className="flex flex-col justify-center gap-3 min-w-[160px]">
-                            <p className="text-xs text-muted-foreground">Sélectionnez vos dates sur le calendrier puis confirmez la réservation.</p>
+                        <div className="flex flex-wrap gap-2 mb-3 md:mb-4">
+                          {car.specs.map((spec) => (
+                            <span
+                              key={spec}
+                              className="px-2 md:px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium"
+                            >
+                              {spec}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-2 md:gap-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCar(car);
+                            }}
+                            className="flex-1 text-center py-2 md:py-3 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                          >
+                            Détails
+                          </button>
+                          {car.available && !isVacation ? (
                             <button
-                              disabled={selectedDates.length === 0}
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setCalendarCar(car);
                                 setShowBookingForm(true);
                               }}
-                              className="w-full py-3 px-4 rounded-xl font-bold bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-all text-sm"
+                              className="flex-1 text-center py-2 md:py-3 rounded-xl font-bold transition-all duration-300 text-xs md:text-sm bg-primary/90 hover:bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                             >
-                              Confirmer les dates →
+                              Réserver
                             </button>
-                            {selectedDates.length > 0 && (
-                              <button
-                                onClick={() => setSelectedDates([])}
-                                className="w-full py-2 px-4 rounded-xl text-xs text-muted-foreground hover:bg-secondary transition-all"
-                              >Effacer la sélection</button>
-                            )}
-                          </div>
+                          ) : (
+                            <button
+                              disabled
+                              className="flex-1 text-center py-2 md:py-3 rounded-xl font-semibold transition-all duration-300 text-xs md:text-sm bg-muted text-muted-foreground cursor-not-allowed border border-dashed border-muted-foreground/30"
+                            >
+                              {isVacation ? "Agence en pause" : "Indisponible"}
+                            </button>
+                          )}
                         </div>
                       </div>
-                    )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Calendrier à droite (exactement le design d'origine) */}
+              <div className="flex-1 glass rounded-2xl p-4 md:p-6 max-w-sm h-fit sticky top-24">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 md:w-5 h-4 md:h-5 text-primary" />
+                    <h4 className="text-base md:text-lg font-semibold">Calendrier de disponibilité</h4>
                   </div>
-                );
-              })}
+                  <button
+                    onClick={loadBookings}
+                    className="p-1.5 md:p-2 hover:bg-secondary rounded-lg transition-colors text-xs md:text-sm"
+                    title="Recharger les disponibilités"
+                  >
+                    🔄
+                  </button>
+                </div>
+
+                {/* Sélecteur de véhicule dans le calendrier */}
+                <div className="mb-4 bg-secondary/40 p-2 rounded-xl border border-border/50">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Véhicule affiché :
+                  </label>
+                  <select
+                    className="w-full bg-background border border-input rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                    value={calendarCar?.id || ""}
+                    onChange={(e) => {
+                      const found = cars.find(c => c.id.toString() === e.target.value);
+                      if (found) {
+                        setCalendarCar(found);
+                        setSelectedDates([]);
+                      }
+                    }}
+                  >
+                    {cars.map((car) => (
+                      <option key={car.id} value={car.id}>
+                        {car.brand} {car.model} ({car.available ? 'Disponible' : 'Indisponible'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Sélecteur de mois */}
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <button 
+                    className="p-1.5 md:p-2 hover:bg-secondary rounded-lg transition-colors text-sm md:text-base"
+                    onClick={() => {
+                      if (currentMonth === 0) {
+                        setCurrentMonth(11);
+                        setCurrentYear(currentYear - 1);
+                      } else {
+                        setCurrentMonth(currentMonth - 1);
+                      }
+                    }}
+                  >
+                    ←
+                  </button>
+                  <span className="font-semibold text-xs md:text-sm">
+                    {new Date(currentYear, currentMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <button 
+                    className="p-1.5 md:p-2 hover:bg-secondary rounded-lg transition-colors text-sm md:text-base"
+                    onClick={() => {
+                      if (currentMonth === 11) {
+                        setCurrentMonth(0);
+                        setCurrentYear(currentYear + 1);
+                      } else {
+                        setCurrentMonth(currentMonth + 1);
+                      }
+                    }}
+                  >
+                    →
+                  </button>
+                </div>
+
+                {/* Grille du calendrier */}
+                <div className="grid grid-cols-7 gap-0.5 md:gap-1 text-center mb-2">
+                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
+                    <div key={day} className="text-[10px] md:text-xs text-muted-foreground font-medium py-1 md:py-2">{day}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-x-0.5 gap-y-1 md:gap-y-2 justify-items-center">
+                  {(() => {
+                    const firstDay = new Date(currentYear, currentMonth, 1);
+                    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+                    const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+                    const daysInMonth = lastDay.getDate();
+                    const monthAvailabilities = calendarCar ? getMonthAvailabilities(calendarCar.id, currentYear, currentMonth) : new Map();
+                    const _ = forceUpdate;
+                    
+                    const days = [];
+                    for (let i = 0; i < startDay; i++) {
+                      days.push(<div key={`prev-${i}`} className="w-7 md:w-9 h-7 md:h-9" />);
+                    }
+                    for (let day = 1; day <= daysInMonth; day++) {
+                      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      const isAvailable = monthAvailabilities.get(dateStr) ?? true;
+                      const isSelected = selectedDates.includes(dateStr);
+                      
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const currentDate = new Date(dateStr);
+                      currentDate.setHours(0, 0, 0, 0);
+                      const isPastDate = currentDate < today;
+                      
+                      const sortedDates = [...selectedDates].sort();
+                      const isStart = isSelected && sortedDates[0] === dateStr;
+                      const isEnd = isSelected && sortedDates[sortedDates.length - 1] === dateStr;
+                      
+                      days.push(
+                        <div
+                          key={day}
+                          onClick={() => {
+                            if (!isAvailable || !calendarCar || isPastDate) return;
+                            
+                            if (selectedDates.length === 0) {
+                              setSelectedDates([dateStr]);
+                              return;
+                            }
+                            
+                            if (selectedDates.includes(dateStr)) {
+                              if ((isStart || isEnd) && selectedDates.length > 1) {
+                                setSelectedDates([dateStr]);
+                              }
+                              return;
+                            }
+                            
+                            const clickedDate = new Date(dateStr);
+                            const currentStart = new Date(sortedDates[0]);
+                            const currentEnd = new Date(sortedDates[sortedDates.length - 1]);
+                            
+                            let newStart: Date;
+                            let newEnd: Date;
+                            
+                            if (clickedDate < currentStart) {
+                              newStart = clickedDate;
+                              newEnd = currentEnd;
+                            } else if (clickedDate > currentEnd) {
+                              newStart = currentStart;
+                              newEnd = clickedDate;
+                            } else {
+                              const distToStart = clickedDate.getTime() - currentStart.getTime();
+                              const distToEnd = currentEnd.getTime() - clickedDate.getTime();
+                              if (distToStart < distToEnd) {
+                                newStart = clickedDate;
+                                newEnd = currentEnd;
+                              } else {
+                                newStart = currentStart;
+                                newEnd = clickedDate;
+                              }
+                            }
+                            
+                            const newDates: string[] = [];
+                            const current = new Date(newStart);
+                            let hasUnavailableDate = false;
+                            
+                            while (current <= newEnd) {
+                              const d = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+                              const available = monthAvailabilities.get(d) ?? true;
+                              if (!available) {
+                                hasUnavailableDate = true;
+                                break;
+                              }
+                              newDates.push(d);
+                              current.setDate(current.getDate() + 1);
+                            }
+                            
+                            if (!hasUnavailableDate && newDates.length > 0) {
+                              setSelectedDates(newDates);
+                            } else {
+                              setSelectedDates([dateStr]);
+                            }
+                          }}
+                          className={`w-7 md:w-9 h-7 md:h-9 flex items-center justify-center rounded-full text-[10px] md:text-xs font-medium cursor-pointer transition-colors ${
+                            isPastDate
+                              ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-40'
+                              : isSelected
+                              ? isStart || isEnd
+                                ? 'bg-primary text-white ring-2 ring-primary ring-offset-2 md:ring-offset-4'
+                                : 'bg-primary text-white ring-2 ring-primary ring-offset-1 md:ring-offset-2'
+                              : isAvailable
+                              ? 'bg-primary text-primary-foreground hover:bg-primary/80'
+                              : 'bg-gray-800 text-gray-400 cursor-not-allowed opacity-50'
+                          }`}
+                        >
+                          {day}
+                        </div>
+                      );
+                    }
+                    const totalCells = startDay + daysInMonth;
+                    const remainingCells = totalCells > 35 ? 42 - totalCells : 35 - totalCells;
+                    for (let i = 0; i < remainingCells; i++) {
+                      days.push(<div key={`next-${i}`} className="w-7 md:w-9 h-7 md:h-9" />);
+                    }
+                    
+                    return days;
+                  })()}
+                </div>
+
+                {/* Légende & Action */}
+                <div className="space-y-3 mt-3 md:mt-4">
+                  <div className="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs">
+                    <div className="flex items-center gap-1 md:gap-2">
+                      <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-primary" />
+                      <span className="text-muted-foreground">Disponible</span>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-2">
+                      <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-gray-800" />
+                      <span className="text-muted-foreground">Indisponible</span>
+                    </div>
+                  </div>
+
+                  {selectedDates.length > 0 && calendarCar && (
+                    <div className="pt-2 border-t border-border/50">
+                      <p className="text-xs text-primary font-semibold mb-2">
+                        {selectedDates.length} jour(s) sélectionné(s) pour {calendarCar.brand} {calendarCar.model}
+                      </p>
+                      <button
+                        onClick={() => setShowBookingForm(true)}
+                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md shadow-primary/20"
+                      >
+                        Réserver avec ces dates →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
