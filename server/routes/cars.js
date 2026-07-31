@@ -37,6 +37,11 @@ router.post('/', async (req, res) => {
       model, 
       tag, 
       price_per_day, 
+      price_24h,
+      price_48h,
+      price_48h_wk,
+      price_72h_wk,
+      price_mon_fri,
       weekend_price, 
       weekly_price, 
       monthly_price, 
@@ -46,22 +51,27 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO cars (brand, model, tag, price_per_day, weekend_price, weekly_price, monthly_price, image_url, specs, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO cars (brand, model, tag, price_per_day, price_24h, price_48h, price_48h_wk, price_72h_wk, price_mon_fri, weekend_price, weekly_price, monthly_price, image_url, specs, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         brand, 
         model, 
         tag, 
         price_per_day, 
+        price_24h || null,
+        price_48h || null,
+        price_48h_wk || null,
+        price_72h_wk || null,
+        price_mon_fri || null,
         weekend_price || null, 
         weekly_price || null, 
         monthly_price || null, 
         image_url, 
-        JSON.stringify(specs), 
+        JSON.stringify(specs || []), 
         is_available !== false
       ]
     );
 
-    res.status(201).json({ success: true, carId: result.insertId });
+    res.status(201).json({ success: true, carId: result.insertId, insertId: result.insertId });
   } catch (error) {
     console.error('Erreur ajout véhicule:', error);
     res.status(500).json({ error: 'Erreur lors de l\'ajout du véhicule' });
@@ -76,6 +86,11 @@ router.put('/:id', async (req, res) => {
       model, 
       tag, 
       price_per_day, 
+      price_24h,
+      price_48h,
+      price_48h_wk,
+      price_72h_wk,
+      price_mon_fri,
       weekend_price, 
       weekly_price, 
       monthly_price, 
@@ -95,6 +110,11 @@ router.put('/:id', async (req, res) => {
     if (model !== undefined) { updates.push('model = ?'); values.push(model); }
     if (tag !== undefined) { updates.push('tag = ?'); values.push(tag); }
     if (price_per_day !== undefined) { updates.push('price_per_day = ?'); values.push(price_per_day); }
+    if (price_24h !== undefined) { updates.push('price_24h = ?'); values.push(price_24h); }
+    if (price_48h !== undefined) { updates.push('price_48h = ?'); values.push(price_48h); }
+    if (price_48h_wk !== undefined) { updates.push('price_48h_wk = ?'); values.push(price_48h_wk); }
+    if (price_72h_wk !== undefined) { updates.push('price_72h_wk = ?'); values.push(price_72h_wk); }
+    if (price_mon_fri !== undefined) { updates.push('price_mon_fri = ?'); values.push(price_mon_fri); }
     if (weekend_price !== undefined) { updates.push('weekend_price = ?'); values.push(weekend_price); }
     if (weekly_price !== undefined) { updates.push('weekly_price = ?'); values.push(weekly_price); }
     if (monthly_price !== undefined) { updates.push('monthly_price = ?'); values.push(monthly_price); }

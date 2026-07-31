@@ -14,6 +14,11 @@ interface Car {
   brand: string;
   model: string;
   price: number;
+  price_24h?: number;
+  price_48h?: number;
+  price_48h_wk?: number;
+  price_72h_wk?: number;
+  price_mon_fri?: number;
   weeklyPrice?: number;
   monthlyPrice?: number;
   caution_amount?: number;
@@ -159,20 +164,55 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     }
     console.log('Dates calculées:', [formData.startDate, formData.endDate]);
 
-    // Calculer le prix total avec prix dégressif
-    let newTotalPrice = 0;
-    const daysCount = getDaysCount(formData.startDate, formData.endDate);
-    
-    // Forfait spécifique 3 jours (72h) = 250€
-    if (daysCount === 3) {
-      newTotalPrice = 250;
-    } else {
-      newTotalPrice = daysCount * car.price;
-    }
+    // Calculer le prix total avec les forfaits spécifiques
+    const calculateBookingTotal = (startDateStr: string, endDateStr: string, carObj: Car) => {
+      const daysCount = getDaysCount(startDateStr, endDateStr);
+      if (daysCount === 0) return 0;
 
-    // Les frais de livraison seront calculés par l'administrateur après la réservation
-    const deliveryFee = 0;
-    newTotalPrice += deliveryFee;
+      const startDate = new Date(startDateStr);
+      const startDay = startDate.getDay(); // 0 = Dim, 1 = Lun, 5 = Ven, 6 = Sam
+
+      // 1 jour / 24H
+      if (daysCount === 1 && carObj.price_24h) {
+        return carObj.price_24h;
+      }
+      
+      // 2 jours / 48H
+      if (daysCount === 2) {
+        const isWeekend = startDay === 5 || startDay === 6 || startDay === 0;
+        if (isWeekend && carObj.price_48h_wk) return carObj.price_48h_wk;
+        if (carObj.price_48h) return carObj.price_48h;
+      }
+
+      // 3 jours / 72H
+      if (daysCount === 3) {
+        const isWeekend = startDay === 5 || startDay === 6;
+        if (isWeekend && carObj.price_72h_wk) return carObj.price_72h_wk;
+      }
+
+      // du Lundi au Vendredi (5 jours)
+      if (daysCount === 5 && startDay === 1 && carObj.price_mon_fri) {
+        return carObj.price_mon_fri;
+      }
+
+      // 1 Semaine (7 jours)
+      if (daysCount >= 7 && daysCount < 30 && carObj.weeklyPrice) {
+        const weeks = Math.floor(daysCount / 7);
+        const remDays = daysCount % 7;
+        return (weeks * carObj.weeklyPrice) + (remDays * carObj.price);
+      }
+
+      // 1 Mois (30+ jours)
+      if (daysCount >= 30 && carObj.monthlyPrice) {
+        const months = Math.floor(daysCount / 30);
+        const remDays = daysCount % 30;
+        return (months * carObj.monthlyPrice) + (remDays * carObj.price);
+      }
+
+      return daysCount * carObj.price;
+    };
+
+    const newTotalPrice = calculateBookingTotal(formData.startDate, formData.endDate, car);
 
     // Créer la réservation avec userId si un client est connecté
     const newBooking: any = {
@@ -225,18 +265,41 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
 
   const getSummaryPrice = () => {
     const daysCount = getDaysCount(formData.startDate, formData.endDate);
-    if (daysCount === 0) return 0;
+    if (daysCount === 0 || !car) return 0;
     
-    let basePrice = 0;
-    if (daysCount === 3) {
-      basePrice = 250;
-    } else {
-      basePrice = daysCount * car.price;
+    const startDate = new Date(formData.startDate);
+    const startDay = startDate.getDay();
+
+    if (daysCount === 1 && car.price_24h) return car.price_24h;
+
+    if (daysCount === 2) {
+      const isWeekend = startDay === 5 || startDay === 6 || startDay === 0;
+      if (isWeekend && car.price_48h_wk) return car.price_48h_wk;
+      if (car.price_48h) return car.price_48h;
     }
-    
-    // Les frais de livraison seront calculés par l'administrateur après la réservation
-    const deliveryFee = 0;
-    return basePrice + deliveryFee;
+
+    if (daysCount === 3) {
+      const isWeekend = startDay === 5 || startDay === 6;
+      if (isWeekend && car.price_72h_wk) return car.price_72h_wk;
+    }
+
+    if (daysCount === 5 && startDay === 1 && car.price_mon_fri) {
+      return car.price_mon_fri;
+    }
+
+    if (daysCount >= 7 && daysCount < 30 && car.weeklyPrice) {
+      const weeks = Math.floor(daysCount / 7);
+      const remDays = daysCount % 7;
+      return (weeks * car.weeklyPrice) + (remDays * car.price);
+    }
+
+    if (daysCount >= 30 && car.monthlyPrice) {
+      const months = Math.floor(daysCount / 30);
+      const remDays = daysCount % 30;
+      return (months * car.monthlyPrice) + (remDays * car.price);
+    }
+
+    return daysCount * car.price;
   };
 
   const totalPrice = getSummaryPrice();

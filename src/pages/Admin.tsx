@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key, Building2, Settings2, Save } from "lucide-react";
+import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key, Building2, Settings2, Save, Upload, Image as ImageIcon } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
 
 const documentLabels: Record<string, string> = {
@@ -62,6 +62,12 @@ interface Car {
   brand: string;
   model: string;
   price: number;
+  price_24h?: number;
+  price_48h?: number;
+  price_48h_wk?: number;
+  price_72h_wk?: number;
+  price_mon_fri?: number;
+  weekendPrice?: number;
   weeklyPrice?: number;
   monthlyPrice?: number;
   isAvailable: boolean;
@@ -85,9 +91,22 @@ const Admin = () => {
   const [bookingPages, setBookingPages] = useState(1);
   const BOOKING_LIMIT = 10;
   const [modificationRequests, setModificationRequests] = useState<ModificationRequest[]>([]);
-  const [cars, setCars] = useState<Car[]>([]);
-  const [showAddBooking, setShowAddBooking] = useState(false);
   const [showAddCar, setShowAddCar] = useState(false);
+  const [newCarForm, setNewCarForm] = useState({
+    brand: "",
+    model: "",
+    tag: "Disponible maintenant",
+    price_per_day: "",
+    price_24h: "",
+    price_48h: "",
+    price_48h_wk: "",
+    price_72h_wk: "",
+    price_mon_fri: "",
+    weekly_price: "",
+    monthly_price: "",
+    image_url: "",
+  });
+  const [newCarImagePreview, setNewCarImagePreview] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [userDocuments, setUserDocuments] = useState<any[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -207,6 +226,12 @@ const Admin = () => {
             brand: c.brand,
             model: c.model,
             price: parseFloat(c.price_per_day),
+            price_24h: c.price_24h ? parseFloat(c.price_24h) : undefined,
+            price_48h: c.price_48h ? parseFloat(c.price_48h) : undefined,
+            price_48h_wk: c.price_48h_wk ? parseFloat(c.price_48h_wk) : undefined,
+            price_72h_wk: c.price_72h_wk ? parseFloat(c.price_72h_wk) : undefined,
+            price_mon_fri: c.price_mon_fri ? parseFloat(c.price_mon_fri) : undefined,
+            weekendPrice: c.weekend_price ? parseFloat(c.weekend_price) : undefined,
             weeklyPrice: c.weekly_price ? parseFloat(c.weekly_price) : undefined,
             monthlyPrice: c.monthly_price ? parseFloat(c.monthly_price) : undefined,
             isAvailable: Boolean(c.is_available),
@@ -1115,104 +1140,292 @@ const Admin = () => {
 
             {/* Formulaire d'ajout de voiture */}
             {showAddCar && (
-              <Card>
+              <Card className="border-primary/20 bg-card">
                 <CardHeader>
-                  <CardTitle>Ajouter un véhicule</CardTitle>
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Car className="w-5 h-5 text-primary" /> Ajouter un nouveau véhicule
+                  </CardTitle>
+                  <CardDescription>Remplissez les informations du véhicule et importez son image</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Marque</label>
-                      <Input id="new-car-brand" placeholder="ex: Renault" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Modèle</label>
-                      <Input id="new-car-model" placeholder="ex: Clio V" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Prix journalier (€)</label>
-                      <Input id="new-car-price" type="number" min="0" placeholder="ex: 49" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Prix hebdomadaire (€)</label>
-                      <Input id="new-car-weekly-price" type="number" min="0" placeholder="ex: 300" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Prix mensuel (€)</label>
-                      <Input id="new-car-monthly-price" type="number" min="0" placeholder="ex: 1200" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">URL de l'image</label>
-                      <Input id="new-car-image" placeholder="ex: /assets/renault.png" />
+                <CardContent className="space-y-6">
+                  {/* Drag and Drop d'image */}
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Image du véhicule (Glisser-Déposer ou Parcourir)</label>
+                    <div 
+                      className="border-2 border-dashed border-primary/30 hover:border-primary rounded-xl p-6 text-center cursor-pointer transition-colors bg-secondary/10 flex flex-col items-center justify-center relative min-h-[160px]"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                          const file = e.dataTransfer.files[0];
+                          if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = (uploadEvent) => {
+                              const result = uploadEvent.target?.result as string;
+                              setNewCarImagePreview(result);
+                              setNewCarForm(prev => ({ ...prev, image_url: result }));
+                            };
+                            reader.readAsDataURL(file);
+                          } else {
+                            alert("Veuillez déposer un fichier image valide (PNG, JPG, WEBP)");
+                          }
+                        }
+                      }}
+                      onClick={() => {
+                        const fileInput = document.getElementById('car-image-input-file') as HTMLInputElement;
+                        if (fileInput) fileInput.click();
+                      }}
+                    >
+                      <input 
+                        id="car-image-input-file" 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            const file = e.target.files[0];
+                            const reader = new FileReader();
+                            reader.onload = (uploadEvent) => {
+                              const result = uploadEvent.target?.result as string;
+                              setNewCarImagePreview(result);
+                              setNewCarForm(prev => ({ ...prev, image_url: result }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+
+                      {newCarImagePreview ? (
+                        <div className="relative group w-full max-w-xs h-40 rounded-lg overflow-hidden border">
+                          <img src={newCarImagePreview} alt="Aperçu" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold">
+                            Cliquer pour changer d'image
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="w-10 h-10 text-primary mx-auto opacity-70" />
+                          <p className="text-sm font-semibold">Glissez et déposez votre image ici</p>
+                          <p className="text-xs text-muted-foreground">ou cliquez pour parcourir vos fichiers (PNG, JPG, WEBP)</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <Button 
-                    className="mt-4"
-                    onClick={async () => {
-                      const brand = (document.getElementById('new-car-brand') as HTMLInputElement).value;
-                      const model = (document.getElementById('new-car-model') as HTMLInputElement).value;
-                      const price = parseInt((document.getElementById('new-car-price') as HTMLInputElement).value);
-                      const weeklyPrice = parseInt((document.getElementById('new-car-weekly-price') as HTMLInputElement).value);
-                      const monthlyPrice = parseInt((document.getElementById('new-car-monthly-price') as HTMLInputElement).value);
-                      const imageUrl = (document.getElementById('new-car-image') as HTMLInputElement).value;
 
-                      if (brand && model && price) {
-                        try {
-                          const response = await fetch(`${API_URL}/cars`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              brand,
-                              model,
-                              tag: 'Disponible maintenant',
-                              price_per_day: price,
-                              weekly_price: weeklyPrice || null,
-                              monthly_price: monthlyPrice || null,
-                              image_url: imageUrl || '/assets/placeholder.png',
-                              specs: ['Automatique', '5 places', 'Essence', 'Climatisation'],
-                              is_available: true
-                            })
-                          });
+                  {/* Informations de base */}
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Marque *</label>
+                      <Input 
+                        placeholder="ex: Renault" 
+                        value={newCarForm.brand}
+                        onChange={(e) => setNewCarForm({ ...newCarForm, brand: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Modèle *</label>
+                      <Input 
+                        placeholder="ex: Clio V" 
+                        value={newCarForm.model}
+                        onChange={(e) => setNewCarForm({ ...newCarForm, model: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Badge / Tag</label>
+                      <Input 
+                        placeholder="ex: Disponible maintenant" 
+                        value={newCarForm.tag}
+                        onChange={(e) => setNewCarForm({ ...newCarForm, tag: e.target.value })}
+                      />
+                    </div>
+                  </div>
 
-                          if (response.ok) {
-                            const result = await response.json();
-                            const newCar: Car = {
-                              id: result.insertId.toString(),
-                              brand,
-                              model,
-                              price,
-                              weeklyPrice: weeklyPrice || price * 7,
-                              monthlyPrice: monthlyPrice || price * 30,
-                              isAvailable: true,
-                              imageUrl: imageUrl || '/assets/placeholder.png'
-                            };
-                            const updatedCars = [...cars, newCar];
-                            setCars(updatedCars);
-                            alert('Véhicule ajouté avec succès !');
-                            
-                            // Reset form
-                            (document.getElementById('new-car-brand') as HTMLInputElement).value = '';
-                            (document.getElementById('new-car-model') as HTMLInputElement).value = '';
-                            (document.getElementById('new-car-price') as HTMLInputElement).value = '';
-                            (document.getElementById('new-car-weekly-price') as HTMLInputElement).value = '';
-                            (document.getElementById('new-car-monthly-price') as HTMLInputElement).value = '';
-                            (document.getElementById('new-car-image') as HTMLInputElement).value = '';
-                            
-                            setShowAddCar(false);
-                          } else {
-                            alert('Erreur lors de l\'ajout du véhicule');
+                  {/* Grille Tarifaire Complète */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                      <Euro className="w-4 h-4" /> Tarification & Forfaits
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Prix par jour par défaut (€) *</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 50" 
+                          value={newCarForm.price_per_day}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, price_per_day: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Prix 24H (€)</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 60" 
+                          value={newCarForm.price_24h}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, price_24h: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Prix 48H classique (€)</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 110" 
+                          value={newCarForm.price_48h}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, price_48h: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Prix 48H spécial WK (€)</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 130" 
+                          value={newCarForm.price_48h_wk}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, price_48h_wk: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Prix 72H spécial WK (€)</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 180" 
+                          value={newCarForm.price_72h_wk}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, price_72h_wk: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Prix Lun. au Ven. (5j) (€)</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 220" 
+                          value={newCarForm.price_mon_fri}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, price_mon_fri: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Prix 1 Semaine (7j) (€)</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 300" 
+                          value={newCarForm.weekly_price}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, weekly_price: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium mb-1 block">Prix 1 Mois (€)</label>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="ex: 1100" 
+                          value={newCarForm.monthly_price}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, monthly_price: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 justify-end border-t">
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setShowAddCar(false);
+                        setNewCarImagePreview(null);
+                      }}
+                    >
+                      Annuler
+                    </Button>
+
+                    <Button 
+                      onClick={async () => {
+                        const { brand, model, price_per_day, price_24h, price_48h, price_48h_wk, price_72h_wk, price_mon_fri, weekly_price, monthly_price, tag, image_url } = newCarForm;
+                        const price = parseInt(price_per_day);
+
+                        if (brand && model && !isNaN(price)) {
+                          try {
+                            const response = await fetch(`${API_URL}/cars`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                brand,
+                                model,
+                                tag: tag || 'Disponible maintenant',
+                                price_per_day: price,
+                                price_24h: price_24h ? parseInt(price_24h) : null,
+                                price_48h: price_48h ? parseInt(price_48h) : null,
+                                price_48h_wk: price_48h_wk ? parseInt(price_48h_wk) : null,
+                                price_72h_wk: price_72h_wk ? parseInt(price_72h_wk) : null,
+                                price_mon_fri: price_mon_fri ? parseInt(price_mon_fri) : null,
+                                weekly_price: weekly_price ? parseInt(weekly_price) : null,
+                                monthly_price: monthly_price ? parseInt(monthly_price) : null,
+                                image_url: image_url || '/assets/placeholder.png',
+                                specs: ['Automatique', '5 places', 'Essence', 'Climatisation'],
+                                is_available: true
+                              })
+                            });
+
+                            if (response.ok) {
+                              const result = await response.json();
+                              const newCar: Car = {
+                                id: (result.carId || result.insertId || Date.now()).toString(),
+                                brand,
+                                model,
+                                price,
+                                price_24h: price_24h ? parseInt(price_24h) : undefined,
+                                price_48h: price_48h ? parseInt(price_48h) : undefined,
+                                price_48h_wk: price_48h_wk ? parseInt(price_48h_wk) : undefined,
+                                price_72h_wk: price_72h_wk ? parseInt(price_72h_wk) : undefined,
+                                price_mon_fri: price_mon_fri ? parseInt(price_mon_fri) : undefined,
+                                weeklyPrice: weekly_price ? parseInt(weekly_price) : price * 7,
+                                monthlyPrice: monthly_price ? parseInt(monthly_price) : price * 30,
+                                isAvailable: true,
+                                imageUrl: image_url || '/assets/placeholder.png',
+                                tag: tag || 'Disponible maintenant'
+                              };
+                              setCars(prev => [...prev, newCar]);
+                              alert('Véhicule ajouté avec succès !');
+                              
+                              // Reset form
+                              setNewCarForm({
+                                brand: "",
+                                model: "",
+                                tag: "Disponible maintenant",
+                                price_per_day: "",
+                                price_24h: "",
+                                price_48h: "",
+                                price_48h_wk: "",
+                                price_72h_wk: "",
+                                price_mon_fri: "",
+                                weekly_price: "",
+                                monthly_price: "",
+                                image_url: "",
+                              });
+                              setNewCarImagePreview(null);
+                              setShowAddCar(false);
+                            } else {
+                              alert('Erreur lors de l\'ajout du véhicule sur le serveur');
+                            }
+                          } catch (error) {
+                            console.error('Erreur API:', error);
+                            alert('Erreur réseau ou serveur lors de l\'ajout du véhicule');
                           }
-                        } catch (error) {
-                          console.error('Erreur API:', error);
-                          alert('Erreur lors de l\'ajout du véhicule');
+                        } else {
+                          alert('Veuillez remplir au moins la marque, le modèle et le prix journalier');
                         }
-                      } else {
-                        alert('Veuillez remplir au moins la marque, le modèle et le prix');
-                      }
-                    }}
-                  >
-                    Ajouter le véhicule
-                  </Button>
+                      }}
+                    >
+                      Enregistrer le véhicule
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -1862,62 +2075,66 @@ const Admin = () => {
                   <CardContent>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium mb-2 block">
-                          Prix journalier (€ / jour)
-                        </label>
-                        <Input
-                          type="number"
-                          defaultValue={car.price}
-                          min="0"
-                          step="1"
-                          id={`price-${car.id}`}
-                          placeholder="Prix journalier"
-                        />
+                        <label className="text-sm font-medium mb-1 block">Prix journalier (€ / jour)</label>
+                        <Input type="number" defaultValue={car.price} min="0" id={`price-${car.id}`} placeholder="Prix journalier" />
                       </div>
                       <div>
-                        <label className="text-sm font-medium mb-2 block">
-                          Prix hebdomadaire (€ / semaine)
-                        </label>
-                        <Input
-                          type="number"
-                          defaultValue={car.weeklyPrice || car.price * 7}
-                          min="0"
-                          step="1"
-                          id={`weekly-price-${car.id}`}
-                          placeholder="Prix hebdomadaire"
-                        />
+                        <label className="text-sm font-medium mb-1 block">Prix 24H (€)</label>
+                        <Input type="number" defaultValue={car.price_24h} min="0" id={`price-24h-${car.id}`} placeholder="ex: 60" />
                       </div>
                       <div>
-                        <label className="text-sm font-medium mb-2 block">
-                          Prix mensuel (€ / mois)
-                        </label>
-                        <Input
-                          type="number"
-                          defaultValue={car.monthlyPrice || car.price * 30}
-                          min="0"
-                          step="1"
-                          id={`monthly-price-${car.id}`}
-                          placeholder="Prix mensuel"
-                        />
+                        <label className="text-sm font-medium mb-1 block">Prix 48H classique (€)</label>
+                        <Input type="number" defaultValue={car.price_48h} min="0" id={`price-48h-${car.id}`} placeholder="ex: 110" />
                       </div>
                       <div>
-                        <label className="text-sm font-medium mb-2 block">Caution (€)</label>
+                        <label className="text-sm font-medium mb-1 block">Prix 48H spécial WK (€)</label>
+                        <Input type="number" defaultValue={car.price_48h_wk} min="0" id={`price-48h-wk-${car.id}`} placeholder="ex: 130" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Prix 72H spécial WK (€)</label>
+                        <Input type="number" defaultValue={car.price_72h_wk} min="0" id={`price-72h-wk-${car.id}`} placeholder="ex: 180" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Prix Lun. au Ven. (5j) (€)</label>
+                        <Input type="number" defaultValue={car.price_mon_fri} min="0" id={`price-mon-fri-${car.id}`} placeholder="ex: 220" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Prix hebdomadaire (€ / semaine)</label>
+                        <Input type="number" defaultValue={car.weeklyPrice || car.price * 7} min="0" id={`weekly-price-${car.id}`} placeholder="Prix hebdomadaire" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Prix mensuel (€ / mois)</label>
+                        <Input type="number" defaultValue={car.monthlyPrice || car.price * 30} min="0" id={`monthly-price-${car.id}`} placeholder="Prix mensuel" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Caution (€)</label>
                         <Input type="number" defaultValue={car.caution_amount} min="0" id={`caution-${car.id}`} placeholder="Caution par défaut" />
                       </div>
                       <div>
-                        <label className="text-sm font-medium mb-2 block">Années de permis (ans)</label>
+                        <label className="text-sm font-medium mb-1 block">Années de permis (ans)</label>
                         <Input type="number" defaultValue={car.min_license_years} min="0" id={`license-${car.id}`} placeholder="Années par défaut" />
                       </div>
                       <Button
                         size="sm"
+                        className="w-full"
                         onClick={async () => {
                           const dailyInput = document.getElementById(`price-${car.id}`) as HTMLInputElement;
+                          const p24hInput = document.getElementById(`price-24h-${car.id}`) as HTMLInputElement;
+                          const p48hInput = document.getElementById(`price-48h-${car.id}`) as HTMLInputElement;
+                          const p48hWkInput = document.getElementById(`price-48h-wk-${car.id}`) as HTMLInputElement;
+                          const p72hWkInput = document.getElementById(`price-72h-wk-${car.id}`) as HTMLInputElement;
+                          const pMonFriInput = document.getElementById(`price-mon-fri-${car.id}`) as HTMLInputElement;
                           const weeklyInput = document.getElementById(`weekly-price-${car.id}`) as HTMLInputElement;
                           const monthlyInput = document.getElementById(`monthly-price-${car.id}`) as HTMLInputElement;
                           const cautionInput = document.getElementById(`caution-${car.id}`) as HTMLInputElement;
                           const licenseInput = document.getElementById(`license-${car.id}`) as HTMLInputElement;
                           
                           const newDailyPrice = parseInt(dailyInput.value);
+                          const new24h = parseInt(p24hInput.value);
+                          const new48h = parseInt(p48hInput.value);
+                          const new48hWk = parseInt(p48hWkInput.value);
+                          const new72hWk = parseInt(p72hWkInput.value);
+                          const newMonFri = parseInt(pMonFriInput.value);
                           const newWeeklyPrice = parseInt(weeklyInput.value);
                           const newMonthlyPrice = parseInt(monthlyInput.value);
                           const parsedCaution = parseInt(cautionInput.value);
@@ -1932,8 +2149,13 @@ const Admin = () => {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                   price_per_day: newDailyPrice,
-                                  weekly_price: newWeeklyPrice,
-                                  monthly_price: newMonthlyPrice,
+                                  price_24h: isNaN(new24h) ? null : new24h,
+                                  price_48h: isNaN(new48h) ? null : new48h,
+                                  price_48h_wk: isNaN(new48hWk) ? null : new48hWk,
+                                  price_72h_wk: isNaN(new72hWk) ? null : new72hWk,
+                                  price_mon_fri: isNaN(newMonFri) ? null : newMonFri,
+                                  weekly_price: isNaN(newWeeklyPrice) ? null : newWeeklyPrice,
+                                  monthly_price: isNaN(newMonthlyPrice) ? null : newMonthlyPrice,
                                   caution_amount: newCaution,
                                   min_license_years: newLicense
                                 })
@@ -1945,25 +2167,31 @@ const Admin = () => {
                                     ? { 
                                         ...c, 
                                         price: newDailyPrice,
-                                        weeklyPrice: newWeeklyPrice || newDailyPrice * 7,
-                                        monthlyPrice: newMonthlyPrice || newDailyPrice * 30
+                                        price_24h: isNaN(new24h) ? undefined : new24h,
+                                        price_48h: isNaN(new48h) ? undefined : new48h,
+                                        price_48h_wk: isNaN(new48hWk) ? undefined : new48hWk,
+                                        price_72h_wk: isNaN(new72hWk) ? undefined : new72hWk,
+                                        price_mon_fri: isNaN(newMonFri) ? undefined : newMonFri,
+                                        weeklyPrice: isNaN(newWeeklyPrice) ? newDailyPrice * 7 : newWeeklyPrice,
+                                        monthlyPrice: isNaN(newMonthlyPrice) ? newDailyPrice * 30 : newMonthlyPrice
                                       } 
                                     : c
                                 );
                                 setCars(updatedCars);
-                                alert(`Prix de ${car.brand} ${car.model} mis à jour`);
+                                alert('Tarifs mis à jour avec succès !');
                               } else {
-                                alert("Erreur lors de la mise à jour");
+                                alert('Erreur lors de la mise à jour des tarifs');
                               }
                             } catch (error) {
                               console.error('Erreur API:', error);
-                              alert("Erreur lors de la mise à jour");
+                              alert('Erreur lors de la mise à jour des tarifs');
                             }
+                          } else {
+                            alert('Veuillez entrer un prix journalier valide');
                           }
                         }}
-                        className="w-full"
                       >
-                        Mettre à jour les prix
+                        Enregistrer les tarifs
                       </Button>
                     </div>
                   </CardContent>

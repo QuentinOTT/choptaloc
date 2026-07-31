@@ -121,7 +121,7 @@ const FleetSection = () => {
       .then(data => {
         if (data && data.length > 0) {
           const mappedCars = data.map((car: any) => {
-            const hasValidImage = car.image_url && car.image_url.startsWith('http');
+            const hasValidImage = car.image_url && (car.image_url.startsWith('http') || car.image_url.startsWith('data:image'));
             // Parser les specs JSON si c'est une chaîne
             let parsedSpecs = car.specs;
             if (typeof car.specs === 'string') {
@@ -135,6 +135,12 @@ const FleetSection = () => {
               ...car,
               available: car.is_available,
               price: parseFloat(car.price_per_day) || 0,
+              price_24h: car.price_24h ? parseFloat(car.price_24h) : undefined,
+              price_48h: car.price_48h ? parseFloat(car.price_48h) : undefined,
+              price_48h_wk: car.price_48h_wk ? parseFloat(car.price_48h_wk) : undefined,
+              price_72h_wk: car.price_72h_wk ? parseFloat(car.price_72h_wk) : undefined,
+              price_mon_fri: car.price_mon_fri ? parseFloat(car.price_mon_fri) : undefined,
+              weekendPrice: car.weekend_price ? parseFloat(car.weekend_price) : undefined,
               weeklyPrice: car.weekly_price ? parseFloat(car.weekly_price) : undefined,
               monthlyPrice: car.monthly_price ? parseFloat(car.monthly_price) : undefined,
               image: hasValidImage ? car.image_url : getDefaultImage(car.brand),

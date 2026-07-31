@@ -12,6 +12,26 @@ async function runMigrations() {
     const [columns] = await pool.query('SHOW COLUMNS FROM cars');
     const columnNames = columns.map(c => c.Field);
     
+    if (!columnNames.includes('price_24h')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN price_24h DECIMAL(10, 2)');
+      console.log('✅ Migration: Ajout colonne price_24h');
+    }
+    if (!columnNames.includes('price_48h')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN price_48h DECIMAL(10, 2)');
+      console.log('✅ Migration: Ajout colonne price_48h');
+    }
+    if (!columnNames.includes('price_48h_wk')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN price_48h_wk DECIMAL(10, 2)');
+      console.log('✅ Migration: Ajout colonne price_48h_wk');
+    }
+    if (!columnNames.includes('price_72h_wk')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN price_72h_wk DECIMAL(10, 2)');
+      console.log('✅ Migration: Ajout colonne price_72h_wk');
+    }
+    if (!columnNames.includes('price_mon_fri')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN price_mon_fri DECIMAL(10, 2)');
+      console.log('✅ Migration: Ajout colonne price_mon_fri');
+    }
     if (!columnNames.includes('weekend_price')) {
       await pool.query('ALTER TABLE cars ADD COLUMN weekend_price DECIMAL(10, 2)');
       console.log('✅ Migration: Ajout colonne weekend_price');
