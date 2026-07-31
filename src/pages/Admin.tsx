@@ -91,6 +91,8 @@ const Admin = () => {
   const [bookingPages, setBookingPages] = useState(1);
   const BOOKING_LIMIT = 10;
   const [modificationRequests, setModificationRequests] = useState<ModificationRequest[]>([]);
+  const [cars, setCars] = useState<Car[]>([]);
+  const [date, setDate] = useState<Date | undefined>(undefined);
   const [showAddCar, setShowAddCar] = useState(false);
   const [showAddBooking, setShowAddBooking] = useState(false);
   const [newCarForm, setNewCarForm] = useState({
