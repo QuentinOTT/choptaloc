@@ -110,7 +110,10 @@ const Admin = () => {
     caution_amount: "",
     min_license_years: "2",
     image_url: "",
+    description: "",
   });
+  const [newCarFeatures, setNewCarFeatures] = useState<string[]>([]);
+  const [newCarFeatureInput, setNewCarFeatureInput] = useState("");
   const [newCarImagePreview, setNewCarImagePreview] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [userDocuments, setUserDocuments] = useState<any[]>([]);
@@ -1339,6 +1342,65 @@ const Admin = () => {
                     </div>
                   </div>
 
+                  {/* Description & Options */}
+                  <div className="space-y-3 pt-2 border-t">
+                    <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                      <FileText className="w-4 h-4" /> Description & Équipements
+                    </h4>
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">Description du véhicule</label>
+                      <textarea
+                        className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="ex: Audi RS3 Sportback, puissante et confortable, idéale pour vos longs trajets..."
+                        value={newCarForm.description}
+                        onChange={(e) => setNewCarForm({ ...newCarForm, description: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">Options / Équipements <span className="text-muted-foreground font-normal">(appuyez Entrée pour ajouter)</span></label>
+                      <div className="flex gap-2 mb-2">
+                        <Input
+                          placeholder="ex: GPS, Sièges chauffants, Toit ouvrant..."
+                          value={newCarFeatureInput}
+                          onChange={(e) => setNewCarFeatureInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newCarFeatureInput.trim()) {
+                              e.preventDefault();
+                              if (!newCarFeatures.includes(newCarFeatureInput.trim())) {
+                                setNewCarFeatures(prev => [...prev, newCarFeatureInput.trim()]);
+                              }
+                              setNewCarFeatureInput("");
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            if (newCarFeatureInput.trim() && !newCarFeatures.includes(newCarFeatureInput.trim())) {
+                              setNewCarFeatures(prev => [...prev, newCarFeatureInput.trim()]);
+                              setNewCarFeatureInput("");
+                            }
+                          }}
+                        >+</Button>
+                      </div>
+                      {newCarFeatures.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {newCarFeatures.map((f, i) => (
+                            <span key={i} className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium border border-primary/20">
+                              {f}
+                              <button
+                                type="button"
+                                onClick={() => setNewCarFeatures(prev => prev.filter((_, idx) => idx !== i))}
+                                className="hover:text-red-400 transition-colors ml-1"
+                              >×</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Caution & Conditions */}
                   <div className="space-y-3 pt-2 border-t">
                     <h4 className="text-sm font-bold text-primary flex items-center gap-2">
@@ -1405,6 +1467,8 @@ const Admin = () => {
                                 monthly_price: monthly_price ? parseInt(monthly_price) : null,
                                 caution_amount: newCarForm.caution_amount ? parseInt(newCarForm.caution_amount) : null,
                                 min_license_years: newCarForm.min_license_years ? parseInt(newCarForm.min_license_years) : null,
+                                description: newCarForm.description || null,
+                                features: newCarFeatures.length > 0 ? newCarFeatures : null,
                                 image_url: image_url || '/assets/placeholder.png',
                                 specs: ['Automatique', '5 places', 'Essence', 'Climatisation'],
                                 is_available: true
@@ -1448,7 +1512,10 @@ const Admin = () => {
                                 caution_amount: "",
                                 min_license_years: "2",
                                 image_url: "",
+                                description: "",
                               });
+                              setNewCarFeatures([]);
+                              setNewCarFeatureInput("");
                               setNewCarImagePreview(null);
                               setShowAddCar(false);
                             } else {
