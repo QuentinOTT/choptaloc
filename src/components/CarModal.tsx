@@ -201,17 +201,17 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">48H (Spécial WK)</p>
-                  <p className="font-bold text-base text-primary">{car.price_48h_wk ? `${car.price_48h_wk}€` : `${car.weekendPrice || 200}€`}</p>
+                  <p className="font-bold text-base text-primary">{car.price_48h_wk ? `${car.price_48h_wk}€` : `${car.weekendPrice || (car.price * 2)}€`}</p>
                   <p className="text-[9px] text-muted-foreground">500 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">72H (Spécial WK)</p>
-                  <p className="font-bold text-base text-primary">{car.price_72h_wk ? `${car.price_72h_wk}€` : '250€'}</p>
+                  <p className="font-bold text-base text-primary">{car.price_72h_wk ? `${car.price_72h_wk}€` : `${car.price * 3}€`}</p>
                   <p className="text-[9px] text-muted-foreground">600 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">LUN. AU VEN. (5j)</p>
-                  <p className="font-bold text-base text-primary">{car.price_mon_fri ? `${car.price_mon_fri}€` : '300€'}</p>
+                  <p className="font-bold text-base text-primary">{car.price_mon_fri ? `${car.price_mon_fri}€` : `${car.price * 5}€`}</p>
                   <p className="text-[9px] text-muted-foreground">800 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
