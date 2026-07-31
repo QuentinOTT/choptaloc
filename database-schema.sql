@@ -31,7 +31,7 @@ CREATE TABLE cars (
     weekend_price DECIMAL(10, 2),
     weekly_price DECIMAL(10, 2),
     monthly_price DECIMAL(10, 2),
-    image_url VARCHAR(500),
+    image_url LONGTEXT,
     specs JSON,
     description TEXT,
     features JSON,

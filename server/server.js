@@ -53,6 +53,13 @@ async function runMigrations() {
       console.log('✅ Migration: Ajout colonne min_license_years');
     }
 
+    // Migration image_url: VARCHAR -> LONGTEXT pour supporter les images base64
+    const imageUrlCol = columns.find(c => c.Field === 'image_url');
+    if (imageUrlCol && imageUrlCol.Type.toLowerCase() !== 'longtext') {
+      await pool.query('ALTER TABLE cars MODIFY COLUMN image_url LONGTEXT');
+      console.log('✅ Migration: image_url converti en LONGTEXT (support base64)');
+    }
+
     const [userColumns] = await pool.query('SHOW COLUMNS FROM users');
     const userColNames = userColumns.map(c => c.Field);
     if (!userColNames.includes('is_verified')) {
