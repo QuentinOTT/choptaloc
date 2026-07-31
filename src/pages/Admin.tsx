@@ -92,6 +92,7 @@ const Admin = () => {
   const BOOKING_LIMIT = 10;
   const [modificationRequests, setModificationRequests] = useState<ModificationRequest[]>([]);
   const [showAddCar, setShowAddCar] = useState(false);
+  const [showAddBooking, setShowAddBooking] = useState(false);
   const [newCarForm, setNewCarForm] = useState({
     brand: "",
     model: "",
