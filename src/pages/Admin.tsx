@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key, Building2, Settings2, Save, Upload, Image as ImageIcon } from "lucide-react";
+import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key, Building2, Settings2, Save, Upload, Image as ImageIcon, TrendingUp, TrendingDown, Download, BarChart3, Filter } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useSettings } from "@/context/SettingsContext";
 
 const documentLabels: Record<string, string> = {
@@ -55,6 +56,20 @@ interface ModificationRequest {
   status: "pending" | "approved" | "rejected";
   rejectionReason?: string;
   is_admin_proposal?: boolean | number;
+}
+
+interface MonthlyStat {
+  monthKey: string;
+  label: string;
+  year: number;
+  monthNum: number;
+  revenue: number;
+  confirmedCount: number;
+  pendingCount: number;
+  cancelledCount: number;
+  totalBookings: number;
+  averageBasket: number;
+  growth: number | null;
 }
 
 interface Car {
@@ -130,6 +145,8 @@ const Admin = () => {
   });
   const [showProposeMod, setShowProposeMod] = useState(false);
   const [selectedBookingForMod, setSelectedBookingForMod] = useState<Booking | null>(null);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
+  const [statsYearFilter, setStatsYearFilter] = useState<string>("all");
   const [modProposalForm, setModProposalForm] = useState({
     startDate: "",
     endDate: "",
@@ -394,7 +411,15 @@ const Admin = () => {
           setModificationRequests([]);
         });
 
-      // Charger les demandes de modification
+      // Charger les statistiques mensuelles
+      fetch(`${API_URL}/bookings/stats/monthly`)
+        .then(res => res.json())
+        .then(resData => {
+          if (resData && resData.success && Array.isArray(resData.data)) {
+            setMonthlyStats(resData.data);
+          }
+        })
+        .catch(err => console.error('Erreur chargement stats mensuelles:', err));
     }
   }, [isAuthenticated]);
 
@@ -2771,71 +2796,345 @@ const Admin = () => {
 
           {/* Tab Statistiques */}
           <TabsContent value="stats" className="space-y-6">
-            <h2 className="text-xl font-semibold">Statistiques & Revenus</h2>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">Statistiques & Revenus</h2>
+                <p className="text-sm text-muted-foreground">Analyse détaillée des performances financières et des réservations</p>
+              </div>
+              
+              {/* Bouton d'export CSV */}
+              {monthlyStats.length > 0 && (
+                <Button 
+                  onClick={() => {
+                    const listToExport = statsYearFilter === "all" 
+                      ? monthlyStats 
+                      : monthlyStats.filter(s => s.year.toString() === statsYearFilter);
+                    if (!listToExport || listToExport.length === 0) return;
+                    
+                    const headers = ["Mois", "Annee", "Chiffre d'affaires (EUR)", "Locations confirmees", "Loc. en attente", "Loc. annulees", "Total demandes", "Panier moyen (EUR)", "Croissance (%)"];
+                    const rows = listToExport.map(s => [
+                      `"${s.label}"`,
+                      s.year,
+                      s.revenue.toFixed(2),
+                      s.confirmedCount,
+                      s.pendingCount,
+                      s.cancelledCount,
+                      s.totalBookings,
+                      s.averageBasket.toFixed(2),
+                      s.growth !== null ? `${s.growth}%` : "N/A"
+                    ]);
+                    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(";"), ...rows.map(e => e.join(";"))].join("\n");
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `chiffre_d_affaires_mensuel_${statsYearFilter}_${new Date().toISOString().slice(0, 10)}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }} 
+                  variant="outline" 
+                  className="gap-2 border-primary/20 hover:bg-primary/5 shadow-sm rounded-xl"
+                >
+                  <Download className="w-4 h-4 text-primary" /> Exporter en CSV
+                </Button>
+              )}
+            </div>
 
             {/* KPIs principaux */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total réservations */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardDescription>Total réservations</CardDescription>
-                  <CardTitle className="text-3xl">{bookingTotal || bookings.length}</CardTitle>
+              <Card className="border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardDescription className="font-medium">Total réservations</CardDescription>
+                  <CardTitle className="text-3xl font-extrabold">
+                    {monthlyStats.length > 0
+                      ? monthlyStats.reduce((s, m) => s + m.totalBookings, 0)
+                      : (bookingTotal || bookings.length)}
+                  </CardTitle>
                 </CardHeader>
               </Card>
 
               {/* CA total confirmé + terminé */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardDescription>Chiffre d'affaires total</CardDescription>
-                  <CardTitle className="text-3xl text-green-600">
-                    {bookings
-                      .filter(b => b.status === "confirmed" || b.status === "completed")
-                      .reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
-                      .toFixed(0)}€
+              <Card className="border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardDescription className="font-medium">Chiffre d'affaires total</CardDescription>
+                  <CardTitle className="text-3xl font-extrabold text-emerald-600">
+                    {(monthlyStats.length > 0
+                      ? monthlyStats.reduce((s, m) => s + m.revenue, 0)
+                      : bookings.filter(b => b.status === "confirmed" || b.status === "completed").reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
+                    ).toLocaleString('fr-FR', { maximumFractionDigits: 0 })}€
                   </CardTitle>
                 </CardHeader>
               </Card>
 
               {/* CA du mois courant */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardDescription>CA mois en cours</CardDescription>
-                  <CardTitle className="text-3xl text-blue-600">
+              <Card className="border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardDescription className="font-medium">CA mois en cours</CardDescription>
+                  <CardTitle className="text-3xl font-extrabold text-blue-600">
                     {(() => {
                       const now = new Date();
+                      const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+                      const currentMonthStat = monthlyStats.find(m => m.monthKey === currentKey);
+                      if (currentMonthStat) {
+                        return currentMonthStat.revenue.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+                      }
                       return bookings
                         .filter(b =>
                           (b.status === "confirmed" || b.status === "completed") &&
-                          b.startDate.slice(0, 7) === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`
+                          b.startDate.slice(0, 7) === currentKey
                         )
                         .reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
-                        .toFixed(0);
+                        .toLocaleString('fr-FR', { maximumFractionDigits: 0 });
                     })()}€
                   </CardTitle>
                 </CardHeader>
               </Card>
 
-              {/* Durée moyenne de location */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardDescription>Durée moyenne</CardDescription>
-                  <CardTitle className="text-3xl">
+              {/* Panier moyen */}
+              <Card className="border shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardDescription className="font-medium">Panier moyen</CardDescription>
+                  <CardTitle className="text-3xl font-extrabold text-purple-600">
                     {(() => {
-                      const done = bookings.filter(b => b.status === "confirmed" || b.status === "completed");
-                      if (!done.length) return "—";
-                      const avg = done.reduce((s, b) => {
-                        const d = (new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / 86400000;
-                        return s + Math.max(1, d);
-                      }, 0) / done.length;
-                      return `${avg.toFixed(1)}j`;
+                      const totalRev = monthlyStats.length > 0
+                        ? monthlyStats.reduce((s, m) => s + m.revenue, 0)
+                        : bookings.filter(b => b.status === "confirmed" || b.status === "completed").reduce((s, b) => s + (Number(b.totalPrice) || 0), 0);
+                      const totalCount = monthlyStats.length > 0
+                        ? monthlyStats.reduce((s, m) => s + m.confirmedCount, 0)
+                        : bookings.filter(b => b.status === "confirmed" || b.status === "completed").length;
+                      if (!totalCount) return "0€";
+                      return `${Math.round(totalRev / totalCount)}€`;
                     })()}
                   </CardTitle>
                 </CardHeader>
               </Card>
             </div>
 
+            {/* Section Suivi Chiffre d'Affaires Mois par Mois */}
+            {(() => {
+              // Extraction des années disponibles dans les données
+              const availableYears = Array.from(new Set(monthlyStats.map(s => s.year.toString()))).sort().reverse();
+              const filteredStats = statsYearFilter === "all" 
+                ? monthlyStats 
+                : monthlyStats.filter(s => s.year.toString() === statsYearFilter);
+
+              // Données pour le graphique (dans l'ordre chronologique croissant)
+              const chartData = [...filteredStats].reverse();
+              const maxRevenue = Math.max(...monthlyStats.map(s => s.revenue), 1);
+
+              return (
+                <Card className="border shadow-md rounded-2xl overflow-hidden">
+                  <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 pb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <CardTitle className="text-xl flex items-center gap-2">
+                          <BarChart3 className="w-5 h-5 text-primary" />
+                          Chiffre d'affaires mois par mois
+                        </CardTitle>
+                        <CardDescription>
+                          Historique complet des revenus générés par mois
+                        </CardDescription>
+                      </div>
+
+                      {/* Filtres par année */}
+                      {availableYears.length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-background border p-1 rounded-xl shadow-xs">
+                          <Button
+                            size="sm"
+                            variant={statsYearFilter === "all" ? "default" : "ghost"}
+                            className="h-8 px-3 text-xs font-semibold rounded-lg"
+                            onClick={() => setStatsYearFilter("all")}
+                          >
+                            Toutes
+                          </Button>
+                          {availableYears.map(yearStr => (
+                            <Button
+                              key={yearStr}
+                              size="sm"
+                              variant={statsYearFilter === yearStr ? "default" : "ghost"}
+                              className="h-8 px-3 text-xs font-semibold rounded-lg"
+                              onClick={() => setStatsYearFilter(yearStr)}
+                            >
+                              {yearStr}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="pt-6 space-y-8">
+                    {/* Graphique en Barres */}
+                    {chartData.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="h-64 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                              <XAxis 
+                                dataKey="label" 
+                                tick={{ fontSize: 12 }} 
+                                tickLine={false} 
+                                axisLine={false} 
+                              />
+                              <YAxis 
+                                tick={{ fontSize: 12 }} 
+                                tickLine={false} 
+                                axisLine={false} 
+                                tickFormatter={(val) => `${val}€`} 
+                              />
+                              <Tooltip
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const data: MonthlyStat = payload[0].payload;
+                                    return (
+                                      <div className="bg-popover/95 backdrop-blur-md border p-3 rounded-xl shadow-xl text-xs space-y-1">
+                                        <p className="font-bold text-foreground">{data.label}</p>
+                                        <p className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
+                                          {data.revenue.toLocaleString('fr-FR')} €
+                                        </p>
+                                        <div className="text-muted-foreground pt-1 border-t space-y-0.5">
+                                          <p>{data.confirmedCount} location{data.confirmedCount > 1 ? 's' : ''} confirmée{data.confirmedCount > 1 ? 's' : ''}</p>
+                                          <p>Panier moyen: {data.averageBasket} €</p>
+                                          {data.growth !== null && (
+                                            <p className={data.growth >= 0 ? "text-emerald-600 font-semibold" : "text-rose-600 font-semibold"}>
+                                              Évolution vs M-1: {data.growth >= 0 ? `+${data.growth}%` : `${data.growth}%`}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
+                                {chartData.map((entry, index) => {
+                                  const now = new Date();
+                                  const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+                                  const isCurrent = entry.monthKey === currentKey;
+                                  return (
+                                    <Cell 
+                                      key={`cell-${index}`} 
+                                      fill={isCurrent ? '#3b82f6' : '#10b981'} 
+                                      fillOpacity={isCurrent ? 0.9 : 0.85}
+                                    />
+                                  );
+                                })}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="flex justify-center items-center gap-6 text-xs text-muted-foreground pt-2">
+                          <span className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                            Mois terminés / archivés
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                            Mois en cours
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-12 text-center text-muted-foreground text-sm">
+                        Aucune donnée statistique disponible pour cette période.
+                      </div>
+                    )}
+
+                    {/* Tableau explicatif Mois par Mois */}
+                    <div className="border rounded-xl overflow-hidden">
+                      <div className="bg-slate-100/70 dark:bg-slate-800/70 px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider grid grid-cols-12 gap-2 items-center">
+                        <div className="col-span-4 sm:col-span-3">Mois</div>
+                        <div className="col-span-4 sm:col-span-3 text-right sm:text-left">Chiffre d'affaires</div>
+                        <div className="hidden sm:block sm:col-span-2 text-center">Évolution (M-1)</div>
+                        <div className="hidden sm:block sm:col-span-2 text-center">Locations</div>
+                        <div className="col-span-4 sm:col-span-2 text-right">Panier Moyen</div>
+                      </div>
+
+                      <div className="divide-y">
+                        {filteredStats.map((stat) => {
+                          const now = new Date();
+                          const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+                          const isCurrentMonth = stat.monthKey === currentKey;
+                          const progressPercent = Math.round((stat.revenue / maxRevenue) * 100);
+
+                          return (
+                            <div key={stat.monthKey} className="px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors grid grid-cols-12 gap-2 items-center text-sm">
+                              {/* Colonne Mois */}
+                              <div className="col-span-4 sm:col-span-3 font-semibold flex flex-col sm:flex-row sm:items-center gap-1">
+                                <span>{stat.label}</span>
+                                {isCurrentMonth && (
+                                  <Badge variant="outline" className="w-fit text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200">
+                                    En cours
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {/* Colonne CA + barre visuelle */}
+                              <div className="col-span-4 sm:col-span-3 text-right sm:text-left space-y-1">
+                                <div className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                                  {stat.revenue.toLocaleString('fr-FR')} €
+                                </div>
+                                <div className="h-1.5 w-full max-w-[140px] bg-secondary rounded-full overflow-hidden hidden sm:block">
+                                  <div 
+                                    className="h-full bg-emerald-500 rounded-full transition-all" 
+                                    style={{ width: `${Math.max(5, progressPercent)}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Colonne Évolution */}
+                              <div className="hidden sm:flex sm:col-span-2 justify-center items-center">
+                                {stat.growth !== null ? (
+                                  <Badge 
+                                    className={`gap-1 font-semibold text-xs px-2.5 py-0.5 rounded-full ${
+                                      stat.growth >= 0 
+                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200' 
+                                        : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-200'
+                                    }`}
+                                    variant="outline"
+                                  >
+                                    {stat.growth >= 0 ? (
+                                      <TrendingUp className="w-3 h-3 text-emerald-600" />
+                                    ) : (
+                                      <TrendingDown className="w-3 h-3 text-rose-600" />
+                                    )}
+                                    {stat.growth >= 0 ? `+${stat.growth}%` : `${stat.growth}%`}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </div>
+
+                              {/* Colonne Locations */}
+                              <div className="hidden sm:block sm:col-span-2 text-center text-slate-700 dark:text-slate-300 font-medium">
+                                {stat.confirmedCount} loc.
+                              </div>
+
+                              {/* Colonne Panier Moyen */}
+                              <div className="col-span-4 sm:col-span-2 text-right font-medium text-slate-600 dark:text-slate-400">
+                                {stat.averageBasket} €
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {filteredStats.length === 0 && (
+                          <div className="p-6 text-center text-muted-foreground text-sm">
+                            Aucune donnée disponible.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             {/* Taux d'occupation par véhicule */}
-            <Card>
+            <Card className="border shadow-sm">
               <CardHeader>
                 <CardTitle>Taux d'occupation par véhicule</CardTitle>
                 <CardDescription>
@@ -2894,10 +3193,10 @@ const Admin = () => {
                 const labels: Record<string,string> = {pending:"En attente",confirmed:"Confirmées",cancelled:"Annulées",completed:"Terminées"};
                 const colors: Record<string,string> = {pending:"text-amber-600",confirmed:"text-emerald-600",cancelled:"text-red-600",completed:"text-sky-600"};
                 return (
-                  <Card key={s}>
+                  <Card key={s} className="border shadow-sm">
                     <CardHeader className="pb-2">
-                      <CardDescription>{labels[s]}</CardDescription>
-                      <CardTitle className={`text-3xl ${colors[s]}`}>{count}</CardTitle>
+                      <CardDescription className="font-medium">{labels[s]}</CardDescription>
+                      <CardTitle className={`text-3xl font-extrabold ${colors[s]}`}>{count}</CardTitle>
                     </CardHeader>
                   </Card>
                 );

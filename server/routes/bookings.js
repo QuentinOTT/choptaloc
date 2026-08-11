@@ -213,6 +213,77 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Récupérer les statistiques mensuelles du chiffre d'affaires
+router.get('/stats/monthly', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        DATE_FORMAT(start_date, '%Y-%m') as month_key,
+        YEAR(start_date) as year,
+        MONTH(start_date) as month_num,
+        COUNT(*) as total_bookings,
+        SUM(CASE WHEN status IN ('confirmed', 'completed') THEN 1 ELSE 0 END) as confirmed_count,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+        COALESCE(SUM(CASE WHEN status IN ('confirmed', 'completed') THEN total_price ELSE 0 END), 0) as revenue
+      FROM bookings
+      WHERE start_date IS NOT NULL
+      GROUP BY DATE_FORMAT(start_date, '%Y-%m'), YEAR(start_date), MONTH(start_date)
+      ORDER BY month_key DESC
+    `);
+
+    const monthsNames = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ];
+
+    const monthlyStats = rows.map((r) => {
+      const year = Number(r.year);
+      const monthNum = Number(r.month_num);
+      const revenue = parseFloat(r.revenue) || 0;
+      const confirmedCount = Number(r.confirmed_count) || 0;
+      const totalBookings = Number(r.total_bookings) || 0;
+      const averageBasket = confirmedCount > 0 ? Math.round(revenue / confirmedCount) : 0;
+      const label = `${monthsNames[monthNum - 1] || monthNum} ${year}`;
+
+      return {
+        monthKey: r.month_key,
+        label,
+        year,
+        monthNum,
+        revenue,
+        confirmedCount,
+        pendingCount: Number(r.pending_count) || 0,
+        cancelledCount: Number(r.cancelled_count) || 0,
+        totalBookings,
+        averageBasket,
+      };
+    });
+
+    // Ajouter le taux de croissance vs le mois précédent
+    for (let i = 0; i < monthlyStats.length; i++) {
+      const current = monthlyStats[i];
+      const previous = monthlyStats[i + 1];
+      if (previous && previous.revenue > 0) {
+        const growth = ((current.revenue - previous.revenue) / previous.revenue) * 100;
+        current.growth = Math.round(growth * 10) / 10;
+      } else if (previous && previous.revenue === 0 && current.revenue > 0) {
+        current.growth = 100;
+      } else {
+        current.growth = null;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: monthlyStats
+    });
+  } catch (error) {
+    console.error('Erreur récupération statistiques mensuelles:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des statistiques mensuelles' });
+  }
+});
+
 // Récupérer les réservations d'un utilisateur
 router.get('/user/:userId', async (req, res) => {
   try {
