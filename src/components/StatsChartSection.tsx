@@ -5,107 +5,58 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
-interface Booking {
-  id: string;
-  startDate: string;
-  endDate: string;
-  totalPrice: number;
-  status: string;
-  createdAt: string;
+export interface MonthlyStat {
+  monthKey: string;
+  label: string;
+  year: number;
+  monthNum: number;
+  revenue: number;
+  confirmedCount: number;
+  totalBookings?: number;
+  averageBasket: number;
+  growth: number | null;
 }
 
 interface StatsChartSectionProps {
-  bookings: Booking[];
-  availableYears?: string[];
+  monthlyStats: MonthlyStat[];
 }
 
-const MONTH_NAMES_FR = [
-  "Janvier","Février","Mars","Avril","Mai","Juin",
-  "Juillet","Août","Septembre","Octobre","Novembre","Décembre"
-];
-
-export default function StatsChartSection({ bookings, availableYears }: StatsChartSectionProps) {
-  const confirmedBookings = useMemo(
-    () => bookings.filter(b => b.status === "confirmed" || b.status === "completed"),
-    [bookings]
-  );
-
-  // Détecter toutes les années présentes dans les données
+export default function StatsChartSection({ monthlyStats }: StatsChartSectionProps) {
   const years = useMemo(() => {
-    if (availableYears && availableYears.length > 0) return availableYears;
-    const ys = Array.from(new Set(confirmedBookings.map(b => b.startDate.slice(0,4)))).sort().reverse();
+    const ys = Array.from(new Set(monthlyStats.map(m => String(m.year)))).sort().reverse();
     return ys.length > 0 ? ys : [String(new Date().getFullYear())];
-  }, [confirmedBookings, availableYears]);
+  }, [monthlyStats]);
 
   const [selectedYear, setSelectedYear] = useState<string | "all">("all");
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
-  // Construire les données mensuelles pour la vue sélectionnée
   const monthlyData = useMemo(() => {
     const now = new Date();
-    const data: {
-      key: string;
-      label: string;
-      year: string;
-      monthIndex: number;
-      ca: number;
-      count: number;
-      isCurrent: boolean;
-    }[] = [];
+    const nowKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    const yearsToProcess = selectedYear === "all" ? years : [selectedYear];
+    return monthlyStats
+      .filter(m => selectedYear === "all" || String(m.year) === selectedYear)
+      .map(m => ({
+        key: m.monthKey,
+        label: m.label,
+        year: String(m.year),
+        monthIndex: m.monthNum - 1,
+        ca: m.revenue,
+        count: m.confirmedCount,
+        averageBasket: m.averageBasket,
+        evolution: m.growth,
+        isCurrent: m.monthKey === nowKey,
+      }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  }, [monthlyStats, selectedYear]);
 
-    yearsToProcess.forEach(year => {
-      for (let m = 0; m < 12; m++) {
-        const key = `${year}-${String(m+1).padStart(2,'0')}`;
-        const label = `${MONTH_NAMES_FR[m]} ${year}`;
-        const monthBookings = confirmedBookings.filter(b => b.startDate.slice(0,7) === key);
-        if (monthBookings.length === 0 && key > `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`) continue;
-        // N'afficher que les mois qui ont des données ou jusqu'au mois courant
-        const isCurrent = key === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-        if (monthBookings.length === 0 && !isCurrent) {
-          // On l'inclut quand même si c'est dans la plage de l'année
-          const yearNum = parseInt(year);
-          const currentYearNum = now.getFullYear();
-          if (yearNum < currentYearNum || (yearNum === currentYearNum && m <= now.getMonth())) {
-            data.push({ key, label, year, monthIndex: m, ca: 0, count: 0, isCurrent });
-          }
-        } else {
-          data.push({
-            key,
-            label,
-            year,
-            monthIndex: m,
-            ca: monthBookings.reduce((s, b) => s + (Number(b.totalPrice) || 0), 0),
-            count: monthBookings.length,
-            isCurrent,
-          });
-        }
-      }
-    });
-
-    return data.sort((a, b) => a.key.localeCompare(b.key));
-  }, [confirmedBookings, years, selectedYear]);
-
-  // Filtrage par mois sélectionné pour le graphique
   const chartData = useMemo(() => {
-    if (!selectedMonth) return monthlyData.filter(d => d.ca > 0 || d.isCurrent);
-    return monthlyData.filter(d => d.key === selectedMonth || !selectedMonth);
+    if (selectedMonth) return monthlyData.filter(d => d.key === selectedMonth);
+    return monthlyData.filter(d => d.ca > 0 || d.isCurrent);
   }, [monthlyData, selectedMonth]);
 
-  // Données pour le tableau
-  const tableData = useMemo(() => {
-    return [...monthlyData].reverse().map((d, i, arr) => {
-      const prev = arr[i + 1];
-      let evolution: number | null = null;
-      if (prev && prev.ca > 0) {
-        evolution = ((d.ca - prev.ca) / prev.ca) * 100;
-      }
-      return { ...d, evolution };
-    });
-  }, [monthlyData]);
+  const tableData = useMemo(() => [...monthlyData].reverse(), [monthlyData]);
 
-  // Mois disponibles pour les filtres boutons
   const availableMonths = useMemo(() => monthlyData.filter(d => d.ca > 0), [monthlyData]);
 
   const cardStyle = {
@@ -122,7 +73,6 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
         <CardTitle style={{color:'#f1f0ee', fontSize:17, fontWeight:700}}>Chiffre d'affaires mois par mois</CardTitle>
         <CardDescription style={{color:'#a09d95'}}>Historique complet des revenus générés par mois</CardDescription>
 
-        {/* Filtres par année */}
         <div className="flex flex-wrap gap-2 pt-3">
           <button
             onClick={() => { setSelectedYear("all"); setSelectedMonth(null); }}
@@ -157,7 +107,6 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
           ))}
         </div>
 
-        {/* Filtres par mois */}
         {availableMonths.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2">
             {availableMonths.map(d => (
@@ -181,7 +130,6 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Légende */}
         <div className="flex gap-4 text-xs" style={{color:'#a09d95'}}>
           <span style={{display:'flex', alignItems:'center', gap:6}}>
             <span style={{width:24, height:3, borderRadius:999, background:'rgba(212,168,67,0.4)', display:'inline-block'}}></span>
@@ -193,7 +141,6 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
           </span>
         </div>
 
-        {/* Graphique */}
         <ResponsiveContainer width="100%" height={260}>
           <AreaChart
             data={chartData.map(d => ({
@@ -239,7 +186,6 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
           </AreaChart>
         </ResponsiveContainer>
 
-        {/* Tableau détaillé mois par mois */}
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%', borderCollapse:'collapse', fontSize:13}}>
             <thead>
@@ -259,7 +205,7 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
             </thead>
             <tbody>
               {tableData.map((d, i) => {
-                const panierMoyen = d.count > 0 ? Math.round(d.ca / d.count) : 0;
+                const panierMoyen = d.averageBasket || (d.count > 0 ? Math.round(d.ca / d.count) : 0);
                 const isCurrentMonth = d.isCurrent;
                 return (
                   <tr
@@ -272,7 +218,6 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                     onMouseLeave={e => (e.currentTarget.style.background = isCurrentMonth ? 'rgba(212,168,67,0.04)' : 'transparent')}
                   >
-                    {/* Mois */}
                     <td style={{padding:'12px 12px', color:'#f1f0ee', fontWeight:600, whiteSpace:'nowrap'}}>
                       <div style={{display:'flex', alignItems:'center', gap:8}}>
                         {d.label}
@@ -285,11 +230,9 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
                         )}
                       </div>
                     </td>
-                    {/* CA */}
                     <td style={{padding:'12px 12px', textAlign:'right', color: d.ca > 0 ? '#f1f0ee' : '#4a4740', fontWeight:700}}>
                       {d.ca > 0 ? formatCA(d.ca) : '—'}
                     </td>
-                    {/* Évolution M-1 */}
                     <td style={{padding:'12px 12px', textAlign:'right'}}>
                       {d.evolution !== null && d.ca > 0 ? (
                         <span style={{
@@ -304,11 +247,9 @@ export default function StatsChartSection({ bookings, availableYears }: StatsCha
                         <span style={{color:'#4a4740'}}>—</span>
                       )}
                     </td>
-                    {/* Locations */}
                     <td style={{padding:'12px 12px', textAlign:'right', color: d.count > 0 ? '#a09d95' : '#4a4740'}}>
                       {d.count > 0 ? `${d.count} loc.` : '—'}
                     </td>
-                    {/* Panier moyen */}
                     <td style={{padding:'12px 12px', textAlign:'right', color: panierMoyen > 0 ? '#818cf8' : '#4a4740', fontWeight:600}}>
                       {panierMoyen > 0 ? `${panierMoyen.toLocaleString('fr-FR')} €` : '—'}
                     </td>

@@ -17,7 +17,7 @@ import {
   ResponsiveContainer, Area, AreaChart, Legend
 } from "recharts";
 import { useSettings } from "@/context/SettingsContext";
-import StatsChartSection from "@/components/StatsChartSection";
+import StatsChartSection, { MonthlyStat } from "@/components/StatsChartSection";
 
 const documentLabels: Record<string, string> = {
   id_card_front: "Carte d'identité - Recto",
@@ -98,6 +98,15 @@ const Admin = () => {
   const [bookingTotal, setBookingTotal] = useState(0);
   const [bookingPages, setBookingPages] = useState(1);
   const BOOKING_LIMIT = 10;
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
+  const [statsTotals, setStatsTotals] = useState({
+    revenue: 0,
+    confirmedCount: 0,
+    totalBookings: 0,
+    averageBasket: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [modificationRequests, setModificationRequests] = useState<ModificationRequest[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
   const [date, setDate] = useState<Date | undefined>(undefined);
@@ -295,6 +304,7 @@ const Admin = () => {
     if (isAuthenticated) {
       // Charger les réservations (paginées)
       fetchBookings(1);
+      fetchMonthlyStats();
 
       // Charger les voitures
       fetch(`${API_URL}/cars`)
@@ -417,6 +427,31 @@ const Admin = () => {
       // Charger les demandes de modification
     }
   }, [isAuthenticated]);
+
+  const fetchMonthlyStats = () => {
+    setStatsLoading(true);
+    setStatsError(null);
+    fetch(`${API_URL}/bookings/stats/monthly`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(json => {
+        const data: MonthlyStat[] = Array.isArray(json?.data) ? json.data : [];
+        setMonthlyStats(data);
+        const confirmedCount = Number(json?.totals?.confirmedCount) || data.reduce((s, m) => s + (Number(m.confirmedCount) || 0), 0);
+        const revenue = Number(json?.totals?.revenue) || data.reduce((s, m) => s + (Number(m.revenue) || 0), 0);
+        const totalBookings = Number(json?.totals?.totalBookings) || data.reduce((s, m) => s + (Number(m.totalBookings) || 0), 0);
+        const averageBasket = Number(json?.totals?.averageBasket) || (confirmedCount > 0 ? Math.round(revenue / confirmedCount) : 0);
+        setStatsTotals({ revenue, confirmedCount, totalBookings, averageBasket });
+      })
+      .catch(err => {
+        console.error('Erreur chargement statistiques:', err);
+        setMonthlyStats([]);
+        setStatsError("Impossible de charger les statistiques.");
+      })
+      .finally(() => setStatsLoading(false));
+  };
 
   const fetchBookings = (page: number) => {
     fetch(`${API_URL}/bookings?page=${page}&limit=${BOOKING_LIMIT}`)
@@ -3030,15 +3065,25 @@ const Admin = () => {
               </div>
             </div>
 
+            {statsLoading && (
+              <p style={{color:'#a09d95', fontSize:14}}>Chargement des statistiques…</p>
+            )}
+            {statsError && (
+              <div style={{display:'flex', alignItems:'center', gap:12}}>
+                <p style={{color:'#ef4444', fontSize:14, margin:0}}>{statsError}</p>
+                <Button variant="outline" size="sm" onClick={fetchMonthlyStats}>Réessayer</Button>
+              </div>
+            )}
+
             {/* KPIs principaux */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total réservations */}
               <Card style={{background:'linear-gradient(135deg, rgba(35,32,28,0.95), rgba(28,25,20,0.98))', border:'1px solid rgba(212,168,67,0.2)', borderRadius:16}}>
                 <CardHeader className="pb-3">
                   <CardDescription style={{color:'#a09d95', fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em'}}>Total réservations</CardDescription>
-                  <CardTitle style={{fontSize:36, fontWeight:800, color:'#f1f0ee'}}>{bookingTotal || bookings.length}</CardTitle>
+                  <CardTitle style={{fontSize:36, fontWeight:800, color:'#f1f0ee'}}>{statsTotals.totalBookings}</CardTitle>
                   <p style={{fontSize:12, color:'#d4a843', marginTop:4, display:'flex', alignItems:'center', gap:4}}>
-                    <TrendingUp className="w-3 h-3 inline" /> Toutes périodes
+                    <TrendingUp className="w-3 h-3 inline" /> Toutes périodes ({statsTotals.confirmedCount} confirmées)
                   </p>
                 </CardHeader>
               </Card>
@@ -3048,10 +3093,7 @@ const Admin = () => {
                 <CardHeader className="pb-3">
                   <CardDescription style={{color:'#a09d95', fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em'}}>Chiffre d'affaires total</CardDescription>
                   <CardTitle style={{fontSize:36, fontWeight:800, color:'#22c55e'}}>
-                    {bookings
-                      .filter(b => b.status === "confirmed" || b.status === "completed")
-                      .reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
-                      .toFixed(0)}€
+                    {statsTotals.revenue.toLocaleString('fr-FR', { maximumFractionDigits: 0 })}€
                   </CardTitle>
                   <p style={{fontSize:12, color:'#22c55e', marginTop:4}}>Confirmées + Terminées</p>
                 </CardHeader>
@@ -3064,13 +3106,9 @@ const Admin = () => {
                   <CardTitle style={{fontSize:36, fontWeight:800, color:'#d4a843'}}>
                     {(() => {
                       const now = new Date();
-                      return bookings
-                        .filter(b =>
-                          (b.status === "confirmed" || b.status === "completed") &&
-                          b.startDate.slice(0, 7) === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`
-                        )
-                        .reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
-                        .toFixed(0);
+                      const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                      const current = monthlyStats.find(m => m.monthKey === key);
+                      return (current?.revenue || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
                     })()}€
                   </CardTitle>
                   <p style={{fontSize:12, color:'#d4a843', marginTop:4}}>Mois actuel</p>
@@ -3082,12 +3120,9 @@ const Admin = () => {
                 <CardHeader className="pb-3">
                   <CardDescription style={{color:'#a09d95', fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em'}}>Panier moyen</CardDescription>
                   <CardTitle style={{fontSize:36, fontWeight:800, color:'#818cf8'}}>
-                    {(() => {
-                      const done = bookings.filter(b => b.status === "confirmed" || b.status === "completed");
-                      if (!done.length) return "—";
-                      const total = done.reduce((s, b) => s + (Number(b.totalPrice) || 0), 0);
-                      return `${Math.round(total / done.length).toLocaleString('fr-FR')}€`;
-                    })()}
+                    {statsTotals.confirmedCount > 0
+                      ? `${statsTotals.averageBasket.toLocaleString('fr-FR')}€`
+                      : "—"}
                   </CardTitle>
                   <p style={{fontSize:12, color:'#818cf8', marginTop:4}}>Par réservation</p>
                 </CardHeader>
@@ -3095,7 +3130,7 @@ const Admin = () => {
             </div>
 
             {/* Graphique CA + tableau mois par mois */}
-            <StatsChartSection bookings={bookings} />
+            <StatsChartSection monthlyStats={monthlyStats} />
 
             {/* Taux d'occupation par véhicule */}
             <Card style={{background:'linear-gradient(135deg, rgba(35,32,28,0.95), rgba(28,25,20,0.98))', border:'1px solid rgba(212,168,67,0.15)', borderRadius:16}}>

@@ -274,9 +274,19 @@ router.get('/stats/monthly', async (req, res) => {
       }
     }
 
+    const confirmedCount = monthlyStats.reduce((s, m) => s + m.confirmedCount, 0);
+    const revenue = monthlyStats.reduce((s, m) => s + m.revenue, 0);
+    const totalBookings = monthlyStats.reduce((s, m) => s + m.totalBookings, 0);
+
     res.json({
       success: true,
-      data: monthlyStats
+      data: monthlyStats,
+      totals: {
+        revenue,
+        confirmedCount,
+        totalBookings,
+        averageBasket: confirmedCount > 0 ? Math.round(revenue / confirmedCount) : 0,
+      },
     });
   } catch (error) {
     console.error('Erreur récupération statistiques mensuelles:', error);
