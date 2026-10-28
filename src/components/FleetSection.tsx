@@ -11,7 +11,21 @@ import { useAvailabilities } from "@/hooks/use-availabilities";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/context/SettingsContext";
 
-const defaultCars = [
+import { applyPromotion, bookingPrice, enabled, PricingCar } from "@/lib/pricing";
+
+type FleetCar = Omit<PricingCar, 'has_promo'> & {
+  has_promo?: boolean;
+  id: string;
+  brand: string;
+  model: string;
+  tag: string;
+  image: string;
+  specs: string[];
+  available: boolean;
+  weekendPrice?: number;
+};
+
+const defaultCars: FleetCar[] = [
   {
     id: "1",
     brand: "Mercedes",
@@ -83,52 +97,19 @@ const FleetSection = () => {
   const globalDiscount = parseFloat(settings.global_discount) || 0;
   const isVacation = settings.vacation_mode === 'true';
 
-  const calculateDiscountedPrice = (price: number) => {
-    if (globalDiscount <= 0) return price;
-    return Math.round(price * (1 - globalDiscount / 100));
-  };
-
-  const getCarPriceInfo = (car: any) => {
-    const rawPrice = car.price || 0;
-    if (car.has_promo && car.promo_value > 0) {
-      const discount = car.promo_type === 'percentage'
-        ? Math.round((rawPrice * car.promo_value) / 100)
-        : Math.min(rawPrice, car.promo_value);
-      const discountedPrice = Math.max(0, rawPrice - discount);
-      return {
-        effectivePrice: discountedPrice,
-        originalPrice: rawPrice,
-        hasDiscount: true,
-        isCarPromo: true,
-        promoType: car.promo_type,
-        promoValue: car.promo_value,
-        badgeText: car.promo_type === 'percentage' ? `-${car.promo_value}%` : `-${car.promo_value}€`,
-      };
-    }
-    if (globalDiscount > 0) {
-      const discountedPrice = Math.round(rawPrice * (1 - globalDiscount / 100));
-      return {
-        effectivePrice: discountedPrice,
-        originalPrice: rawPrice,
-        hasDiscount: true,
-        isCarPromo: false,
-        promoType: 'percentage',
-        promoValue: globalDiscount,
-        badgeText: `-${globalDiscount}%`,
-      };
-    }
+  const getCarPriceInfo = (car: PricingCar) => {
+    const info = applyPromotion(car.price || 0, 1, car, globalDiscount);
     return {
-      effectivePrice: rawPrice,
-      originalPrice: rawPrice,
-      hasDiscount: false,
-      isCarPromo: false,
-      promoType: 'percentage',
-      promoValue: 0,
-      badgeText: '',
+      effectivePrice: info.total,
+      originalPrice: car.price,
+      hasDiscount: info.discount > 0,
+      isCarPromo: info.isCarPromo,
+      badgeText: info.type === 'percentage' ? `-${info.value}%` : `-${info.value}€`,
     };
   };
 
-  const [cars, setCars] = useState(defaultCars);
+  const [cars, setCars] = useState<FleetCar[]>([]);
+  const [carsError, setCarsError] = useState("");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedCar, setSelectedCar] = useState<typeof defaultCars[0] | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -154,10 +135,12 @@ const FleetSection = () => {
 
   // Charger les véhicules depuis l'API
   useEffect(() => {
-    fetch(`${API_URL}/cars`)
-      .then(res => res.json())
+    const loadCars = () => fetch(`${API_URL}/cars`, { cache: 'no-store' })
+      .then(res => { if (!res.ok) throw new Error('API véhicules indisponible'); return res.json(); })
       .then(data => {
-        if (data && data.length > 0) {
+        if (!Array.isArray(data)) throw new Error('Réponse véhicules invalide');
+        setCarsError("");
+        if (data.length > 0) {
           const mappedCars = data.map((car: any) => {
             const hasValidImage = car.image_url && (car.image_url.startsWith('http') || car.image_url.startsWith('data:image'));
             let parsedSpecs = car.specs;
@@ -190,7 +173,7 @@ const FleetSection = () => {
               features: Array.isArray(parsedFeatures) ? parsedFeatures : [],
               image: hasValidImage ? car.image_url : getDefaultImage(car.brand),
               specs: Array.isArray(parsedSpecs) ? parsedSpecs : [],
-              has_promo: Boolean(car.has_promo),
+              has_promo: enabled(car.has_promo),
               promo_type: car.promo_type || 'percentage',
               promo_value: parseFloat(car.promo_value) || 0,
             };
@@ -198,14 +181,16 @@ const FleetSection = () => {
           const sortedMappedCars = mappedCars.sort((a: any, b: any) => Number(b.available) - Number(a.available));
           setCars(sortedMappedCars);
         } else {
-          const sortedDefaultCars = [...defaultCars].sort((a, b) => Number(b.available) - Number(a.available));
-          setCars(sortedDefaultCars);
+          setCars([]);
         }
       })
       .catch(err => {
         console.error('Erreur chargement véhicules:', err);
-        setCars(defaultCars);
+        setCarsError("Impossible de charger les véhicules. Rechargez la page ou réessayez plus tard.");
       });
+    loadCars();
+    window.addEventListener('focus', loadCars);
+    return () => window.removeEventListener('focus', loadCars);
   }, []);
 
   // Charger les réservations pour bloquer les dates dans le calendrier
@@ -251,6 +236,8 @@ const FleetSection = () => {
     if (availableCars.length > 0 && !calendarCar) {
       setCalendarCar(availableCars[0]);
     }
+    setCalendarCar(previous => previous ? cars.find(car => String(car.id) === String(previous.id)) || null : previous);
+    setSelectedCar(previous => previous ? cars.find(car => String(car.id) === String(previous.id)) || null : previous);
   }, [cars]);
 
   const availableCars = cars.filter(car => car.available);
@@ -267,6 +254,7 @@ const FleetSection = () => {
           </h2>
         </div>
 
+        {carsError && <p role="alert" className="mb-6 text-center text-orange-400">{carsError}</p>}
         {/* Section Véhicules */}
         {displayedCars.length > 0 && (
           <div className="mb-16 md:mb-20">
@@ -612,6 +600,13 @@ const FleetSection = () => {
                       <p className="text-xs text-primary font-semibold mb-2">
                         {selectedDates.length} jour(s) sélectionné(s) pour {calendarCar.brand} {calendarCar.model}
                       </p>
+                      {(() => {
+                        const end = selectedDates.length === 1
+                          ? new Date(Date.parse(`${selectedDates[0]}T00:00:00Z`) + 86400000).toISOString().slice(0, 10)
+                          : selectedDates[selectedDates.length - 1];
+                        const price = bookingPrice(calendarCar, selectedDates[0], end, globalDiscount);
+                        return <p className="text-sm font-bold mb-2">Prix estimé : {price.discount > 0 && <span className="line-through text-muted-foreground mr-2">{price.rawTotal.toFixed(2)}€</span>}{price.total.toFixed(2)}€ {price.discount > 0 && <span className="text-orange-400">({price.isCarPromo ? 'promo véhicule' : 'réduction globale'})</span>}</p>;
+                      })()}
                       <button
                         onClick={() => setShowBookingForm(true)}
                         className="w-full py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md shadow-primary/20"

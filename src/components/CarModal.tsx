@@ -8,6 +8,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { X, Fuel, Users, Settings, Calendar } from "lucide-react";
 
+import { useSettings } from "@/context/SettingsContext";
+import { applyPromotion } from "@/lib/pricing";
+
 interface Car {
   brand: string;
   model: string;
@@ -41,7 +44,9 @@ interface CarModalProps {
 }
 
 const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
+  const { settings } = useSettings();
   if (!car) return null;
+  const promotionalPrice = (amount: number, days: number) => applyPromotion(amount, days, car, Number(settings.global_discount)).total;
 
   // Parser les specs JSON si c'est une chaîne
   let parsedSpecs = car.specs;
@@ -179,13 +184,9 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
           <div className="space-y-4">
             {(() => {
               const rawPrice = car.price || 0;
-              const hasPromo = Boolean(car.has_promo && car.promo_value && car.promo_value > 0);
-              const discount = hasPromo
-                ? (car.promo_type === 'percentage'
-                  ? Math.round((rawPrice * (car.promo_value || 0)) / 100)
-                  : Math.min(rawPrice, car.promo_value || 0))
-                : 0;
-              const effectivePrice = Math.max(0, rawPrice - discount);
+              const promotion = applyPromotion(rawPrice, 1, car, Number(settings.global_discount));
+              const hasPromo = promotion.discount > 0;
+              const effectivePrice = promotion.total;
 
               return (
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -200,7 +201,7 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
                   </div>
                   {hasPromo && (
                     <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/30 animate-pulse">
-                      {car.promo_type === 'percentage' ? `-${car.promo_value}%` : `-${car.promo_value}€`} PROMO
+                      {promotion.type === 'percentage' ? `-${promotion.value}%` : `-${promotion.value}€`} {promotion.isCarPromo ? 'PROMO' : 'OFFRE GLOBALE'}
                     </span>
                   )}
                 </div>
@@ -217,32 +218,32 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">24H</p>
-                  <p className="font-bold text-base text-primary">{car.price_24h ? `${car.price_24h}€` : `${car.price}€`}</p>
+                  <p className="font-bold text-base text-primary">{promotionalPrice(car.price_24h || car.price, 1)}€</p>
                   <p className="text-[9px] text-muted-foreground">250 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">48H</p>
-                  <p className="font-bold text-base text-primary">{car.price_48h ? `${car.price_48h}€` : `${car.price * 2}€`}</p>
+                  <p className="font-bold text-base text-primary">{promotionalPrice(car.price_48h || car.price * 2, 2)}€</p>
                   <p className="text-[9px] text-muted-foreground">400 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">48H (Spécial WK)</p>
-                  <p className="font-bold text-base text-primary">{car.price_48h_wk ? `${car.price_48h_wk}€` : `${car.weekendPrice || (car.price * 2)}€`}</p>
+                  <p className="font-bold text-base text-primary">{promotionalPrice(car.price_48h_wk || car.weekendPrice || car.price * 2, 2)}€</p>
                   <p className="text-[9px] text-muted-foreground">500 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">72H (Spécial WK)</p>
-                  <p className="font-bold text-base text-primary">{car.price_72h_wk ? `${car.price_72h_wk}€` : `${car.price * 3}€`}</p>
+                  <p className="font-bold text-base text-primary">{promotionalPrice(car.price_72h_wk || car.price * 3, 3)}€</p>
                   <p className="text-[9px] text-muted-foreground">600 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">LUN. AU VEN. (5j)</p>
-                  <p className="font-bold text-base text-primary">{car.price_mon_fri ? `${car.price_mon_fri}€` : `${car.price * 5}€`}</p>
+                  <p className="font-bold text-base text-primary">{promotionalPrice(car.price_mon_fri || car.price * 5, 5)}€</p>
                   <p className="text-[9px] text-muted-foreground">800 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40">
                   <p className="text-[10px] text-muted-foreground font-bold">1 SEMAINE (7j)</p>
-                  <p className="font-bold text-base text-primary">{car.weeklyPrice ? `${car.weeklyPrice}€` : 'Sur devis'}</p>
+                  <p className="font-bold text-base text-primary">{car.weeklyPrice ? `${promotionalPrice(car.weeklyPrice, 7)}€` : 'Sur devis'}</p>
                   <p className="text-[9px] text-muted-foreground">1000 km incl.</p>
                 </div>
                 <div className="space-y-1 bg-background/50 p-2 rounded-lg border border-border/40 col-span-2 sm:col-span-3">
@@ -251,7 +252,7 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
                       <p className="text-[10px] text-muted-foreground font-bold">1 MOIS</p>
                       <p className="text-[9px] text-muted-foreground">Kilométrage illimité</p>
                     </div>
-                    <p className="font-bold text-base text-primary">{car.monthlyPrice ? `${car.monthlyPrice}€` : 'Sur devis'}</p>
+                    <p className="font-bold text-base text-primary">{car.monthlyPrice ? `${promotionalPrice(car.monthlyPrice, 30)}€` : 'Sur devis'}</p>
                   </div>
                 </div>
               </div>

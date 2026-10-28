@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface Settings {
@@ -19,6 +20,11 @@ interface Settings {
   global_discount: string;
   booking_acompte_type?: string;
   booking_acompte_value?: string;
+  hero_title_line1?: string;
+  hero_title_line2?: string;
+  hero_subtitle?: string;
+  payment_link_acompte?: string;
+  payment_link_full?: string;
 }
 
 interface SettingsContextType {
@@ -45,7 +51,12 @@ const defaultSettings: Settings = {
   alert_message: "",
   global_discount: "0",
   booking_acompte_type: "percentage",
-  booking_acompte_value: "50"
+  booking_acompte_value: "50",
+  hero_title_line1: "Louez l'Excellence,",
+  hero_title_line2: "Pilotez l'Émotion",
+  hero_subtitle: "Des véhicules premium à votre portée. Découvrez une expérience de location haut de gamme, sans compromis.",
+  payment_link_acompte: "",
+  payment_link_full: ""
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -54,7 +65,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
   const refreshSettings = async () => {
     try {

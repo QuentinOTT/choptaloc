@@ -2,11 +2,13 @@ import logo from "@/assets/logoagence.png";
 import heroBg from "@/assets/hero-bg.jpg";
 import { useNavigate } from "react-router-dom";
 import { useClientAuth } from "@/hooks/use-client-auth";
+import { useSettings } from "@/context/SettingsContext";
 import { User } from "lucide-react";
 
 const HeroSection = () => {
   const navigate = useNavigate();
   const { user } = useClientAuth();
+  const { settings } = useSettings();
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden overflow-x-hidden">
@@ -89,11 +91,11 @@ const HeroSection = () => {
             Avec ChopTaLoc Service
           </p>
           <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-7xl font-black leading-tight mb-4 md:mb-6">
-            Louez l'Excellence,{" "}
-            <span className="text-gradient-orange">Pilotez l'Émotion</span>
+            {settings.hero_title_line1 || "Louez l'Excellence,"}{" "}
+            <span className="text-gradient-orange">{settings.hero_title_line2 || "Pilotez l'Émotion"}</span>
           </h1>
           <p className="text-muted-foreground text-sm md:text-lg lg:text-xl max-w-2xl mx-auto mb-6 md:mb-10">
-            Des véhicules premium à votre portée. Découvrez une expérience de location haut de gamme, sans compromis.
+            {settings.hero_subtitle || "Des véhicules premium à votre portée. Découvrez une expérience de location haut de gamme, sans compromis."}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
             <a

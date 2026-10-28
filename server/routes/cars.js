@@ -116,6 +116,10 @@ router.put('/:id', async (req, res) => {
       promo_value
     } = req.body;
 
+    if (has_promo && (!Number.isFinite(Number(promo_value)) || Number(promo_value) <= 0 || !['percentage', 'fixed'].includes(promo_type) || (promo_type === 'percentage' && Number(promo_value) > 100))) {
+      return res.status(400).json({ error: 'Une promotion active doit avoir une réduction valide et strictement positive.' });
+    }
+
     const updates = [];
     const values = [];
 

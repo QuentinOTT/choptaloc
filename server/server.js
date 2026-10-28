@@ -6,103 +6,30 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const pool = require('./config/database');
 
-// Migration automatique de la base de données
-async function runMigrations() {
-  try {
-    const [columns] = await pool.query('SHOW COLUMNS FROM cars');
-    const columnNames = columns.map(c => c.Field);
-    
-    if (!columnNames.includes('price_24h')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN price_24h DECIMAL(10, 2)');
-      console.log('✅ Migration: Ajout colonne price_24h');
-    }
-    if (!columnNames.includes('price_48h')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN price_48h DECIMAL(10, 2)');
-      console.log('✅ Migration: Ajout colonne price_48h');
-    }
-    if (!columnNames.includes('price_48h_wk')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN price_48h_wk DECIMAL(10, 2)');
-      console.log('✅ Migration: Ajout colonne price_48h_wk');
-    }
-    if (!columnNames.includes('price_72h_wk')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN price_72h_wk DECIMAL(10, 2)');
-      console.log('✅ Migration: Ajout colonne price_72h_wk');
-    }
-    if (!columnNames.includes('price_mon_fri')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN price_mon_fri DECIMAL(10, 2)');
-      console.log('✅ Migration: Ajout colonne price_mon_fri');
-    }
-    if (!columnNames.includes('weekend_price')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN weekend_price DECIMAL(10, 2)');
-      console.log('✅ Migration: Ajout colonne weekend_price');
-    }
-    if (!columnNames.includes('weekly_price')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN weekly_price DECIMAL(10, 2)');
-      console.log('✅ Migration: Ajout colonne weekly_price');
-    }
-    if (!columnNames.includes('monthly_price')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN monthly_price DECIMAL(10, 2)');
-      console.log('✅ Migration: Ajout colonne monthly_price');
-    }
-    if (!columnNames.includes('caution_amount')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN caution_amount INT DEFAULT NULL');
-      console.log('✅ Migration: Ajout colonne caution_amount');
-    }
-    if (!columnNames.includes('min_license_years')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN min_license_years INT DEFAULT NULL');
-      console.log('✅ Migration: Ajout colonne min_license_years');
-    }
-    if (!columnNames.includes('has_promo')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN has_promo BOOLEAN DEFAULT FALSE');
-      console.log('✅ Migration: Ajout colonne has_promo');
-    }
-    if (!columnNames.includes('promo_type')) {
-      await pool.query("ALTER TABLE cars ADD COLUMN promo_type VARCHAR(20) DEFAULT 'percentage'");
-      console.log('✅ Migration: Ajout colonne promo_type');
-    }
-    if (!columnNames.includes('promo_value')) {
-      await pool.query('ALTER TABLE cars ADD COLUMN promo_value DECIMAL(10, 2) DEFAULT 0');
-      console.log('✅ Migration: Ajout colonne promo_value');
-    }
-
-    // Migration image_url: VARCHAR -> LONGTEXT pour supporter les images base64
-    const imageUrlCol = columns.find(c => c.Field === 'image_url');
-    if (imageUrlCol && imageUrlCol.Type.toLowerCase() !== 'longtext') {
-      await pool.query('ALTER TABLE cars MODIFY COLUMN image_url LONGTEXT');
-      console.log('✅ Migration: image_url converti en LONGTEXT (support base64)');
-    }
-
-    const [userColumns] = await pool.query('SHOW COLUMNS FROM users');
-    const userColNames = userColumns.map(c => c.Field);
-    if (!userColNames.includes('is_verified')) {
-      await pool.query('ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE');
-      console.log('✅ Migration: Ajout colonne is_verified sur users');
-    }
-
-    // Mise à jour de l''enum pour les documents
-    try {
-      await pool.query("ALTER TABLE user_documents MODIFY COLUMN document_type ENUM('id_card_front', 'id_card_back', 'license_front', 'license_back', 'proof_of_address', 'other') NOT NULL");
-      console.log('✅ Migration: Mise à jour enum document_type');
-    } catch (e) {
-      console.warn('⚠️ Note Migration Enum:', e.message);
-    }
-
-    // Ajout colonne rejection_reason
-    try {
-      const [docColumns] = await pool.query('SHOW COLUMNS FROM user_documents');
-      const docColNames = docColumns.map(c => c.Field);
-      if (!docColNames.includes('rejection_reason')) {
-        await pool.query('ALTER TABLE user_documents ADD COLUMN rejection_reason TEXT');
-        console.log('✅ Migration: Ajout colonne rejection_reason sur user_documents');
-      }
-    } catch (e) {
-      console.warn('⚠️ Note Migration rejection_reason:', e.message);
-    }
-  } catch (error) {
-    console.warn('⚠️ Note Migration:', error.message);
+// Ajout uniquement de la table des codes promo si elle manque. Les tables et
+// les lignes existantes ne sont jamais réinitialisées par ce démarrage.
+async function ensurePromoCodesTable() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS promo_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    car_id INT NULL,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_type ENUM('percentage', 'fixed') NOT NULL DEFAULT 'percentage',
+    discount_value DECIMAL(10, 2) NOT NULL,
+    max_uses INT NULL,
+    current_uses INT NOT NULL DEFAULT 0,
+    valid_from TIMESTAMP NULL,
+    valid_until TIMESTAMP NULL,
+    min_booking_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [promoColumns] = await pool.query('SHOW COLUMNS FROM promo_codes');
+  if (!promoColumns.some(column => column.Field === 'car_id')) {
+    await pool.query('ALTER TABLE promo_codes ADD COLUMN car_id INT NULL AFTER id');
   }
 }
-runMigrations();
 
 // Middleware
 app.use(cors());
@@ -117,6 +44,7 @@ apiRouter.use('/documents', require('./routes/documents'));
 apiRouter.use('/cars', require('./routes/cars'));
 apiRouter.use('/contact', require('./routes/contact'));
 apiRouter.use('/settings', require('./routes/settings'));
+apiRouter.use('/promo-codes', require('./routes/promoCodes'));
 
 // Définir les routes de santé et racine sur le router API aussi
 apiRouter.get('/health', (req, res) => res.json({ status: 'ok', message: 'API healthy' }));
@@ -143,7 +71,23 @@ app.use((err, req, res, next) => {
 });
 
 // Démarrage du serveur
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Serveur API ChopTaLoc démarré sur le port ${PORT}`);
-  console.log(`🔌 API disponible sur /api/*`);
-});
+async function start() {
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    try {
+      await ensurePromoCodesTable();
+      break;
+    } catch (error) {
+      if (attempt === 10 || ['ER_DBACCESS_DENIED_ERROR', 'ER_TABLEACCESS_DENIED_ERROR', 'ER_SPECIFIC_ACCESS_DENIED_ERROR'].includes(error.code)) {
+        console.error('Création de promo_codes impossible ; les autres fonctions restent disponibles :', error.message);
+        break;
+      }
+      console.warn(`Base indisponible au démarrage (${attempt}/10) :`, error.message);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Serveur API ChopTaLoc démarré sur le port ${PORT}`);
+    console.log(`🔌 API disponible sur /api/*`);
+  });
+}
+start().catch(error => console.error('Erreur au démarrage :', error));

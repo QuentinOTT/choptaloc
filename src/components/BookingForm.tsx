@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,10 @@ import { useClientAuth } from "@/hooks/use-client-auth";
 import { API_URL } from "@/config/api";
 import { useNavigate } from "react-router-dom";
 import { LogIn, UserPlus } from "lucide-react";
+
+import { useSettings } from "@/context/SettingsContext";
+import { bookingPrice, money } from "@/lib/pricing";
+import { readApiResponse } from "@/lib/api-response";
 
 interface Car {
   id: string;
@@ -50,6 +54,7 @@ interface BookingFormProps {
 const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) => {
   const { user, isAuthenticated } = useClientAuth();
   const navigate = useNavigate();
+  const { settings } = useSettings();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -65,9 +70,62 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     startDate: "",
     endDate: "",
     notes: "",
+    promoCode: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoValid, setPromoValid] = useState(false);
+  const [promoError, setPromoError] = useState("");
+
+  const quote = car ? bookingPrice(car, formData.startDate, formData.endDate, Number(settings.global_discount)) : null;
+  const validationKey = `${isOpen}:${car?.id}:${formData.startDate}:${formData.endDate}:${quote?.total}:${formData.promoCode.trim()}`;
+  const currentValidationKey = useRef(validationKey);
+  currentValidationKey.current = validationKey;
+  const [validatedKey, setValidatedKey] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
+  const validPromo = promoValid && validatedKey === validationKey;
+  const codeDiscount = validPromo ? promoDiscount : 0;
+  const totalPrice = money(Math.max(0, (quote?.total || 0) - codeDiscount));
+
+  const validatePromoCode = async (signal?: AbortSignal) => {
+    if (!formData.promoCode.trim() || !quote?.days) return;
+    const key = validationKey;
+    setPromoChecking(true);
+    try {
+      const response = await fetch(`${API_URL}/promo-codes/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: formData.promoCode.trim().toUpperCase(), booking_amount: quote.total, carId: car?.id, startDate: formData.startDate, endDate: formData.endDate }),
+        signal,
+      });
+      const data = await readApiResponse<{ valid?: boolean; discount?: number; error?: string }>(response);
+      if (signal?.aborted || currentValidationKey.current !== key) return;
+      setValidatedKey(key);
+      setPromoValid(response.ok && data.valid === true);
+      setPromoDiscount(response.ok && data.valid ? money(Math.min(quote.total, Math.max(0, Number(data.discount) || 0))) : 0);
+      setPromoError(response.ok && data.valid ? "" : data.error || "Code invalide");
+    } catch (error) {
+      if (signal?.aborted || currentValidationKey.current !== key) return;
+      setPromoValid(false);
+      setPromoDiscount(0);
+      setPromoError(error instanceof Error ? error.message : "Erreur lors de la validation");
+    } finally {
+      if (!signal?.aborted && currentValidationKey.current === key) setPromoChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    setPromoValid(false);
+    setPromoDiscount(0);
+    setPromoError("");
+    setPromoChecking(false);
+    if (!isOpen || !formData.promoCode.trim() || !quote?.days) return;
+    const controller = new AbortController();
+    setPromoChecking(true);
+    const timer = setTimeout(() => { void validatePromoCode(controller.signal); }, 500);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [validationKey]);
 
   useEffect(() => {
     if (isOpen) {
@@ -95,8 +153,11 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
         pickupTime: "10:00",
         dropoffTime: "10:00",
         startDate: selectedDates[0] || "",
-        endDate: selectedDates[selectedDates.length - 1] || "",
+        endDate: selectedDates.length === 1
+          ? new Date(Date.parse(`${selectedDates[0]}T00:00:00Z`) + 86400000).toISOString().slice(0, 10)
+          : selectedDates[selectedDates.length - 1] || "",
         notes: "",
+        promoCode: "",
       });
       setErrors({});
     }
@@ -131,7 +192,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     if (formData.startDate && formData.endDate) {
       const startDate = new Date(formData.startDate);
       const endDate = new Date(formData.endDate);
-      if (endDate < startDate) {
+      if (endDate <= startDate) {
         newErrors.endDate = "La date de fin doit être après la date de début";
       }
     }
@@ -147,7 +208,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     console.log('Car:', car);
     console.log('User:', user);
 
-    if (!validateForm()) {
+    if (promoChecking || !validateForm()) {
       console.log('Validation échouée - Erreurs:', errors);
       return;
     }
@@ -167,51 +228,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
     }
     console.log('Dates calculées:', [formData.startDate, formData.endDate]);
 
-    // Calculer le prix total avec les forfaits spécifiques
-    const calculateBookingTotal = (startDateStr: string, endDateStr: string, carObj: Car) => {
-      const daysCount = getDaysCount(startDateStr, endDateStr);
-      if (daysCount === 0) return 0;
-
-      const startDate = new Date(startDateStr);
-      const startDay = startDate.getDay(); // 0 = Dim, 1 = Lun, 5 = Ven, 6 = Sam
-
-      let total = daysCount * carObj.price;
-      if (daysCount === 1 && carObj.price_24h) {
-        total = carObj.price_24h;
-      } else if (daysCount === 2) {
-        const isWeekend = startDay === 5 || startDay === 6 || startDay === 0;
-        if (isWeekend && carObj.price_48h_wk) total = carObj.price_48h_wk;
-        else if (carObj.price_48h) total = carObj.price_48h;
-      } else if (daysCount === 3) {
-        const isWeekend = startDay === 5 || startDay === 6;
-        if (isWeekend && carObj.price_72h_wk) total = carObj.price_72h_wk;
-      } else if (daysCount === 5 && startDay === 1 && carObj.price_mon_fri) {
-        total = carObj.price_mon_fri;
-      } else if (daysCount >= 7 && daysCount < 30 && carObj.weeklyPrice) {
-        const weeks = Math.floor(daysCount / 7);
-        const remDays = daysCount % 7;
-        total = (weeks * carObj.weeklyPrice) + (remDays * carObj.price);
-      } else if (daysCount >= 30 && carObj.monthlyPrice) {
-        const months = Math.floor(daysCount / 30);
-        const remDays = daysCount % 30;
-        total = (months * carObj.monthlyPrice) + (remDays * carObj.price);
-      }
-
-      // Appliquer la promotion du véhicule si définie
-      if (carObj.has_promo && carObj.promo_value && carObj.promo_value > 0) {
-        if (carObj.promo_type === 'percentage') {
-          const discount = Math.round(total * (carObj.promo_value / 100));
-          total = Math.max(0, total - discount);
-        } else {
-          const discount = Math.min(total, carObj.promo_value * Math.max(1, daysCount));
-          total = Math.max(0, total - discount);
-        }
-      }
-
-      return total;
-    };
-
-    const newTotalPrice = calculateBookingTotal(formData.startDate, formData.endDate, car);
+    const newTotalPrice = totalPrice;
 
     // Créer la réservation avec userId si un client est connecté
     const newBooking: any = {
@@ -222,6 +239,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
       pickupLocation: formData.deliveryOption ? formData.pickupLocation : "Récupération sur place",
       returnLocation: formData.deliveryOption ? formData.dropoffLocation : "Récupération sur place",
       totalPrice: newTotalPrice,
+      promoCode: validPromo ? formData.promoCode.trim().toUpperCase() : undefined,
       notes: formData.notes,
       pickupTime: formData.pickupTime,
       dropoffTime: formData.dropoffTime,
@@ -262,49 +280,6 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
 
   if (!car) return null;
 
-  const getSummaryPrice = () => {
-    const daysCount = getDaysCount(formData.startDate, formData.endDate);
-    if (daysCount === 0 || !car) return 0;
-    
-    const startDate = new Date(formData.startDate);
-    const startDay = startDate.getDay();
-
-    let total = daysCount * car.price;
-    if (daysCount === 1 && car.price_24h) total = car.price_24h;
-    else if (daysCount === 2) {
-      const isWeekend = startDay === 5 || startDay === 6 || startDay === 0;
-      if (isWeekend && car.price_48h_wk) total = car.price_48h_wk;
-      else if (car.price_48h) total = car.price_48h;
-    } else if (daysCount === 3) {
-      const isWeekend = startDay === 5 || startDay === 6;
-      if (isWeekend && car.price_72h_wk) total = car.price_72h_wk;
-    } else if (daysCount === 5 && startDay === 1 && car.price_mon_fri) {
-      total = car.price_mon_fri;
-    } else if (daysCount >= 7 && daysCount < 30 && car.weeklyPrice) {
-      const weeks = Math.floor(daysCount / 7);
-      const remDays = daysCount % 7;
-      total = (weeks * car.weeklyPrice) + (remDays * car.price);
-    } else if (daysCount >= 30 && car.monthlyPrice) {
-      const months = Math.floor(daysCount / 30);
-      const remDays = daysCount % 30;
-      total = (months * car.monthlyPrice) + (remDays * car.price);
-    }
-
-    if (car.has_promo && car.promo_value && car.promo_value > 0) {
-      if (car.promo_type === 'percentage') {
-        const discount = Math.round(total * (car.promo_value / 100));
-        total = Math.max(0, total - discount);
-      } else {
-        const discount = Math.min(total, car.promo_value * Math.max(1, daysCount));
-        total = Math.max(0, total - discount);
-      }
-    }
-
-    return total;
-  };
-
-  const totalPrice = getSummaryPrice();
-  const days = getDaysCount(formData.startDate, formData.endDate);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -511,6 +486,39 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
             )}
           </div>
 
+          {/* Code Promo */}
+          <div>
+            <Label htmlFor="promoCode">Code promotionnel (optionnel)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="promoCode"
+                placeholder="Ex: SUMMER10"
+                value={formData.promoCode}
+                onChange={(e) => {
+                  setFormData({ ...formData, promoCode: e.target.value.toUpperCase() });
+                  setPromoError("");
+                  setPromoValid(false);
+                  setPromoDiscount(0);
+                }}
+                className="uppercase"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { void validatePromoCode(); }}
+                disabled={!formData.promoCode.trim() || !quote?.days || promoChecking}
+              >
+                {promoChecking ? "Vérification…" : "Appliquer"}
+              </Button>
+            </div>
+            {promoError && <p className="text-red-500 text-xs mt-1">{promoError}</p>}
+            {validPromo && (
+              <p className="text-green-500 text-xs mt-1">
+                ✓ Code valide ! Réduction: -{promoDiscount.toFixed(2)}€
+              </p>
+            )}
+          </div>
+
           {/* Récapitulatif */}
           <div className="bg-secondary/30 rounded-lg p-4 space-y-2">
             <h3 className="font-semibold">Récapitulatif</h3>
@@ -519,56 +527,11 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
               <span className="font-medium">{car.brand} {car.model}</span>
             </div>
             {formData.startDate && formData.endDate && (() => {
-              const days = getDaysCount(formData.startDate, formData.endDate);
-              if (days === 0) return null;
-              
-              let basePrice = car.price;
-              let rawTotalPrice = 0;
-              let priceType = "journalier";
-
-              if (days === 1 && car.price_24h) {
-                rawTotalPrice = car.price_24h;
-                basePrice = car.price_24h;
-                priceType = "forfait 24h";
-              } else if (days === 2 && car.price_48h) {
-                rawTotalPrice = car.price_48h;
-                basePrice = car.price_48h / 2;
-                priceType = "forfait 48h";
-              } else if (days === 3) {
-                rawTotalPrice = car.price_72h_wk || 250;
-                basePrice = rawTotalPrice / 3;
-                priceType = "forfait 3 jours (72h)";
-              } else if (days >= 7 && car.weeklyPrice) {
-                const weeks = Math.floor(days / 7);
-                const remainingDays = days % 7;
-                rawTotalPrice = weeks * car.weeklyPrice + remainingDays * car.price;
-                basePrice = rawTotalPrice / days;
-                priceType = "forfait hebdomadaire";
-              } else if (days >= 30 && car.monthlyPrice) {
-                const months = Math.floor(days / 30);
-                const remainingDays = days % 30;
-                rawTotalPrice = months * car.monthlyPrice + remainingDays * car.price;
-                basePrice = rawTotalPrice / days;
-                priceType = "forfait mensuel";
-              } else {
-                rawTotalPrice = days * car.price;
-              }
-
-              // Calcul promotion
-              const hasPromo = Boolean(car.has_promo && car.promo_value && car.promo_value > 0);
-              let promoDiscount = 0;
-              if (hasPromo) {
-                if (car.promo_type === 'percentage') {
-                  promoDiscount = Math.round(rawTotalPrice * ((car.promo_value || 0) / 100));
-                } else {
-                  promoDiscount = Math.min(rawTotalPrice, (car.promo_value || 0) * Math.max(1, days));
-                }
-              }
-
-              const deliveryFee = 0;
-              const finalPrice = Math.max(0, rawTotalPrice - promoDiscount) + deliveryFee;
-              const regularPrice = (days * car.price) + deliveryFee;
-              const standardDiscount = regularPrice > rawTotalPrice ? (regularPrice - rawTotalPrice) : 0;
+              if (!quote?.days) return null;
+              const { days, rawTotal: rawTotalPrice, priceType, discount: automaticDiscount } = quote;
+              const hasPromo = automaticDiscount > 0;
+              const finalPrice = totalPrice;
+              const standardDiscount = Math.max(0, days * car.price - rawTotalPrice);
 
               return (
                 <>
@@ -593,9 +556,15 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
                   {hasPromo && (
                     <div className="flex justify-between items-center text-sm p-2 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 font-semibold">
                       <span className="flex items-center gap-1.5 text-xs">
-                        <span>🔥</span> Offre Spéciale ({car.promo_type === 'percentage' ? `-${car.promo_value}%` : `-${car.promo_value}€ / jour`}) :
+                        <span>🔥</span> {quote.isCarPromo ? 'Offre véhicule' : 'Réduction globale'} ({quote.type === 'percentage' ? `-${quote.value}%` : `-${quote.value}€ / jour`}) :
                       </span>
-                      <span className="font-black text-orange-400">-{promoDiscount.toFixed(2)}€</span>
+                      <span className="font-black text-orange-400">-{automaticDiscount.toFixed(2)}€</span>
+                    </div>
+                  )}
+                  {validPromo && (
+                    <div className="flex justify-between text-sm text-green-500">
+                      <span>Code promo {formData.promoCode.trim()} :</span>
+                      <span>-{codeDiscount.toFixed(2)}€</span>
                     </div>
                   )}
                   {formData.deliveryOption && (
@@ -641,7 +610,7 @@ const BookingForm = ({ car, isOpen, onClose, selectedDates }: BookingFormProps) 
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Annuler
             </Button>
-            <Button type="submit" className="flex-1">
+            <Button type="submit" className="flex-1" disabled={promoChecking}>
               Confirmer la réservation
             </Button>
           </div>

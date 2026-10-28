@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
+const { quoteBooking, promoDiscount } = require('../lib/promotions');
+const { money } = require('../lib/pricing');
 const fs = require('fs');
 const path = require('path');
 
@@ -137,10 +139,30 @@ router.get('/fix-schema', async (req, res) => {
 
 // Créer une réservation
 router.post('/', async (req, res) => {
+  let connection;
   try {
-    const { carId, userId, startDate, endDate, pickupLocation, returnLocation, totalPrice, notes, driverLicenseNumber, driverLicenseDate } = req.body;
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    const { carId, userId, startDate, endDate, pickupLocation, returnLocation, notes, driverLicenseNumber, driverLicenseDate } = req.body;
 
-    const [result] = await pool.query(
+    const quote = await quoteBooking(connection, carId, startDate, endDate);
+    let totalPrice = quote.total;
+    const code = String(req.body.promoCode || '').trim().toUpperCase();
+    if (code) {
+      const [[promo]] = await connection.query('SELECT * FROM promo_codes WHERE code = ? FOR UPDATE', [code]);
+      if (promo?.car_id !== null && promo?.car_id !== undefined && Number(promo.car_id) !== Number(carId)) {
+        throw new Error('Ce code promo ne s’applique pas à ce véhicule');
+      }
+      totalPrice = money(totalPrice - promoDiscount(promo, totalPrice));
+      await connection.query('UPDATE promo_codes SET current_uses = current_uses + 1 WHERE id = ?', [promo.id]);
+    }
+    if (!Number.isFinite(Number(req.body.totalPrice)) || Math.abs(Number(req.body.totalPrice) - totalPrice) > 0.01) {
+      await connection.rollback();
+      return res.status(409).json({ error: 'Le tarif a changé. Rechargez le véhicule et vérifiez le nouveau prix avant de réserver.', totalPrice });
+    }
+    req.body.totalPrice = totalPrice;
+
+    const [result] = await connection.query(
       'INSERT INTO bookings (car_id, user_id, start_date, end_date, pickup_location, dropoff_location, total_price, notes, status, driver_license_number, driver_license_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "pending", ?, ?)',
       [
         carId, 
@@ -156,6 +178,7 @@ router.post('/', async (req, res) => {
       ]
     );
 
+    await connection.commit();
     const bookingId = result.insertId;
 
     // Envoi de l'email de confirmation (async, non-bloquant)
@@ -175,8 +198,12 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ success: true, bookingId });
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error('Erreur création réservation:', error);
+    if (/code promo|montant minimum|dates de réservation|véhicule non trouvé/i.test(error.message)) return res.status(400).json({ error: error.message });
     res.status(500).json({ error: 'Erreur lors de la création de la réservation' });
+  } finally {
+    if (connection) connection.release();
   }
 });
 

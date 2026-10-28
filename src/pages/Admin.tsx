@@ -1,3 +1,6 @@
+import { verifyCarPromotion } from "@/lib/car-promotions";
+import { readApiResponse } from "@/lib/api-response";
+import { enabled } from "@/lib/pricing";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClientAuth } from "@/hooks/use-client-auth";
@@ -145,6 +148,22 @@ const Admin = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedCarForCalendar, setSelectedCarForCalendar] = useState<Car | null>(null);
   const [contactMessages, setContactMessages] = useState<any[]>([]);
+  const [promoCodes, setPromoCodes] = useState<any[]>([]);
+  const [promoCodesError, setPromoCodesError] = useState("");
+  const [showPromoDialog, setShowPromoDialog] = useState(false);
+  const [editingPromoCode, setEditingPromoCode] = useState<any | null>(null);
+  const [promoForm, setPromoForm] = useState({
+    code: "",
+    discount_type: "percentage",
+    discount_value: "",
+    max_uses: "",
+    valid_from: "",
+    valid_until: "",
+    min_booking_amount: "0",
+    is_active: true,
+    car_id: "",
+    description: ""
+  });
   const [showUnavailableCarsSetting, setShowUnavailableCarsSetting] = useState(() => {
     return localStorage.getItem('showUnavailableCars') === 'true';
   });
@@ -162,7 +181,7 @@ const Admin = () => {
 
   const { refreshSettings } = useSettings();
 
-  const [companySettings, setCompanySettings] = useState({
+  const [companySettings, setCompanySettings] = useState<any>({
     company_name: "ChopTaLoc",
     company_siret: "",
     company_address: "",
@@ -178,7 +197,12 @@ const Admin = () => {
     vacation_start: "",
     vacation_end: "",
     alert_message: "",
-    global_discount: "0"
+    global_discount: "0",
+    hero_title_line1: "Louez l'Excellence,",
+    hero_title_line2: "Pilotez l'Émotion",
+    hero_subtitle: "Des véhicules premium à votre portée. Découvrez une expérience de location haut de gamme, sans compromis.",
+    payment_link_acompte: "",
+    payment_link_full: ""
   });
 
   const [settingsActiveCategory, setSettingsActiveCategory] = useState("company");
@@ -197,7 +221,7 @@ const Admin = () => {
       }
     } catch (e) {
       console.error(e);
-      alert('Erreur lors de l\'enregistrement');
+      alert(e instanceof Error ? e.message : 'Erreur lors de l\'enregistrement');
     }
   };
 
@@ -237,6 +261,88 @@ const Admin = () => {
         }
       })
       .catch(err => console.error(err));
+  };
+
+  const savePromoCode = async () => {
+    try {
+      const url = editingPromoCode 
+        ? `${API_URL}/promo-codes/${editingPromoCode.id}`
+        : `${API_URL}/promo-codes`;
+      
+      const method = editingPromoCode ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...promoForm,
+          discount_value: parseFloat(promoForm.discount_value),
+          max_uses: promoForm.max_uses ? parseInt(promoForm.max_uses) : null,
+          min_booking_amount: parseFloat(promoForm.min_booking_amount)
+        })
+      });
+
+      if (!response.ok) {
+        const data = await readApiResponse<{ error?: string }>(response);
+        alert(data.error || "Impossible d'enregistrer le code promotionnel.");
+        return;
+      }
+      if (response.ok) {
+        const updatedPromo = await readApiResponse<any>(response);
+        if (editingPromoCode) {
+          setPromoCodes(prev => prev.map(p => p.id === editingPromoCode.id ? updatedPromo : p));
+        } else {
+          setPromoCodes(prev => [updatedPromo, ...prev]);
+        }
+        setShowPromoDialog(false);
+        setEditingPromoCode(null);
+        setPromoForm({
+          code: "",
+          discount_type: "percentage",
+          discount_value: "",
+          max_uses: "",
+          valid_from: "",
+          valid_until: "",
+          min_booking_amount: "0",
+          is_active: true,
+          car_id: "",
+          description: ""
+        });
+        alert(editingPromoCode ? 'Code promo mis à jour' : 'Code promo créé');
+      }
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : 'Erreur lors de l\'enregistrement');
+    }
+  };
+
+  const deletePromoCode = async (id: number) => {
+    if (!confirm('Supprimer ce code promo ?')) return;
+    try {
+      const response = await fetch(`${API_URL}/promo-codes/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setPromoCodes(prev => prev.filter(p => p.id !== id));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const openEditPromo = (promo: any) => {
+    setEditingPromoCode(promo);
+    setPromoForm({
+      code: promo.code,
+      discount_type: promo.discount_type,
+      discount_value: promo.discount_value.toString(),
+      max_uses: promo.max_uses ? promo.max_uses.toString() : "",
+      valid_from: promo.valid_from ? promo.valid_from.slice(0, 16) : "",
+      valid_until: promo.valid_until ? promo.valid_until.slice(0, 16) : "",
+      min_booking_amount: promo.min_booking_amount ? promo.min_booking_amount.toString() : "0",
+      is_active: promo.is_active,
+      car_id: promo.car_id ? String(promo.car_id) : "",
+      description: promo.description || ""
+    });
+    setShowPromoDialog(true);
   };
 
   // États pour l'édition d'un véhicule
@@ -283,7 +389,7 @@ const Admin = () => {
       min_license_years: car.min_license_years !== undefined && car.min_license_years !== null ? car.min_license_years.toString() : "2",
       image_url: car.imageUrl || car.image_url || "",
       description: car.description || "",
-      has_promo: Boolean(car.has_promo),
+      has_promo: enabled(car.has_promo),
       promo_type: (car.promo_type as "percentage" | "fixed") || "percentage",
       promo_value: car.promo_value !== undefined && car.promo_value !== null && car.promo_value !== 0 ? car.promo_value.toString() : "",
     });
@@ -338,7 +444,7 @@ const Admin = () => {
               min_license_years: c.min_license_years !== null && c.min_license_years !== undefined ? parseInt(c.min_license_years) : undefined,
               description: c.description || undefined,
               features: Array.isArray(parsedFeats) ? parsedFeats : [],
-              has_promo: Boolean(c.has_promo),
+              has_promo: enabled(c.has_promo),
               promo_type: c.promo_type || 'percentage',
               promo_value: c.promo_value !== null && c.promo_value !== undefined ? parseFloat(c.promo_value) : 0,
             };
@@ -424,7 +530,18 @@ const Admin = () => {
           setModificationRequests([]);
         });
 
-      // Charger les demandes de modification
+      // Charger les codes promo sans masquer une indisponibilité de l'API.
+      fetch(`${API_URL}/promo-codes`)
+        .then(async res => {
+          const data = await readApiResponse<any>(res);
+          if (!res.ok) throw new Error(data.error || 'Impossible de charger les codes promotionnels.');
+          setPromoCodes(Array.isArray(data) ? data : []);
+          setPromoCodesError("");
+        })
+        .catch(err => {
+          setPromoCodesError(err.message || 'Impossible de charger les codes promotionnels.');
+          setPromoCodes([]);
+        });
     }
   }, [isAuthenticated]);
 
@@ -811,6 +928,9 @@ const Admin = () => {
               <Settings className="w-4 h-4" />
               <span>Réglages</span>
             </TabsTrigger>
+            <button type="button" onClick={() => { setSettingsActiveCategory('promo_codes'); setActiveTab('settings'); }} className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold hover:bg-secondary transition-all">
+              <TrendingUp className="w-4 h-4" /> Codes promo
+            </button>
             <TabsTrigger 
               value="stats" 
               className="gap-2 relative rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
@@ -2780,6 +2900,7 @@ const Admin = () => {
                 {[
                   { id: "company", label: "Entreprise", icon: Building2 },
                   { id: "rental", label: "Location & Tarifs", icon: Key },
+                  { id: "promo_codes", label: "Codes Promo", icon: TrendingUp },
                   { id: "availability", label: "Disponibilité & Pause", icon: Calendar },
                   { id: "system", label: "Système & Accès", icon: Settings2 },
                 ].map((item) => (
@@ -2872,6 +2993,35 @@ const Admin = () => {
                             />
                           </div>
                         </div>
+                        
+                        <h3 className="font-bold text-sm pt-6 border-b pb-2">Page d'Accueil</h3>
+                        <div className="space-y-4 pt-4">
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Titre - Ligne 1</label>
+                            <Input 
+                              value={companySettings.hero_title_line1} 
+                              onChange={(e) => setCompanySettings({...companySettings, hero_title_line1: e.target.value})}
+                              placeholder="Louez l'Excellence,"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Titre - Ligne 2 (orange)</label>
+                            <Input 
+                              value={companySettings.hero_title_line2} 
+                              onChange={(e) => setCompanySettings({...companySettings, hero_title_line2: e.target.value})}
+                              placeholder="Pilotez l'Émotion"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Sous-titre</label>
+                            <textarea 
+                              className="w-full min-h-[60px] p-3 text-sm rounded-xl border bg-secondary/30 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                              value={companySettings.hero_subtitle}
+                              onChange={(e) => setCompanySettings({...companySettings, hero_subtitle: e.target.value})}
+                              placeholder="Des véhicules premium à votre portée..."
+                            />
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -2929,7 +3079,7 @@ const Admin = () => {
                           <div className="space-y-2">
                             <label className="text-xs font-bold uppercase text-muted-foreground">Type d'acompte</label>
                             <select 
-                              value={(companySettings as any).booking_acompte_type || "percentage"}
+                              value={companySettings.booking_acompte_type || "percentage"}
                               onChange={(e) => setCompanySettings({...companySettings, booking_acompte_type: e.target.value})}
                               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -2941,13 +3091,116 @@ const Admin = () => {
                             <label className="text-xs font-bold uppercase text-muted-foreground">Valeur de l'acompte</label>
                             <Input 
                               type="number"
-                              value={(companySettings as any).booking_acompte_value || "50"} 
+                              value={companySettings.booking_acompte_value || "50"} 
                               onChange={(e) => setCompanySettings({...companySettings, booking_acompte_value: e.target.value})}
                             />
                           </div>
                         </div>
+
+                        <div className="space-y-4 mt-6 pt-6 border-t border-border">
+                          <h4 className="font-bold text-sm">Liens de Paiement</h4>
+                          <p className="text-xs text-muted-foreground">Liens de paiement pour les réservations (fonctionnalité à venir)</p>
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold uppercase text-muted-foreground">Lien paiement acompte</label>
+                              <Input 
+                                value={companySettings.payment_link_acompte || ""} 
+                                onChange={(e) => setCompanySettings({...companySettings, payment_link_acompte: e.target.value})}
+                                placeholder="https://..."
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold uppercase text-muted-foreground">Lien paiement réservation totale</label>
+                              <Input 
+                                value={companySettings.payment_link_full || ""} 
+                                onChange={(e) => setCompanySettings({...companySettings, payment_link_full: e.target.value})}
+                                placeholder="https://..."
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
+                  </div>
+                )}
+
+                {settingsActiveCategory === "promo_codes" && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-xl">Codes Promotionnels</CardTitle>
+                        <CardDescription>Créez et gérez vos codes promo</CardDescription>
+                      </div>
+                      <Button 
+                        onClick={() => {
+                          setEditingPromoCode(null);
+                          setPromoForm({
+                            code: "",
+                            discount_type: "percentage",
+                            discount_value: "",
+                            max_uses: "",
+                            valid_from: "",
+                            valid_until: "",
+                            min_booking_amount: "0",
+                            is_active: true,
+                            car_id: "",
+                            description: ""
+                          });
+                          setShowPromoDialog(true);
+                        }}
+                        className="gap-2"
+                      >
+                        <TrendingUp className="w-4 h-4" /> Nouveau code
+                      </Button>
+                    </div>
+
+                    {promoCodesError && <p role="alert" className="rounded-lg border border-orange-500/30 bg-orange-500/10 p-3 text-sm text-orange-400">{promoCodesError}</p>}
+
+                    <div className="space-y-3">
+                      {promoCodes.length === 0 && !promoCodesError ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          Aucun code promo créé
+                        </div>
+                      ) : (
+                        promoCodes.map((promo) => (
+                          <div key={promo.id} className="p-4 rounded-xl bg-secondary/30 border border-border/50 flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <span className="font-bold text-lg">{promo.code}</span>
+                                <Badge variant={promo.is_active ? "default" : "secondary"}>
+                                  {promo.is_active ? "Actif" : "Inactif"}
+                                </Badge>
+                              </div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {promo.discount_type === 'percentage' ? `${promo.discount_value}%` : `${promo.discount_value}€`}
+                                {` • ${promo.car_id ? `${promo.car_brand || ''} ${promo.car_model || `Véhicule #${promo.car_id}`}`.trim() : 'Toute la flotte'}`}
+                                {promo.max_uses && ` • ${promo.current_uses}/${promo.max_uses} utilisations`}
+                                {promo.valid_until && ` • Expire: ${new Date(promo.valid_until).toLocaleDateString('fr-FR')}`}
+                              </div>
+                              {promo.description && (
+                                <p className="text-xs text-muted-foreground mt-1">{promo.description}</p>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openEditPromo(promo)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deletePromoCode(promo.id)}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -3745,6 +3998,7 @@ const Admin = () => {
                       });
 
                       if (response.ok) {
+                        await verifyCarPromotion(String(editingCar.id), editCarForm);
                         setCars(prev => prev.map(c => c.id === editingCar.id ? {
                           ...c,
                           brand: editCarForm.brand,
@@ -3774,7 +4028,7 @@ const Admin = () => {
                       }
                     } catch (e) {
                       console.error(e);
-                      alert("Erreur lors de la mise à jour");
+                      alert(e instanceof Error ? e.message : "Erreur lors de la mise à jour");
                     }
                   }}
                 >
@@ -3783,6 +4037,132 @@ const Admin = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Code Promo */}
+      <Dialog open={showPromoDialog} onOpenChange={setShowPromoDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingPromoCode ? 'Modifier le code promo' : 'Nouveau code promo'}</DialogTitle>
+            <DialogDescription>
+              {editingPromoCode ? 'Modifiez les détails du code promo' : 'Créez un nouveau code promotionnel'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase text-muted-foreground">Véhicules concernés</label>
+              <select
+                value={promoForm.car_id}
+                onChange={(e) => setPromoForm({...promoForm, car_id: e.target.value})}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Toute la flotte</option>
+                {cars.map(car => (
+                  <option key={car.id} value={String(car.id)}>{car.brand} {car.model}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">Choisissez une voiture, ou laissez « Toute la flotte ».</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase text-muted-foreground">Code</label>
+              <Input 
+                value={promoForm.code}
+                onChange={(e) => setPromoForm({...promoForm, code: e.target.value.toUpperCase()})}
+                placeholder="SUMMER10"
+                className="uppercase"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground">Type</label>
+                <select 
+                  value={promoForm.discount_type}
+                  onChange={(e) => setPromoForm({...promoForm, discount_type: e.target.value})}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="percentage">Pourcentage (%)</option>
+                  <option value="fixed">Montant fixe (€)</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground">Valeur</label>
+                <Input 
+                  type="number"
+                  value={promoForm.discount_value}
+                  onChange={(e) => setPromoForm({...promoForm, discount_value: e.target.value})}
+                  placeholder={promoForm.discount_type === 'percentage' ? "10" : "50"}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground">Max utilisations</label>
+                <Input 
+                  type="number"
+                  value={promoForm.max_uses}
+                  onChange={(e) => setPromoForm({...promoForm, max_uses: e.target.value})}
+                  placeholder="Illimité si vide"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground">Montant minimum (€)</label>
+                <Input 
+                  type="number"
+                  value={promoForm.min_booking_amount}
+                  onChange={(e) => setPromoForm({...promoForm, min_booking_amount: e.target.value})}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground">Valide à partir de</label>
+                <Input 
+                  type="datetime-local"
+                  value={promoForm.valid_from}
+                  onChange={(e) => setPromoForm({...promoForm, valid_from: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-muted-foreground">Valide jusqu'au</label>
+                <Input 
+                  type="datetime-local"
+                  value={promoForm.valid_until}
+                  onChange={(e) => setPromoForm({...promoForm, valid_until: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase text-muted-foreground">Description</label>
+              <textarea 
+                className="w-full min-h-[60px] p-3 text-sm rounded-xl border bg-secondary/30 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                value={promoForm.description}
+                onChange={(e) => setPromoForm({...promoForm, description: e.target.value})}
+                placeholder="Description optionnelle..."
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={promoForm.is_active}
+                  onChange={(e) => setPromoForm({...promoForm, is_active: e.target.checked})}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+              <span className="text-sm">Code actif</span>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowPromoDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={savePromoCode}>
+              {editingPromoCode ? 'Mettre à jour' : 'Créer'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -223,6 +223,24 @@ CREATE TABLE modification_requests (
     FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 16. TABLE DES CODES PROMO
+CREATE TABLE promo_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    car_id INT NULL,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_type ENUM('percentage', 'fixed') NOT NULL DEFAULT 'percentage',
+    discount_value DECIMAL(10, 2) NOT NULL,
+    max_uses INT,
+    current_uses INT DEFAULT 0,
+    valid_from TIMESTAMP NULL,
+    valid_until TIMESTAMP NULL,
+    min_booking_amount DECIMAL(10, 2) DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- ============================================
 -- DONNÉES INITIALES
 -- ============================================

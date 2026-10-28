@@ -40,5 +40,6 @@ lerna-debug.log*
 coverage
 
 # Temporary files
+backups/
 *.tmp
 *.temp
