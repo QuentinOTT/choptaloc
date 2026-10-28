@@ -62,10 +62,7 @@ const ContactSection = () => {
           <div className="lg:col-span-2 rounded-3xl p-8 bg-gradient-to-b from-card/90 via-card/60 to-card/40 backdrop-blur-xl border border-white/[0.08] shadow-2xl flex flex-col justify-between space-y-8">
             <div className="space-y-6">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Agence Premium</span>
-                <h3 className="text-2xl font-black tracking-tight text-foreground mt-1">
-                  ChopTaLoc Paris
-                </h3>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Choptaloc</span>
                 <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                   Notre équipe vous accueille et répond à vos demandes sur mesure 7j/7 pour tous vos projets de location.
                 </p>
