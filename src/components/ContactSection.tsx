@@ -1,11 +1,9 @@
-import { Phone, Mail, MapPin, Loader2, Clock, Send, ShieldCheck } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { useState } from "react";
 import { API_URL } from "@/config/api";
 import { toast } from "sonner";
-import { useSettings } from "@/context/SettingsContext";
 
 const ContactSection = () => {
-  const { settings } = useSettings();
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", subject: "Demande de location", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -57,76 +55,10 @@ const ContactSection = () => {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-stretch">
-          {/* Agency Info Card (Left Column) */}
-          <div className="lg:col-span-2 rounded-3xl p-8 bg-gradient-to-b from-card/90 via-card/60 to-card/40 backdrop-blur-xl border border-white/[0.08] shadow-2xl flex flex-col justify-between space-y-8">
-            <div className="space-y-6">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Choptaloc</span>
-                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                  Notre équipe vous accueille et répond à vos demandes sur mesure 7j/7 pour tous vos projets de location.
-                </p>
-              </div>
-
-              <div className="space-y-4 pt-2">
-                <a 
-                  href={settings.company_phone ? `tel:${settings.company_phone}` : "tel:+33123456789"}
-                  className="flex items-center gap-4 p-3.5 rounded-2xl bg-secondary/40 border border-border/40 hover:border-primary/40 hover:bg-secondary/70 transition-all duration-300 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Téléphone direct</p>
-                    <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                      {settings.company_phone || "+33 1 23 45 67 89"}
-                    </p>
-                  </div>
-                </a>
-
-                <a 
-                  href={`mailto:${settings.company_email || "contact@choptaloc.com"}`}
-                  className="flex items-center gap-4 p-3.5 rounded-2xl bg-secondary/40 border border-border/40 hover:border-primary/40 hover:bg-secondary/70 transition-all duration-300 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Email réservation</p>
-                    <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                      {settings.company_email || "contact@choptaloc.com"}
-                    </p>
-                  </div>
-                </a>
-
-                <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-secondary/40 border border-border/40">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0">
-                    <MapPin className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Localisation</p>
-                    <p className="text-sm font-bold text-foreground">
-                      {settings.company_address || "Mantes-la-Jolie, Île-de-France"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Response Time Guarantee Pill */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 flex items-center gap-3">
-              <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-foreground">Engagement Sérénité</p>
-                <p className="text-[11px] text-muted-foreground">Réponse garantie sous 1 heure en journée</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Form (Right Column) */}
+        <div className="max-w-3xl mx-auto">
           <form 
             onSubmit={handleSubmit} 
-            className="lg:col-span-3 rounded-3xl p-8 md:p-10 bg-card/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl space-y-6 flex flex-col justify-between"
+            className="rounded-3xl p-8 md:p-10 bg-card/70 backdrop-blur-xl border border-white/[0.08] shadow-2xl space-y-6 flex flex-col justify-between"
           >
             <div className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
