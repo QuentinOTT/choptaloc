@@ -52,6 +52,18 @@ async function runMigrations() {
       await pool.query('ALTER TABLE cars ADD COLUMN min_license_years INT DEFAULT NULL');
       console.log('✅ Migration: Ajout colonne min_license_years');
     }
+    if (!columnNames.includes('has_promo')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN has_promo BOOLEAN DEFAULT FALSE');
+      console.log('✅ Migration: Ajout colonne has_promo');
+    }
+    if (!columnNames.includes('promo_type')) {
+      await pool.query("ALTER TABLE cars ADD COLUMN promo_type VARCHAR(20) DEFAULT 'percentage'");
+      console.log('✅ Migration: Ajout colonne promo_type');
+    }
+    if (!columnNames.includes('promo_value')) {
+      await pool.query('ALTER TABLE cars ADD COLUMN promo_value DECIMAL(10, 2) DEFAULT 0');
+      console.log('✅ Migration: Ajout colonne promo_value');
+    }
 
     // Migration image_url: VARCHAR -> LONGTEXT pour supporter les images base64
     const imageUrlCol = columns.find(c => c.Field === 'image_url');

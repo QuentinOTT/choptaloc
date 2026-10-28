@@ -1,6 +1,9 @@
 -- Update for caution and min license years
 ALTER TABLE cars ADD COLUMN caution_amount DECIMAL(10, 2) DEFAULT 1000;
 ALTER TABLE cars ADD COLUMN min_license_years INT DEFAULT 2;
+ALTER TABLE cars ADD COLUMN has_promo BOOLEAN DEFAULT FALSE;
+ALTER TABLE cars ADD COLUMN promo_type VARCHAR(20) DEFAULT 'percentage';
+ALTER TABLE cars ADD COLUMN promo_value DECIMAL(10, 2) DEFAULT 0;
 
 ============================================
 -- MISE À JOUR DE LA BASE DE DONNÉES CHOPTALOC

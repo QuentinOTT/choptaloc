@@ -49,11 +49,14 @@ router.post('/', async (req, res) => {
       min_license_years,
       image_url, 
       specs, 
-      is_available 
+      is_available,
+      has_promo,
+      promo_type,
+      promo_value
     } = req.body;
 
     const [result] = await pool.query(
-      'INSERT INTO cars (brand, model, tag, price_per_day, price_24h, price_48h, price_48h_wk, price_72h_wk, price_mon_fri, weekend_price, weekly_price, monthly_price, caution_amount, min_license_years, image_url, specs, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO cars (brand, model, tag, price_per_day, price_24h, price_48h, price_48h_wk, price_72h_wk, price_mon_fri, weekend_price, weekly_price, monthly_price, caution_amount, min_license_years, image_url, specs, is_available, has_promo, promo_type, promo_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         brand, 
         model, 
@@ -71,7 +74,10 @@ router.post('/', async (req, res) => {
         min_license_years || null,
         image_url, 
         JSON.stringify(specs || []), 
-        is_available !== false
+        is_available !== false,
+        has_promo ? 1 : 0,
+        promo_type || 'percentage',
+        promo_value !== undefined && promo_value !== null ? parseFloat(promo_value) : 0
       ]
     );
 
@@ -104,7 +110,10 @@ router.put('/:id', async (req, res) => {
       description,
       features,
       caution_amount,
-      min_license_years
+      min_license_years,
+      has_promo,
+      promo_type,
+      promo_value
     } = req.body;
 
     const updates = [];
@@ -129,6 +138,9 @@ router.put('/:id', async (req, res) => {
     if (features !== undefined) { updates.push('features = ?'); values.push(JSON.stringify(features)); }
     if (caution_amount !== undefined) { updates.push('caution_amount = ?'); values.push(caution_amount); }
     if (min_license_years !== undefined) { updates.push('min_license_years = ?'); values.push(min_license_years); }
+    if (has_promo !== undefined) { updates.push('has_promo = ?'); values.push(has_promo ? 1 : 0); }
+    if (promo_type !== undefined) { updates.push('promo_type = ?'); values.push(promo_type); }
+    if (promo_value !== undefined) { updates.push('promo_value = ?'); values.push(parseFloat(promo_value) || 0); }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'Aucune donnée à mettre à jour' });

@@ -11,9 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key, Building2, Settings2, Save, Upload, Image as ImageIcon, TrendingUp, TrendingDown, Download, BarChart3, Filter } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { X, Car, Calendar, Users, Settings, LogOut, Trash2, Edit, Check, XCircle, ArrowLeft, DollarSign, Euro, ChevronUp, ChevronDown, User, FileText, Shield, Key, Building2, Settings2, Save, Upload, Image as ImageIcon, TrendingUp, BarChart2 } from "lucide-react";
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Area, AreaChart, Legend
+} from "recharts";
 import { useSettings } from "@/context/SettingsContext";
+import StatsChartSection from "@/components/StatsChartSection";
 
 const documentLabels: Record<string, string> = {
   id_card_front: "Carte d'identité - Recto",
@@ -58,20 +62,6 @@ interface ModificationRequest {
   is_admin_proposal?: boolean | number;
 }
 
-interface MonthlyStat {
-  monthKey: string;
-  label: string;
-  year: number;
-  monthNum: number;
-  revenue: number;
-  confirmedCount: number;
-  pendingCount: number;
-  cancelledCount: number;
-  totalBookings: number;
-  averageBasket: number;
-  growth: number | null;
-}
-
 interface Car {
   id: string;
   brand: string;
@@ -92,6 +82,9 @@ interface Car {
   licensePlate?: string;
   caution_amount?: number;
   min_license_years?: number;
+  has_promo?: boolean;
+  promo_type?: 'percentage' | 'fixed';
+  promo_value?: number;
 }
 
 const Admin = () => {
@@ -126,6 +119,9 @@ const Admin = () => {
     min_license_years: "2",
     image_url: "",
     description: "",
+    has_promo: false,
+    promo_type: "percentage" as "percentage" | "fixed",
+    promo_value: "",
   });
   const [newCarFeatures, setNewCarFeatures] = useState<string[]>([]);
   const [newCarFeatureInput, setNewCarFeatureInput] = useState("");
@@ -145,8 +141,6 @@ const Admin = () => {
   });
   const [showProposeMod, setShowProposeMod] = useState(false);
   const [selectedBookingForMod, setSelectedBookingForMod] = useState<Booking | null>(null);
-  const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
-  const [statsYearFilter, setStatsYearFilter] = useState<string>("all");
   const [modProposalForm, setModProposalForm] = useState({
     startDate: "",
     endDate: "",
@@ -254,6 +248,9 @@ const Admin = () => {
     min_license_years: "2",
     image_url: "",
     description: "",
+    has_promo: false,
+    promo_type: "percentage" as "percentage" | "fixed",
+    promo_value: "",
   });
   const [editCarFeatures, setEditCarFeatures] = useState<string[]>([]);
   const [editCarFeatureInput, setEditCarFeatureInput] = useState("");
@@ -277,6 +274,9 @@ const Admin = () => {
       min_license_years: car.min_license_years !== undefined && car.min_license_years !== null ? car.min_license_years.toString() : "2",
       image_url: car.imageUrl || car.image_url || "",
       description: car.description || "",
+      has_promo: Boolean(car.has_promo),
+      promo_type: (car.promo_type as "percentage" | "fixed") || "percentage",
+      promo_value: car.promo_value !== undefined && car.promo_value !== null && car.promo_value !== 0 ? car.promo_value.toString() : "",
     });
     let parsedFeatures: string[] = [];
     if (car.features) {
@@ -328,6 +328,9 @@ const Admin = () => {
               min_license_years: c.min_license_years !== null && c.min_license_years !== undefined ? parseInt(c.min_license_years) : undefined,
               description: c.description || undefined,
               features: Array.isArray(parsedFeats) ? parsedFeats : [],
+              has_promo: Boolean(c.has_promo),
+              promo_type: c.promo_type || 'percentage',
+              promo_value: c.promo_value !== null && c.promo_value !== undefined ? parseFloat(c.promo_value) : 0,
             };
           });
           const sortedCars = mappedCars.sort((a: any, b: any) => Number(b.isAvailable) - Number(a.isAvailable));
@@ -411,15 +414,7 @@ const Admin = () => {
           setModificationRequests([]);
         });
 
-      // Charger les statistiques mensuelles
-      fetch(`${API_URL}/bookings/stats/monthly`)
-        .then(res => res.json())
-        .then(resData => {
-          if (resData && resData.success && Array.isArray(resData.data)) {
-            setMonthlyStats(resData.data);
-          }
-        })
-        .catch(err => console.error('Erreur chargement stats mensuelles:', err));
+      // Charger les demandes de modification
     }
   }, [isAuthenticated]);
 
@@ -622,71 +617,171 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header Admin */}
-      <div className="border-b bg-card sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-3">
-            <Button onClick={() => navigate("/")} variant="ghost" className="gap-2 p-2 md:px-4">
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden md:inline">Retour au site</span>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Header Admin - Open Design Premium */}
+      <header className="border-b border-border/40 bg-card/70 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={() => navigate("/")} 
+              variant="outline" 
+              size="sm"
+              className="gap-2 rounded-xl text-xs font-semibold border-border/60 hover:bg-secondary/80 hover:text-primary transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Retour au site</span>
             </Button>
-            <h1 className="text-lg md:text-2xl font-bold">Administration</h1>
+            <div className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base md:text-lg font-black tracking-tight text-foreground">ChopTaLoc</h1>
+                  <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider border border-primary/20">
+                    Console Admin
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground hidden sm:block">
+                  Gestion centralisée de la flotte, tarifs et réservations
+                </p>
+              </div>
+            </div>
           </div>
-          <Button onClick={logout} variant="outline" className="gap-2 p-2 md:px-4">
-            <LogOut className="w-4 h-4" />
-            <span className="hidden md:inline">Déconnexion</span>
-          </Button>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+          <div className="flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-xl border border-border/50">
+              <span className="font-semibold text-foreground">{user?.email || "Administrateur"}</span>
+            </div>
+            <Button 
+              onClick={logout} 
+              variant="ghost" 
+              size="sm"
+              className="gap-2 rounded-xl text-xs font-semibold text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Déconnexion</span>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+        {/* Quick Stats Banner - Open Design */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="p-4 rounded-2xl bg-card/60 backdrop-blur-md border border-border/50 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Demandes en attente</p>
+              <p className="text-xl md:text-2xl font-black text-foreground mt-0.5">
+                {bookings.filter(b => b.status === "pending").length + modificationRequests.filter(m => m.status === "pending").length}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+              <Calendar className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-card/60 backdrop-blur-md border border-border/50 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Véhicules en flotte</p>
+              <p className="text-xl md:text-2xl font-black text-foreground mt-0.5">
+                {cars.length} <span className="text-xs font-normal text-muted-foreground">({cars.filter(c => c.isAvailable).length} dispo)</span>
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <Car className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-card/60 backdrop-blur-md border border-border/50 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Véhicules en Promo</p>
+              <p className="text-xl md:text-2xl font-black text-orange-400 mt-0.5">
+                {cars.filter(c => c.has_promo && c.promo_value).length} <span className="text-xs font-normal text-muted-foreground">actif(s)</span>
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400">
+              🔥
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-card/60 backdrop-blur-md border border-border/50 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Messages non lus</p>
+              <p className="text-xl md:text-2xl font-black text-foreground mt-0.5">
+                {contactMessages.filter(m => !m.is_read).length}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <FileText className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-[950px] h-auto p-1">
-            <TabsTrigger value="bookings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
+          <TabsList className="flex flex-wrap w-full lg:w-auto h-auto p-1.5 bg-card/80 backdrop-blur-md rounded-2xl border border-border/50 gap-1">
+            <TabsTrigger 
+              value="bookings" 
+              className="gap-2 relative rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+            >
               <Calendar className="w-4 h-4" />
-              <span className="hidden md:inline">Réservations</span>
-              <span className="md:hidden">Réserv.</span>
+              <span>Réservations</span>
               {(bookings.filter(b => b.status === "pending").length + modificationRequests.filter(m => m.status === "pending").length) > 0 && (
-                <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] md:text-xs px-1 md:px-1.5 py-0.5">
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-red-500 text-white text-[10px] font-bold">
                   {bookings.filter(b => b.status === "pending").length + modificationRequests.filter(m => m.status === "pending").length}
-                </Badge>
+                </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="cars" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
+            <TabsTrigger 
+              value="cars" 
+              className="gap-2 relative rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+            >
               <Car className="w-4 h-4" />
-              <span className="hidden md:inline">Véhicules</span>
-              <span className="md:hidden">Véhic.</span>
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
-              <Users className="w-4 h-4" />
-              <span className="hidden md:inline">Utilisateurs</span>
-              <span className="md:hidden">Users</span>
-            </TabsTrigger>
-            <TabsTrigger value="global-calendar" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
-              <Calendar className="w-4 h-4" />
-              <span className="hidden md:inline">Calendrier Global</span>
-              <span className="md:hidden">Calendrier</span>
-            </TabsTrigger>
-            <TabsTrigger value="messages" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
-              <FileText className="w-4 h-4" />
-              <span className="hidden md:inline">Messagerie</span>
-              <span className="md:hidden">Msg</span>
-              {contactMessages.filter(m => !m.is_read).length > 0 && (
-                <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] md:text-xs px-1 md:px-1.5 py-0.5">
-                  {contactMessages.filter(m => !m.is_read).length}
-                </Badge>
+              <span>Véhicules</span>
+              {cars.filter(c => c.has_promo && c.promo_value).length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-orange-500 text-white text-[10px] font-bold">
+                  {cars.filter(c => c.has_promo && c.promo_value).length} promo
+                </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
-              <Settings className="w-4 h-4" />
-              <span className="hidden md:inline">Réglages</span>
-              <span className="md:hidden">Réglages</span>
+            <TabsTrigger 
+              value="users" 
+              className="gap-2 relative rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+            >
+              <Users className="w-4 h-4" />
+              <span>Utilisateurs</span>
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-2 relative flex flex-col md:flex-row items-center py-3 md:py-2 text-[10px] md:text-sm">
+            <TabsTrigger 
+              value="global-calendar" 
+              className="gap-2 relative rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+            >
+              <Calendar className="w-4 h-4" />
+              <span className="hidden sm:inline">Calendrier Global</span>
+              <span className="sm:hidden">Calendrier</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="messages" 
+              className="gap-2 relative rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Messagerie</span>
+              {contactMessages.filter(m => !m.is_read).length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                  {contactMessages.filter(m => !m.is_read).length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="settings" 
+              className="gap-2 relative rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Réglages</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="stats" 
+              className="gap-2 relative rounded-xl px-3.5 py-2 text-xs md:text-sm font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+            >
               <DollarSign className="w-4 h-4" />
-              <span className="hidden md:inline">Statistiques</span>
-              <span className="md:hidden">Stats</span>
+              <span>Statistiques</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1519,6 +1614,108 @@ const Admin = () => {
                     </div>
                   </div>
 
+                  {/* Configuration de la Promotion */}
+                  <div className="space-y-4 pt-3 border-t">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
+                          🔥
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-foreground">Promotion sur ce véhicule</h4>
+                          <p className="text-xs text-muted-foreground">Applique un prix barré avec réduction sur le site et le simulateur</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground">{newCarForm.has_promo ? "Active" : "Désactivée"}</span>
+                        <input
+                          type="checkbox"
+                          checked={newCarForm.has_promo}
+                          onChange={(e) => setNewCarForm({ ...newCarForm, has_promo: e.target.checked })}
+                          className="w-5 h-5 accent-primary rounded cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {newCarForm.has_promo && (
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-orange-500/5 via-card to-background border border-orange-500/20 space-y-4 animate-in fade-in duration-200">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-bold uppercase text-muted-foreground mb-1 block">Type de Réduction</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setNewCarForm({ ...newCarForm, promo_type: "percentage" })}
+                                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
+                                  newCarForm.promo_type === "percentage"
+                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                    : "bg-secondary/40 border-border/40 text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                % Pourcentage
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setNewCarForm({ ...newCarForm, promo_type: "fixed" })}
+                                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
+                                  newCarForm.promo_type === "fixed"
+                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                    : "bg-secondary/40 border-border/40 text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                € Montant fixe
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold uppercase text-muted-foreground mb-1 block">
+                              Valeur de la réduction ({newCarForm.promo_type === "percentage" ? "%" : "€ / jour"})
+                            </label>
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                min="0"
+                                placeholder={newCarForm.promo_type === "percentage" ? "ex: 20" : "ex: 30"}
+                                value={newCarForm.promo_value}
+                                onChange={(e) => setNewCarForm({ ...newCarForm, promo_value: e.target.value })}
+                                className="pr-10 border-orange-500/30 focus:border-orange-500"
+                              />
+                              <span className="absolute right-3 top-2.5 text-xs font-bold text-orange-400">
+                                {newCarForm.promo_type === "percentage" ? "%" : "€"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Aperçu en direct */}
+                        {(() => {
+                          const rawP = parseFloat(newCarForm.price_per_day) || 0;
+                          const val = parseFloat(newCarForm.promo_value) || 0;
+                          if (rawP > 0 && val > 0) {
+                            const discount = newCarForm.promo_type === "percentage"
+                              ? Math.round((rawP * val) / 100)
+                              : Math.min(rawP, val);
+                            const finalP = Math.max(0, rawP - discount);
+                            return (
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-xs">
+                                <span className="text-muted-foreground font-medium">Aperçu du tarif promo :</span>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="line-through text-muted-foreground/70 font-semibold">{rawP}€</span>
+                                  <span className="text-lg font-black text-orange-500">{finalP}€ / jour</span>
+                                  <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white font-black text-[10px]">
+                                    -{newCarForm.promo_type === "percentage" ? `${val}%` : `${val}€`}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-3 pt-4 justify-end border-t">
                     <Button 
                       variant="outline"
@@ -1532,7 +1729,7 @@ const Admin = () => {
 
                     <Button 
                       onClick={async () => {
-                        const { brand, model, price_per_day, price_24h, price_48h, price_48h_wk, price_72h_wk, price_mon_fri, weekly_price, monthly_price, tag, image_url } = newCarForm;
+                        const { brand, model, price_per_day, price_24h, price_48h, price_48h_wk, price_72h_wk, price_mon_fri, weekly_price, monthly_price, tag, image_url, has_promo, promo_type, promo_value } = newCarForm;
                         const price = parseInt(price_per_day);
 
                         if (brand && model && !isNaN(price)) {
@@ -1558,7 +1755,10 @@ const Admin = () => {
                                 features: newCarFeatures.length > 0 ? newCarFeatures : null,
                                 image_url: image_url || '/assets/placeholder.png',
                                 specs: ['Automatique', '5 places', 'Essence', 'Climatisation'],
-                                is_available: true
+                                is_available: true,
+                                has_promo: has_promo,
+                                promo_type: promo_type,
+                                promo_value: promo_value ? parseFloat(promo_value) : 0,
                               })
                             });
 
@@ -1578,7 +1778,10 @@ const Admin = () => {
                                 monthlyPrice: monthly_price ? parseInt(monthly_price) : price * 30,
                                 isAvailable: true,
                                 imageUrl: image_url || '/assets/placeholder.png',
-                                tag: tag || 'Disponible maintenant'
+                                tag: tag || 'Disponible maintenant',
+                                has_promo: has_promo,
+                                promo_type: promo_type,
+                                promo_value: promo_value ? parseFloat(promo_value) : 0,
                               };
                               setCars(prev => [...prev, newCar]);
                               alert('Véhicule ajouté avec succès !');
@@ -1600,6 +1803,9 @@ const Admin = () => {
                                 min_license_years: "2",
                                 image_url: "",
                                 description: "",
+                                has_promo: false,
+                                promo_type: "percentage",
+                                promo_value: "",
                               });
                               setNewCarFeatures([]);
                               setNewCarFeatureInput("");
@@ -1658,8 +1864,26 @@ const Admin = () => {
                       </Badge>
                     </div>
 
-                    <div className="text-center font-black text-sm md:text-base">
-                      {car.price}€
+                    <div className="text-center">
+                      {car.has_promo && car.promo_value ? (
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="line-through text-xs text-muted-foreground/70 font-semibold">{car.price}€</span>
+                            <span className="font-black text-sm md:text-base text-orange-500">
+                              {car.promo_type === 'percentage'
+                                ? Math.round(car.price * (1 - car.promo_value / 100))
+                                : Math.max(0, car.price - car.promo_value)}€
+                            </span>
+                          </div>
+                          <Badge className="bg-orange-500/10 text-orange-400 border border-orange-500/30 text-[10px] py-0 px-2 h-4 mt-0.5 font-bold tracking-tight">
+                            🔥 {car.promo_type === 'percentage' ? `-${car.promo_value}%` : `-${car.promo_value}€`}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <div className="font-black text-sm md:text-base">
+                          {car.price}€
+                        </div>
+                      )}
                     </div>
 
                     <div className="md:col-span-2 flex flex-wrap justify-end gap-2">
@@ -2796,353 +3020,93 @@ const Admin = () => {
 
           {/* Tab Statistiques */}
           <TabsContent value="stats" className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">Statistiques & Revenus</h2>
-                <p className="text-sm text-muted-foreground">Analyse détaillée des performances financières et des réservations</p>
+            <div className="flex items-center gap-3 mb-2">
+              <div style={{background:'linear-gradient(135deg,#d4a843,#b8922e)', borderRadius:12, padding:'8px 10px', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                <BarChart2 className="w-5 h-5 text-black" />
               </div>
-              
-              {/* Bouton d'export CSV */}
-              {monthlyStats.length > 0 && (
-                <Button 
-                  onClick={() => {
-                    const listToExport = statsYearFilter === "all" 
-                      ? monthlyStats 
-                      : monthlyStats.filter(s => s.year.toString() === statsYearFilter);
-                    if (!listToExport || listToExport.length === 0) return;
-                    
-                    const headers = ["Mois", "Annee", "Chiffre d'affaires (EUR)", "Locations confirmees", "Loc. en attente", "Loc. annulees", "Total demandes", "Panier moyen (EUR)", "Croissance (%)"];
-                    const rows = listToExport.map(s => [
-                      `"${s.label}"`,
-                      s.year,
-                      s.revenue.toFixed(2),
-                      s.confirmedCount,
-                      s.pendingCount,
-                      s.cancelledCount,
-                      s.totalBookings,
-                      s.averageBasket.toFixed(2),
-                      s.growth !== null ? `${s.growth}%` : "N/A"
-                    ]);
-                    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(";"), ...rows.map(e => e.join(";"))].join("\n");
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", encodedUri);
-                    link.setAttribute("download", `chiffre_d_affaires_mensuel_${statsYearFilter}_${new Date().toISOString().slice(0, 10)}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }} 
-                  variant="outline" 
-                  className="gap-2 border-primary/20 hover:bg-primary/5 shadow-sm rounded-xl"
-                >
-                  <Download className="w-4 h-4 text-primary" /> Exporter en CSV
-                </Button>
-              )}
+              <div>
+                <h2 style={{fontSize:22, fontWeight:700, color:'#f1f0ee', margin:0}}>Statistiques & Revenus</h2>
+                <p style={{fontSize:13, color:'#a09d95', margin:0}}>Vue d'ensemble de votre activité</p>
+              </div>
             </div>
 
             {/* KPIs principaux */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total réservations */}
-              <Card className="border shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardDescription className="font-medium">Total réservations</CardDescription>
-                  <CardTitle className="text-3xl font-extrabold">
-                    {monthlyStats.length > 0
-                      ? monthlyStats.reduce((s, m) => s + m.totalBookings, 0)
-                      : (bookingTotal || bookings.length)}
-                  </CardTitle>
+              <Card style={{background:'linear-gradient(135deg, rgba(35,32,28,0.95), rgba(28,25,20,0.98))', border:'1px solid rgba(212,168,67,0.2)', borderRadius:16}}>
+                <CardHeader className="pb-3">
+                  <CardDescription style={{color:'#a09d95', fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em'}}>Total réservations</CardDescription>
+                  <CardTitle style={{fontSize:36, fontWeight:800, color:'#f1f0ee'}}>{bookingTotal || bookings.length}</CardTitle>
+                  <p style={{fontSize:12, color:'#d4a843', marginTop:4, display:'flex', alignItems:'center', gap:4}}>
+                    <TrendingUp className="w-3 h-3 inline" /> Toutes périodes
+                  </p>
                 </CardHeader>
               </Card>
 
               {/* CA total confirmé + terminé */}
-              <Card className="border shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardDescription className="font-medium">Chiffre d'affaires total</CardDescription>
-                  <CardTitle className="text-3xl font-extrabold text-emerald-600">
-                    {(monthlyStats.length > 0
-                      ? monthlyStats.reduce((s, m) => s + m.revenue, 0)
-                      : bookings.filter(b => b.status === "confirmed" || b.status === "completed").reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
-                    ).toLocaleString('fr-FR', { maximumFractionDigits: 0 })}€
+              <Card style={{background:'linear-gradient(135deg, rgba(35,32,28,0.95), rgba(28,25,20,0.98))', border:'1px solid rgba(34,197,94,0.25)', borderRadius:16}}>
+                <CardHeader className="pb-3">
+                  <CardDescription style={{color:'#a09d95', fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em'}}>Chiffre d'affaires total</CardDescription>
+                  <CardTitle style={{fontSize:36, fontWeight:800, color:'#22c55e'}}>
+                    {bookings
+                      .filter(b => b.status === "confirmed" || b.status === "completed")
+                      .reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
+                      .toFixed(0)}€
                   </CardTitle>
+                  <p style={{fontSize:12, color:'#22c55e', marginTop:4}}>Confirmées + Terminées</p>
                 </CardHeader>
               </Card>
 
               {/* CA du mois courant */}
-              <Card className="border shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardDescription className="font-medium">CA mois en cours</CardDescription>
-                  <CardTitle className="text-3xl font-extrabold text-blue-600">
+              <Card style={{background:'linear-gradient(135deg, rgba(35,32,28,0.95), rgba(28,25,20,0.98))', border:'1px solid rgba(212,168,67,0.3)', borderRadius:16}}>
+                <CardHeader className="pb-3">
+                  <CardDescription style={{color:'#a09d95', fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em'}}>CA mois en cours</CardDescription>
+                  <CardTitle style={{fontSize:36, fontWeight:800, color:'#d4a843'}}>
                     {(() => {
                       const now = new Date();
-                      const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-                      const currentMonthStat = monthlyStats.find(m => m.monthKey === currentKey);
-                      if (currentMonthStat) {
-                        return currentMonthStat.revenue.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
-                      }
                       return bookings
                         .filter(b =>
                           (b.status === "confirmed" || b.status === "completed") &&
-                          b.startDate.slice(0, 7) === currentKey
+                          b.startDate.slice(0, 7) === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`
                         )
                         .reduce((s, b) => s + (Number(b.totalPrice) || 0), 0)
-                        .toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+                        .toFixed(0);
                     })()}€
                   </CardTitle>
+                  <p style={{fontSize:12, color:'#d4a843', marginTop:4}}>Mois actuel</p>
                 </CardHeader>
               </Card>
 
               {/* Panier moyen */}
-              <Card className="border shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardDescription className="font-medium">Panier moyen</CardDescription>
-                  <CardTitle className="text-3xl font-extrabold text-purple-600">
+              <Card style={{background:'linear-gradient(135deg, rgba(35,32,28,0.95), rgba(28,25,20,0.98))', border:'1px solid rgba(99,102,241,0.25)', borderRadius:16}}>
+                <CardHeader className="pb-3">
+                  <CardDescription style={{color:'#a09d95', fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em'}}>Panier moyen</CardDescription>
+                  <CardTitle style={{fontSize:36, fontWeight:800, color:'#818cf8'}}>
                     {(() => {
-                      const totalRev = monthlyStats.length > 0
-                        ? monthlyStats.reduce((s, m) => s + m.revenue, 0)
-                        : bookings.filter(b => b.status === "confirmed" || b.status === "completed").reduce((s, b) => s + (Number(b.totalPrice) || 0), 0);
-                      const totalCount = monthlyStats.length > 0
-                        ? monthlyStats.reduce((s, m) => s + m.confirmedCount, 0)
-                        : bookings.filter(b => b.status === "confirmed" || b.status === "completed").length;
-                      if (!totalCount) return "0€";
-                      return `${Math.round(totalRev / totalCount)}€`;
+                      const done = bookings.filter(b => b.status === "confirmed" || b.status === "completed");
+                      if (!done.length) return "—";
+                      const total = done.reduce((s, b) => s + (Number(b.totalPrice) || 0), 0);
+                      return `${Math.round(total / done.length).toLocaleString('fr-FR')}€`;
                     })()}
                   </CardTitle>
+                  <p style={{fontSize:12, color:'#818cf8', marginTop:4}}>Par réservation</p>
                 </CardHeader>
               </Card>
             </div>
 
-            {/* Section Suivi Chiffre d'Affaires Mois par Mois */}
-            {(() => {
-              // Extraction des années disponibles dans les données
-              const availableYears = Array.from(new Set(monthlyStats.map(s => s.year.toString()))).sort().reverse();
-              const filteredStats = statsYearFilter === "all" 
-                ? monthlyStats 
-                : monthlyStats.filter(s => s.year.toString() === statsYearFilter);
-
-              // Données pour le graphique (dans l'ordre chronologique croissant)
-              const chartData = [...filteredStats].reverse();
-              const maxRevenue = Math.max(...monthlyStats.map(s => s.revenue), 1);
-
-              return (
-                <Card className="border shadow-md rounded-2xl overflow-hidden">
-                  <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 pb-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <CardTitle className="text-xl flex items-center gap-2">
-                          <BarChart3 className="w-5 h-5 text-primary" />
-                          Chiffre d'affaires mois par mois
-                        </CardTitle>
-                        <CardDescription>
-                          Historique complet des revenus générés par mois
-                        </CardDescription>
-                      </div>
-
-                      {/* Filtres par année */}
-                      {availableYears.length > 0 && (
-                        <div className="flex items-center gap-1.5 bg-background border p-1 rounded-xl shadow-xs">
-                          <Button
-                            size="sm"
-                            variant={statsYearFilter === "all" ? "default" : "ghost"}
-                            className="h-8 px-3 text-xs font-semibold rounded-lg"
-                            onClick={() => setStatsYearFilter("all")}
-                          >
-                            Toutes
-                          </Button>
-                          {availableYears.map(yearStr => (
-                            <Button
-                              key={yearStr}
-                              size="sm"
-                              variant={statsYearFilter === yearStr ? "default" : "ghost"}
-                              className="h-8 px-3 text-xs font-semibold rounded-lg"
-                              onClick={() => setStatsYearFilter(yearStr)}
-                            >
-                              {yearStr}
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="pt-6 space-y-8">
-                    {/* Graphique en Barres */}
-                    {chartData.length > 0 ? (
-                      <div className="space-y-2">
-                        <div className="h-64 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                              <XAxis 
-                                dataKey="label" 
-                                tick={{ fontSize: 12 }} 
-                                tickLine={false} 
-                                axisLine={false} 
-                              />
-                              <YAxis 
-                                tick={{ fontSize: 12 }} 
-                                tickLine={false} 
-                                axisLine={false} 
-                                tickFormatter={(val) => `${val}€`} 
-                              />
-                              <Tooltip
-                                content={({ active, payload }) => {
-                                  if (active && payload && payload.length) {
-                                    const data: MonthlyStat = payload[0].payload;
-                                    return (
-                                      <div className="bg-popover/95 backdrop-blur-md border p-3 rounded-xl shadow-xl text-xs space-y-1">
-                                        <p className="font-bold text-foreground">{data.label}</p>
-                                        <p className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
-                                          {data.revenue.toLocaleString('fr-FR')} €
-                                        </p>
-                                        <div className="text-muted-foreground pt-1 border-t space-y-0.5">
-                                          <p>{data.confirmedCount} location{data.confirmedCount > 1 ? 's' : ''} confirmée{data.confirmedCount > 1 ? 's' : ''}</p>
-                                          <p>Panier moyen: {data.averageBasket} €</p>
-                                          {data.growth !== null && (
-                                            <p className={data.growth >= 0 ? "text-emerald-600 font-semibold" : "text-rose-600 font-semibold"}>
-                                              Évolution vs M-1: {data.growth >= 0 ? `+${data.growth}%` : `${data.growth}%`}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                }}
-                              />
-                              <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
-                                {chartData.map((entry, index) => {
-                                  const now = new Date();
-                                  const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-                                  const isCurrent = entry.monthKey === currentKey;
-                                  return (
-                                    <Cell 
-                                      key={`cell-${index}`} 
-                                      fill={isCurrent ? '#3b82f6' : '#10b981'} 
-                                      fillOpacity={isCurrent ? 0.9 : 0.85}
-                                    />
-                                  );
-                                })}
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <div className="flex justify-center items-center gap-6 text-xs text-muted-foreground pt-2">
-                          <span className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
-                            Mois terminés / archivés
-                          </span>
-                          <span className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
-                            Mois en cours
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="py-12 text-center text-muted-foreground text-sm">
-                        Aucune donnée statistique disponible pour cette période.
-                      </div>
-                    )}
-
-                    {/* Tableau explicatif Mois par Mois */}
-                    <div className="border rounded-xl overflow-hidden">
-                      <div className="bg-slate-100/70 dark:bg-slate-800/70 px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-4 sm:col-span-3">Mois</div>
-                        <div className="col-span-4 sm:col-span-3 text-right sm:text-left">Chiffre d'affaires</div>
-                        <div className="hidden sm:block sm:col-span-2 text-center">Évolution (M-1)</div>
-                        <div className="hidden sm:block sm:col-span-2 text-center">Locations</div>
-                        <div className="col-span-4 sm:col-span-2 text-right">Panier Moyen</div>
-                      </div>
-
-                      <div className="divide-y">
-                        {filteredStats.map((stat) => {
-                          const now = new Date();
-                          const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-                          const isCurrentMonth = stat.monthKey === currentKey;
-                          const progressPercent = Math.round((stat.revenue / maxRevenue) * 100);
-
-                          return (
-                            <div key={stat.monthKey} className="px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors grid grid-cols-12 gap-2 items-center text-sm">
-                              {/* Colonne Mois */}
-                              <div className="col-span-4 sm:col-span-3 font-semibold flex flex-col sm:flex-row sm:items-center gap-1">
-                                <span>{stat.label}</span>
-                                {isCurrentMonth && (
-                                  <Badge variant="outline" className="w-fit text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200">
-                                    En cours
-                                  </Badge>
-                                )}
-                              </div>
-
-                              {/* Colonne CA + barre visuelle */}
-                              <div className="col-span-4 sm:col-span-3 text-right sm:text-left space-y-1">
-                                <div className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                                  {stat.revenue.toLocaleString('fr-FR')} €
-                                </div>
-                                <div className="h-1.5 w-full max-w-[140px] bg-secondary rounded-full overflow-hidden hidden sm:block">
-                                  <div 
-                                    className="h-full bg-emerald-500 rounded-full transition-all" 
-                                    style={{ width: `${Math.max(5, progressPercent)}%` }}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Colonne Évolution */}
-                              <div className="hidden sm:flex sm:col-span-2 justify-center items-center">
-                                {stat.growth !== null ? (
-                                  <Badge 
-                                    className={`gap-1 font-semibold text-xs px-2.5 py-0.5 rounded-full ${
-                                      stat.growth >= 0 
-                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200' 
-                                        : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-200'
-                                    }`}
-                                    variant="outline"
-                                  >
-                                    {stat.growth >= 0 ? (
-                                      <TrendingUp className="w-3 h-3 text-emerald-600" />
-                                    ) : (
-                                      <TrendingDown className="w-3 h-3 text-rose-600" />
-                                    )}
-                                    {stat.growth >= 0 ? `+${stat.growth}%` : `${stat.growth}%`}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">—</span>
-                                )}
-                              </div>
-
-                              {/* Colonne Locations */}
-                              <div className="hidden sm:block sm:col-span-2 text-center text-slate-700 dark:text-slate-300 font-medium">
-                                {stat.confirmedCount} loc.
-                              </div>
-
-                              {/* Colonne Panier Moyen */}
-                              <div className="col-span-4 sm:col-span-2 text-right font-medium text-slate-600 dark:text-slate-400">
-                                {stat.averageBasket} €
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {filteredStats.length === 0 && (
-                          <div className="p-6 text-center text-muted-foreground text-sm">
-                            Aucune donnée disponible.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
+            {/* Graphique CA + tableau mois par mois */}
+            <StatsChartSection bookings={bookings} />
 
             {/* Taux d'occupation par véhicule */}
-            <Card className="border shadow-sm">
+            <Card style={{background:'linear-gradient(135deg, rgba(35,32,28,0.95), rgba(28,25,20,0.98))', border:'1px solid rgba(212,168,67,0.15)', borderRadius:16}}>
               <CardHeader>
-                <CardTitle>Taux d'occupation par véhicule</CardTitle>
-                <CardDescription>
+                <CardTitle style={{color:'#f1f0ee', fontSize:16, fontWeight:700}}>Taux d'occupation par véhicule</CardTitle>
+                <CardDescription style={{color:'#a09d95'}}>
                   Calculé sur les 30 derniers jours (réservations confirmées + terminées)
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {cars.map(car => {
                     const now = new Date();
                     const past30start = new Date(now); past30start.setDate(past30start.getDate() - 30);
@@ -3150,7 +3114,6 @@ const Admin = () => {
                       b.carId === car.id &&
                       (b.status === "confirmed" || b.status === "completed")
                     );
-                    // Compter les jours occupés dans les 30 derniers jours
                     const bookedDays = new Set<string>();
                     carBookings.forEach(b => {
                       const s = new Date(b.startDate), e = new Date(b.endDate);
@@ -3163,40 +3126,48 @@ const Admin = () => {
                     });
                     const rate = Math.round((bookedDays.size / 30) * 100);
                     const revenue = carBookings.reduce((s, b) => s + (Number(b.totalPrice) || 0), 0);
+                    const barColor = rate > 70 ? '#22c55e' : rate > 40 ? '#d4a843' : '#94a3b8';
                     return (
-                      <div key={car.id} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">{car.brand} {car.model}</span>
-                          <span className="text-muted-foreground">{rate}% · {revenue.toFixed(0)}€</span>
+                      <div key={car.id} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span style={{fontWeight:600, color:'#f1f0ee', fontSize:14}}>{car.brand} {car.model}</span>
+                          <div className="flex items-center gap-3">
+                            <span style={{color:'#a09d95', fontSize:13}}>{revenue.toFixed(0)}€ générés</span>
+                            <span style={{fontWeight:700, color:barColor, fontSize:14, minWidth:40, textAlign:'right'}}>{rate}%</span>
+                          </div>
                         </div>
-                        <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                        <div style={{height:8, borderRadius:999, background:'rgba(255,255,255,0.07)', overflow:'hidden'}}>
                           <div
-                            className="h-full rounded-full transition-all"
                             style={{
-                              width: `${rate}%`,
-                              background: rate > 70 ? '#22c55e' : rate > 40 ? '#f97316' : '#94a3b8'
+                              height:'100%',
+                              width:`${rate}%`,
+                              borderRadius:999,
+                              background:barColor,
+                              transition:'width 0.6s ease',
+                              boxShadow:`0 0 8px ${barColor}60`
                             }}
                           />
                         </div>
                       </div>
                     );
                   })}
-                  {cars.length === 0 && <p className="text-muted-foreground text-sm">Aucun véhicule</p>}
+                  {cars.length === 0 && <p style={{color:'#a09d95', fontSize:13}}>Aucun véhicule enregistré</p>}
                 </div>
               </CardContent>
             </Card>
 
             {/* Répartition par statut */}
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {(["pending","confirmed","cancelled","completed"] as const).map(s => {
                 const count = bookings.filter(b => b.status === s).length;
                 const labels: Record<string,string> = {pending:"En attente",confirmed:"Confirmées",cancelled:"Annulées",completed:"Terminées"};
-                const colors: Record<string,string> = {pending:"text-amber-600",confirmed:"text-emerald-600",cancelled:"text-red-600",completed:"text-sky-600"};
+                const borders: Record<string,string> = {pending:'rgba(245,158,11,0.3)',confirmed:'rgba(34,197,94,0.3)',cancelled:'rgba(239,68,68,0.3)',completed:'rgba(99,102,241,0.3)'};
+                const colors: Record<string,string> = {pending:'#f59e0b',confirmed:'#22c55e',cancelled:'#ef4444',completed:'#818cf8'};
                 return (
-                  <Card key={s} className="border shadow-sm">
+                  <Card key={s} style={{background:'linear-gradient(135deg, rgba(35,32,28,0.95), rgba(28,25,20,0.98))', border:`1px solid ${borders[s]}`, borderRadius:16}}>
                     <CardHeader className="pb-2">
-                      <CardDescription className="font-medium">{labels[s]}</CardDescription>
-                      <CardTitle className={`text-3xl font-extrabold ${colors[s]}`}>{count}</CardTitle>
+                      <CardDescription style={{color:'#a09d95', fontSize:11, textTransform:'uppercase', letterSpacing:'0.08em'}}>{labels[s]}</CardDescription>
+                      <CardTitle style={{fontSize:40, fontWeight:800, color:colors[s]}}>{count}</CardTitle>
                     </CardHeader>
                   </Card>
                 );
@@ -3604,6 +3575,108 @@ const Admin = () => {
                 </div>
               </div>
 
+              {/* Configuration de la Promotion */}
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
+                      🔥
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">Promotion sur ce véhicule</h4>
+                      <p className="text-xs text-muted-foreground">Applique un prix barré avec réduction sur le site et le simulateur</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-muted-foreground">{editCarForm.has_promo ? "Active" : "Désactivée"}</span>
+                    <input
+                      type="checkbox"
+                      checked={editCarForm.has_promo}
+                      onChange={(e) => setEditCarForm({ ...editCarForm, has_promo: e.target.checked })}
+                      className="w-5 h-5 accent-primary rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {editCarForm.has_promo && (
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-orange-500/5 via-card to-background border border-orange-500/20 space-y-4 animate-in fade-in duration-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold uppercase text-muted-foreground mb-1 block">Type de Réduction</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditCarForm({ ...editCarForm, promo_type: "percentage" })}
+                            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
+                              editCarForm.promo_type === "percentage"
+                                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                : "bg-secondary/40 border-border/40 text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            % Pourcentage
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditCarForm({ ...editCarForm, promo_type: "fixed" })}
+                            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
+                              editCarForm.promo_type === "fixed"
+                                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                : "bg-secondary/40 border-border/40 text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            € Montant fixe
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold uppercase text-muted-foreground mb-1 block">
+                          Valeur de la réduction ({editCarForm.promo_type === "percentage" ? "%" : "€ / jour"})
+                        </label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder={editCarForm.promo_type === "percentage" ? "ex: 20" : "ex: 30"}
+                            value={editCarForm.promo_value}
+                            onChange={(e) => setEditCarForm({ ...editCarForm, promo_value: e.target.value })}
+                            className="pr-10 border-orange-500/30 focus:border-orange-500"
+                          />
+                          <span className="absolute right-3 top-2.5 text-xs font-bold text-orange-400">
+                            {editCarForm.promo_type === "percentage" ? "%" : "€"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Aperçu en direct */}
+                    {(() => {
+                      const rawP = parseFloat(editCarForm.price_per_day) || 0;
+                      const val = parseFloat(editCarForm.promo_value) || 0;
+                      if (rawP > 0 && val > 0) {
+                        const discount = editCarForm.promo_type === "percentage"
+                          ? Math.round((rawP * val) / 100)
+                          : Math.min(rawP, val);
+                        const finalP = Math.max(0, rawP - discount);
+                        return (
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-xs">
+                            <span className="text-muted-foreground font-medium">Aperçu du tarif promo affiché :</span>
+                            <div className="flex items-baseline gap-2">
+                              <span className="line-through text-muted-foreground/70 font-semibold">{rawP}€</span>
+                              <span className="text-lg font-black text-orange-500">{finalP}€ / jour</span>
+                              <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white font-black text-[10px]">
+                                -{editCarForm.promo_type === "percentage" ? `${val}%` : `${val}€`}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+              </div>
+
               {/* Actions */}
               <div className="flex gap-3 justify-end pt-4 border-t">
                 <Button variant="outline" onClick={() => setEditingCar(null)}>Annuler</Button>
@@ -3630,6 +3703,9 @@ const Admin = () => {
                           description: editCarForm.description || null,
                           features: editCarFeatures,
                           image_url: editCarForm.image_url,
+                          has_promo: editCarForm.has_promo,
+                          promo_type: editCarForm.promo_type,
+                          promo_value: editCarForm.promo_value ? parseFloat(editCarForm.promo_value) : 0,
                         })
                       });
 
@@ -3652,6 +3728,9 @@ const Admin = () => {
                           description: editCarForm.description,
                           features: editCarFeatures,
                           imageUrl: editCarForm.image_url || c.imageUrl,
+                          has_promo: editCarForm.has_promo,
+                          promo_type: editCarForm.promo_type,
+                          promo_value: editCarForm.promo_value ? parseFloat(editCarForm.promo_value) : 0,
                         } : c));
                         alert("Fiche du véhicule mise à jour avec succès !");
                         setEditingCar(null);

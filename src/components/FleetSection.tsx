@@ -88,6 +88,46 @@ const FleetSection = () => {
     return Math.round(price * (1 - globalDiscount / 100));
   };
 
+  const getCarPriceInfo = (car: any) => {
+    const rawPrice = car.price || 0;
+    if (car.has_promo && car.promo_value > 0) {
+      const discount = car.promo_type === 'percentage'
+        ? Math.round((rawPrice * car.promo_value) / 100)
+        : Math.min(rawPrice, car.promo_value);
+      const discountedPrice = Math.max(0, rawPrice - discount);
+      return {
+        effectivePrice: discountedPrice,
+        originalPrice: rawPrice,
+        hasDiscount: true,
+        isCarPromo: true,
+        promoType: car.promo_type,
+        promoValue: car.promo_value,
+        badgeText: car.promo_type === 'percentage' ? `-${car.promo_value}%` : `-${car.promo_value}€`,
+      };
+    }
+    if (globalDiscount > 0) {
+      const discountedPrice = Math.round(rawPrice * (1 - globalDiscount / 100));
+      return {
+        effectivePrice: discountedPrice,
+        originalPrice: rawPrice,
+        hasDiscount: true,
+        isCarPromo: false,
+        promoType: 'percentage',
+        promoValue: globalDiscount,
+        badgeText: `-${globalDiscount}%`,
+      };
+    }
+    return {
+      effectivePrice: rawPrice,
+      originalPrice: rawPrice,
+      hasDiscount: false,
+      isCarPromo: false,
+      promoType: 'percentage',
+      promoValue: 0,
+      badgeText: '',
+    };
+  };
+
   const [cars, setCars] = useState(defaultCars);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedCar, setSelectedCar] = useState<typeof defaultCars[0] | null>(null);
@@ -150,6 +190,9 @@ const FleetSection = () => {
               features: Array.isArray(parsedFeatures) ? parsedFeatures : [],
               image: hasValidImage ? car.image_url : getDefaultImage(car.brand),
               specs: Array.isArray(parsedSpecs) ? parsedSpecs : [],
+              has_promo: Boolean(car.has_promo),
+              promo_type: car.promo_type || 'percentage',
+              promo_value: parseFloat(car.promo_value) || 0,
             };
           });
           const sortedMappedCars = mappedCars.sort((a: any, b: any) => Number(b.available) - Number(a.available));
@@ -279,24 +322,33 @@ const FleetSection = () => {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 mb-3 md:mb-4">
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-2xl md:text-3xl font-black text-gradient-orange">
-                              {calculateDiscountedPrice(car.price)}€
-                            </span>
-                            <span className="text-muted-foreground text-xs md:text-sm">/jour</span>
-                          </div>
-                          {globalDiscount > 0 && (
-                            <span className="text-xs line-through text-muted-foreground decoration-red-500/50">
-                              {car.price}€
-                            </span>
-                          )}
-                          {globalDiscount > 0 && (
-                            <Badge className="bg-green-500 hover:bg-green-500 text-[10px] py-0 h-5">
-                              -{globalDiscount}%
-                            </Badge>
-                          )}
-                        </div>
+                        {(() => {
+                          const priceInfo = getCarPriceInfo(car);
+                          return (
+                            <div className="flex items-center gap-3 mb-3 md:mb-4 flex-wrap">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-2xl md:text-3xl font-black text-gradient-orange">
+                                  {priceInfo.effectivePrice}€
+                                </span>
+                                <span className="text-muted-foreground text-xs md:text-sm">/jour</span>
+                              </div>
+                              {priceInfo.hasDiscount && (
+                                <span className="text-sm line-through text-muted-foreground/70 font-semibold decoration-orange-500/80">
+                                  {priceInfo.originalPrice}€
+                                </span>
+                              )}
+                              {priceInfo.hasDiscount && (
+                                <Badge className={`${
+                                  priceInfo.isCarPromo 
+                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/25 border-none font-black animate-pulse' 
+                                    : 'bg-green-500 hover:bg-green-500'
+                                } text-[11px] py-0.5 px-2.5 h-6 rounded-full tracking-wide`}>
+                                  {priceInfo.badgeText} {priceInfo.isCarPromo ? 'PROMO' : ''}
+                                </Badge>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         <div className="flex flex-wrap gap-2 mb-3 md:mb-4">
                           {car.specs.map((spec) => (

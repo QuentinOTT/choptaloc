@@ -28,6 +28,9 @@ interface Car {
   features?: string[];
   caution_amount?: number;
   min_license_years?: number;
+  has_promo?: boolean;
+  promo_type?: string;
+  promo_value?: number;
 }
 
 interface CarModalProps {
@@ -174,12 +177,35 @@ const CarModal = ({ car, isOpen, onClose, onReserve }: CarModalProps) => {
           
           {/* Informations principales */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-3xl font-black text-gradient-orange">{car.price}€</span>
-                <span className="text-muted-foreground">/jour</span>
-              </div>
-            </div>
+            {(() => {
+              const rawPrice = car.price || 0;
+              const hasPromo = Boolean(car.has_promo && car.promo_value && car.promo_value > 0);
+              const discount = hasPromo
+                ? (car.promo_type === 'percentage'
+                  ? Math.round((rawPrice * (car.promo_value || 0)) / 100)
+                  : Math.min(rawPrice, car.promo_value || 0))
+                : 0;
+              const effectivePrice = Math.max(0, rawPrice - discount);
+
+              return (
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black text-gradient-orange">{effectivePrice}€</span>
+                    <span className="text-muted-foreground">/jour</span>
+                    {hasPromo && (
+                      <span className="text-base line-through text-muted-foreground/70 font-semibold decoration-orange-500/80">
+                        {rawPrice}€
+                      </span>
+                    )}
+                  </div>
+                  {hasPromo && (
+                    <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/30 animate-pulse">
+                      {car.promo_type === 'percentage' ? `-${car.promo_value}%` : `-${car.promo_value}€`} PROMO
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
             
             <p className="text-muted-foreground leading-relaxed">
               {displayDescription}
